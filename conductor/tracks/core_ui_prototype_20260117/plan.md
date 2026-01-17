@@ -1,6 +1,6 @@
 # 計画書: コアUIプロトタイプ
 
-## フェーズ 1: プロジェクトセットアップ & レイアウト
+## フェーズ 1: プロジェクトセットアップ & レイアウト [checkpoint: 849aa2e]
 - [x] タスク: Next.js 16 プロジェクトの初期化 9e08992
   - TypeScript, Tailwind CSS, ESLint を含む新規 Next.js アプリを作成。
   - shadcn/ui のインストールと初期化。
