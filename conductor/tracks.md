@@ -4,5 +4,5 @@
 
 ---
 
-## [ ] トラック: FaveFit コアUIプロトタイプの構築
+## [~] トラック: FaveFit コアUIプロトタイプの構築
 *リンク: [./conductor/tracks/core_ui_prototype_20260117/](./conductor/tracks/core_ui_prototype_20260117/)*
