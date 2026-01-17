@@ -1,4 +1,4 @@
-# Track Specification: Core UI Prototype
+# トラック設計書: コアUIプロトタイプ
 
 ## 1. 概要
 本トラックでは、FaveFitのコアとなるユーザー体験（UX）を検証するためのUIプロトタイプを構築する。実際のバックエンド（Mastra/Gemini）との接続は行わず、モックデータを使用して、画面遷移とインタラクションの確認を目的とする。
@@ -29,12 +29,12 @@
   - 感想入力ボタン（モック）
 
 ## 3. 技術仕様
-- **Framework:** Next.js 16 (App Router)
-- **Styling:** Tailwind CSS
-- **Components:** shadcn/ui
+- **フレームワーク:** Next.js 16 (App Router)
+- **スタイリング:** Tailwind CSS
+- **コンポーネント:** shadcn/ui
   - Card, Button, Slider, Badge, Dialog 等を使用
-- **Icons:** Lucide React
-- **Mock Data:** TypeScriptで型定義されたJSONデータを使用
+- **アイコン:** Lucide React
+- **モックデータ:** TypeScriptで型定義されたJSONデータを使用
 
 ## 4. デザイン要件
 - **テーマカラー:** フレッシュグリーン (#4ADE80) & エネルギッシュオレンジ (#FB923C) を基調とする。
