@@ -35,44 +35,44 @@ export default async function RecipeDetailPage({ params }: PageProps) {
   return (
     <div className="max-w-3xl mx-auto pb-12">
       {/* 戻るボタン */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex items-center gap-4 mb-4 md:mb-6">
         <Button variant="ghost" size="icon" asChild className="rounded-full">
           <Link href="/recipes">
             <ChevronLeft className="h-6 w-6" />
           </Link>
         </Button>
-        <h1 className="text-xl font-bold line-clamp-1">{recipe.title}</h1>
+        <h1 className="text-lg md:text-xl font-bold line-clamp-1">{recipe.title}</h1>
       </div>
 
       {/* メイン画像 */}
-      <div className="relative aspect-video w-full rounded-2xl overflow-hidden mb-8 shadow-md">
+      <div className="relative aspect-video w-full rounded-xl md:rounded-2xl overflow-hidden mb-6 md:mb-8 shadow-md">
         <Image
           src={recipe.image}
           alt={recipe.title}
           fill
           className="object-cover"
         />
-        <div className="absolute bottom-4 left-4">
-          <Badge className="bg-primary text-primary-foreground text-sm py-1 px-3">
+        <div className="absolute bottom-3 left-3 md:bottom-4 md:left-4">
+          <Badge className="bg-primary text-primary-foreground text-xs md:text-sm py-1 px-2 md:px-3">
             {recipe.genre}
           </Badge>
         </div>
       </div>
 
-      <div className="space-y-8">
+      <div className="space-y-6 md:space-y-8">
         {/* 基本情報 */}
-        <section className="space-y-4">
-          <p className="text-lg text-muted-foreground leading-relaxed">
+        <section className="space-y-3 md:space-y-4">
+          <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
             {recipe.description}
           </p>
-          <div className="flex gap-6 items-center bg-muted/30 p-4 rounded-xl">
+          <div className="flex gap-4 md:gap-6 items-center bg-muted/30 p-3 md:p-4 rounded-xl">
             <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-primary" />
-              <span className="font-medium">{recipe.cookingTime}分</span>
+              <Clock className="h-4 w-4 md:h-5 md:w-5 text-primary" />
+              <span className="font-medium text-sm md:text-base">{recipe.cookingTime}分</span>
             </div>
             <div className="flex items-center gap-2">
-              <Flame className="h-5 w-5 text-secondary" />
-              <span className="font-medium">{recipe.nutrition.calories}kcal</span>
+              <Flame className="h-4 w-4 md:h-5 md:w-5 text-secondary" />
+              <span className="font-medium text-sm md:text-base">{recipe.nutrition.calories}kcal</span>
             </div>
           </div>
         </section>
