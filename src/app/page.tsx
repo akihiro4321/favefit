@@ -2,11 +2,16 @@
 
 import { MoodSelector } from '@/components/mood-selector';
 import { Mood } from '@/types';
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
+  const router = useRouter();
+
   const handleMoodSubmit = (mood: Mood) => {
     console.log('Selected Mood:', mood);
-    // 今後はここでレシピ一覧画面へ遷移する
+    // 実際のアプリではここでクエリパラメータなどを渡すが、
+    // 今回はプロトタイプなのでシンプルにレシピ一覧画面へ遷移する
+    router.push('/recipes');
   };
 
   return (

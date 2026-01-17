@@ -11,13 +11,17 @@ interface RecipeCardProps {
 
 export function RecipeCard({ recipe }: RecipeCardProps) {
   return (
-    <Card className="overflow-hidden flex flex-col h-full hover:shadow-lg transition-shadow">
+    <Card className="overflow-hidden flex flex-col h-full hover:shadow-lg transition-shadow relative group">
+      <Link href={`/recipes/${recipe.id}`} className="absolute inset-0 z-10">
+        <span className="sr-only">{recipe.title}の詳細を見る</span>
+      </Link>
+      
       <div className="relative aspect-video w-full">
         <Image
           src={recipe.image}
           alt={recipe.title}
           fill
-          className="object-cover"
+          className="object-cover transition-transform group-hover:scale-105"
         />
         <div className="absolute top-2 right-2 flex gap-2">
           <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm text-black">
@@ -45,12 +49,6 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
           <Flame className="h-4 w-4" />
           <span>{recipe.nutrition.calories}kcal</span>
         </div>
-        <Link 
-          href={`/recipes/${recipe.id}`}
-          className="text-primary font-medium hover:underline"
-        >
-          詳細を見る
-        </Link>
       </CardFooter>
     </Card>
   );

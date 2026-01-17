@@ -1,0 +1,56 @@
+### Page state
+- Page URL: http://localhost:3000/
+- Page Title: FaveFit - Your Personalized Cooking Companion
+- Page Snapshot:
+```yaml
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - link "FaveFit" [ref=e4] [cursor=pointer]:
+      - /url: /
+  - main [ref=e5]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - heading "FaveFit" [level=1] [ref=e8]
+        - paragraph [ref=e9]: 今の気分に合わせて、あなたにぴったりのレシピを提案します。
+      - generic [ref=e10]:
+        - generic [ref=e11]:
+          - heading "今の気分は？" [level=2] [ref=e12]
+          - generic [ref=e13]:
+            - generic [ref=e16] [cursor=pointer]: 和食
+            - generic [ref=e19] [cursor=pointer]: 洋食
+            - generic [ref=e22] [cursor=pointer]: 中華
+            - generic [ref=e25] [cursor=pointer]: イタリアン
+            - generic [ref=e28] [cursor=pointer]: エスニック
+            - generic [ref=e31] [cursor=pointer]: その他
+        - generic [ref=e32]:
+          - generic [ref=e33]:
+            - generic [ref=e34]: 味の好みは？
+            - generic [ref=e35]: ふつう
+          - generic [ref=e36]:
+            - slider [ref=e66]
+            - generic [ref=e40]:
+              - generic [ref=e41]: さっぱり
+              - generic [ref=e42]: こってり
+        - generic [ref=e43]:
+          - generic [ref=e44]: 具体的に食べたいものは？（任意）
+          - textbox "具体的に食べたいものは？（任意）" [ref=e45]:
+            - /placeholder: 例：旬の野菜、温かいスープ...
+        - button "レシピを見る" [ref=e47]
+  - navigation [ref=e48]:
+    - generic [ref=e49]:
+      - link "ホーム" [ref=e50] [cursor=pointer]:
+        - /url: /
+        - img [ref=e51]
+        - generic [ref=e54]: ホーム
+      - link "レシピ" [ref=e55] [cursor=pointer]:
+        - /url: /recipes
+        - img [ref=e56]
+        - generic [ref=e59]: レシピ
+      - link "マイページ" [ref=e60] [cursor=pointer]:
+        - /url: /profile
+        - img [ref=e61]
+        - generic [ref=e64]: マイページ
+  - button "Open Next.js Dev Tools" [ref=e72] [cursor=pointer]:
+    - img [ref=e73]
+  - alert [ref=e76]
+```
