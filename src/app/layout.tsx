@@ -4,6 +4,7 @@ import "./globals.css";
 import { Home, Utensils, User } from "lucide-react";
 import Link from "next/link";
 import { AuthProvider } from "@/components/auth-provider";
+import { Header } from "@/components/header";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,20 +32,14 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col bg-background`}
       >
         <AuthProvider>
-          <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="container flex h-14 items-center justify-center">
-              <Link href="/" className="font-bold text-xl text-primary">
-                FaveFit
-              </Link>
-            </div>
-          </header>
+          <Header />
 
-          <main className="flex-1 pb-20 container py-6">
+          <main className="flex-1 pb-20 container py-6 max-w-screen-md mx-auto">
             {children}
           </main>
 
           <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="container flex h-16 items-center justify-around">
+            <div className="container flex h-16 items-center justify-around max-w-screen-md mx-auto">
               <Link href="/" className="flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-primary transition-colors">
                 <Home className="h-5 w-5" />
                 <span className="text-xs">ホーム</span>
