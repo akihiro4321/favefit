@@ -9,7 +9,7 @@
 
 ---
 
-## [~] トラック: 認証基盤 & データベース設計
+## [x] トラック: 認証基盤 & データベース設計
 *リンク: [./conductor/tracks/auth_db_setup_20260117/](./conductor/tracks/auth_db_setup_20260117/)*
 *概要: Firebase Auth と Firestore を導入し、ユーザーデータの永続化と認証を実装する。*
 
