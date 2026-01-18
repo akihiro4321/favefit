@@ -3,7 +3,7 @@
 ## フェーズ 1: Google認証の実装
 - [x] タスク: Google Auth Provider の設定 71f2698
   - `firebase/auth` の `GoogleAuthProvider` を設定。
-- [ ] タスク: ログイン処理の実装
+- [x] タスク: ログイン処理の実装 38601e1
   - `signInWithPopup` を使用した通常のログイン処理。
   - `linkWithPopup` を使用したアカウントリンク処理。
 
