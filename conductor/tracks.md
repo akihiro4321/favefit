@@ -15,10 +15,14 @@
 
 ---
 
-## [~] トラック: ハイブリッド認証機能の実装
+## [x] トラック: ハイブリッド認証機能の実装
+
+*リンク: [./conductor/tracks/hybrid_auth_20260117/](./conductor/tracks/hybrid_auth_20260117/)*
+
 *概要: 匿名ログインに加え、Googleアカウント連携機能を追加し、データ引き継ぎ可能なハイブリッド認証を実装する。*
 
-## [ ] トラック: Nutrition Planner Agent 実装
+## [x] トラック: Nutrition Planner Agent 実装
+*リンク: [./conductor/tracks/nutrition_planner_agent_20260118/](./conductor/tracks/nutrition_planner_agent_20260118/)*
 *概要: 身体情報と目標から、1日のカロリー・PFC目標を算出するAIロジックの実装。*
 
 ## [ ] トラック: Recipe Creator Agent 実装

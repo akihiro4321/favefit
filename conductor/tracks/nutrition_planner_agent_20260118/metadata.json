@@ -1,0 +1,7 @@
+{
+  "id": "nutrition_planner_agent_20260118",
+  "name": "Nutrition Planner Agent 実装",
+  "description": "身体情報と目標から、1日のカロリー・PFC目標を算出するAIロジックの実装。",
+  "startDate": "2026-01-18",
+  "status": "IN_PROGRESS"
+}

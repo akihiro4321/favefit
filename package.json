@@ -10,6 +10,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@google/adk": "^0.2.4",
+    "@google/adk-devtools": "^0.2.4",
     "@radix-ui/react-label": "^2.1.8",
     "@radix-ui/react-progress": "^1.1.8",
     "@radix-ui/react-separator": "^1.1.8",

@@ -5,10 +5,20 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getAuth, signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
+import { ProfileForm } from '@/components/profile-form';
+import { Separator } from '@/components/ui/separator';
 
 export default function ProfilePage() {
-  const { user, loading, linkGoogleAccount, signInWithGoogle } = useAuth();
+  const { user, profile, loading, linkGoogleAccount, signInWithGoogle, refreshProfile } = useAuth();
+  const [isEditing, setIsEditing] = (require('react').useState)(false);
   const router = useRouter();
+
+  // デバッグ用: プロフィールの内容をコンソールに出力
+  (require('react').useEffect)(() => {
+    if (profile) {
+      console.log('Current Profile Data:', profile);
+    }
+  }, [profile]);
 
   const handleLogout = async () => {
     const auth = getAuth();
@@ -41,7 +51,7 @@ export default function ProfilePage() {
   };
 
   if (loading) {
-    return <div className="container mx-auto p-4">Loading...</div>;
+    return <div className="container mx-auto p-4 flex justify-center py-20">Loading...</div>;
   }
 
   // 未ログイン状態（ログアウト後など）
@@ -75,7 +85,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="container mx-auto p-4 max-w-md">
+    <div className="container mx-auto p-4 max-w-md space-y-6 pb-20">
       <Card>
         <CardHeader>
           <CardTitle>マイページ</CardTitle>
@@ -97,17 +107,83 @@ export default function ProfilePage() {
               </div>
             ) : (
               <div className="flex flex-col gap-2">
-                <p className="font-medium">{user?.displayName}</p>
+                <p className="font-medium">
+                  {user.displayName || user.providerData?.find(p => p.displayName)?.displayName || user.email || 'ユーザー'}
+                </p>
                 <p className="text-sm text-muted-foreground">{user?.email}</p>
               </div>
             )}
           </div>
-
-          <Button onClick={handleLogout} variant="destructive" className="w-full">
-            ログアウト
-          </Button>
         </CardContent>
       </Card>
+
+      {profile && (
+        <div className="space-y-6">
+          {/* 目標が表示可能で、かつ編集モードでない場合に表示 */}
+          {profile.daily_calorie_target && !isEditing ? (
+            <Card className="bg-primary/5 border-primary/20">
+              <CardHeader className="pb-2">
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-lg">現在の目標栄養素</CardTitle>
+                  <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)}>
+                    編集
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="text-center bg-background py-4 rounded-xl border border-primary/10 shadow-sm">
+                  <p className="text-sm text-muted-foreground font-medium">1日の目標摂取量</p>
+                  <p className="text-4xl font-black text-primary tracking-tighter">
+                    {profile.daily_calorie_target} <span className="text-lg font-normal">kcal</span>
+                  </p>
+                </div>
+                
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-background p-3 rounded-xl border shadow-sm text-center">
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase mb-1">P (タンパク質)</p>
+                    <p className="text-lg font-bold">{profile.protein_g}g</p>
+                  </div>
+                  <div className="bg-background p-3 rounded-xl border shadow-sm text-center">
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase mb-1">F (脂質)</p>
+                    <p className="text-lg font-bold">{profile.fat_g}g</p>
+                  </div>
+                  <div className="bg-background p-3 rounded-xl border shadow-sm text-center">
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase mb-1">C (炭水化物)</p>
+                    <p className="text-lg font-bold">{profile.carbs_g}g</p>
+                  </div>
+                </div>
+
+                {profile.strategy_summary && (
+                  <div className="bg-muted/30 p-3 rounded-lg">
+                    <p className="text-xs text-muted-foreground leading-relaxed italic">
+                      &quot;{profile.strategy_summary}&quot;
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              <ProfileForm 
+                profile={profile} 
+                onUpdate={async () => {
+                  await refreshProfile();
+                  setIsEditing(false);
+                }} 
+              />
+              {isEditing && (
+                <Button variant="ghost" className="w-full" onClick={() => setIsEditing(false)}>
+                  キャンセル
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      <Button onClick={handleLogout} variant="ghost" className="w-full text-muted-foreground">
+        ログアウト
+      </Button>
     </div>
   );
 }
