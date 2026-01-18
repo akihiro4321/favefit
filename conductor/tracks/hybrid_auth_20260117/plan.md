@@ -7,7 +7,7 @@
   - `signInWithPopup` を使用した通常のログイン処理。
   - `linkWithPopup` を使用したアカウントリンク処理。
 
-## フェーズ 2: UI実装
+## フェーズ 2: UI実装 [checkpoint: c9526e7]
 - [x] タスク: マイページ (`/profile/page.tsx`) の作成 f3d4bcb
   - 現在のログイン状態を表示。
   - 「Googleアカウントと連携する」ボタンの配置。
