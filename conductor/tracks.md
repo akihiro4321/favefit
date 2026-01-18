@@ -13,6 +13,11 @@
 *リンク: [./conductor/tracks/auth_db_setup_20260117/](./conductor/tracks/auth_db_setup_20260117/)*
 *概要: Firebase Auth と Firestore を導入し、ユーザーデータの永続化と認証を実装する。*
 
+---
+
+## [~] トラック: ハイブリッド認証機能の実装
+*概要: 匿名ログインに加え、Googleアカウント連携機能を追加し、データ引き継ぎ可能なハイブリッド認証を実装する。*
+
 ## [ ] トラック: Nutrition Planner Agent 実装
 *概要: 身体情報と目標から、1日のカロリー・PFC目標を算出するAIロジックの実装。*
 

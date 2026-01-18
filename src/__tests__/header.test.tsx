@@ -59,6 +59,19 @@ describe('Header Component', () => {
     expect(screen.queryByText('ゲスト')).not.toBeInTheDocument();
   });
 
+  it('renders email if displayName is missing', () => {
+    // @ts-expect-error
+    vi.mocked(useAuth).mockReturnValue({
+      user: { isAnonymous: false, displayName: null, email: 'test@example.com' },
+      loading: false,
+      signInGuest: vi.fn(),
+    });
+    mocks.usePathname.mockReturnValue('/home');
+
+    render(<Header />);
+    expect(screen.getByText('test@example.com')).toBeInTheDocument();
+  });
+
   it('contains a link to the profile page', () => {
      // @ts-expect-error
      vi.mocked(useAuth).mockReturnValue({

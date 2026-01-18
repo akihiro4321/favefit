@@ -30,7 +30,11 @@ export function Header() {
               className="flex items-center gap-2 px-3 py-1 bg-muted hover:bg-muted/80 transition-colors rounded-full text-xs font-medium"
             >
               <User className="h-3.5 w-3.5" />
-              <span>{user.isAnonymous ? 'ゲスト' : user.displayName}</span>
+              <span>
+                {user.isAnonymous 
+                  ? 'ゲスト' 
+                  : (user.displayName || user.providerData?.find(p => p.displayName)?.displayName || user.email || 'ユーザー')}
+              </span>
             </Link>
           ) : (
             <Link
