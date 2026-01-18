@@ -25,7 +25,15 @@ export function Header() {
               <User className="h-3.5 w-3.5" />
               <span>{user.isAnonymous ? 'ゲスト' : user.displayName}</span>
             </Link>
-          ) : null}
+          ) : (
+            <Link
+              href="/profile"
+              className="flex items-center gap-2 px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors rounded-full text-xs font-medium"
+            >
+              <User className="h-3.5 w-3.5" />
+              <span>ログイン</span>
+            </Link>
+          )}
         </div>
       </div>
     </header>

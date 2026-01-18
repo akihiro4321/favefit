@@ -41,6 +41,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (!auth.currentUser) return;
     try {
       await linkWithPopup(auth.currentUser, googleProvider);
+      // 連携成功後、ユーザー情報をリロードしてisAnonymousの状態を更新する
+      await auth.currentUser.reload();
+      setUser({ ...auth.currentUser });
+      
+      // プロファイル情報も再取得
+      const userProfile = await getOrCreateUserProfile(auth.currentUser.uid);
+      setProfile(userProfile);
     } catch (error) {
       console.error('Account linking failed:', error);
       throw error;
