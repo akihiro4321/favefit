@@ -8,90 +8,116 @@ import { Label } from '@/components/ui/label';
 
 export default function TestAgentPage() {
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<unknown>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<Record<string, unknown> | null>(null);
 
-  const [formData, setFormData] = useState({
+  // Nutrition Planner Test
+  const [bodyInfo, setBodyInfo] = useState({
     age: 30,
     gender: 'male',
-    height_cm: 175,
-    weight_kg: 70,
-    activity_level: 'moderate',
-    goal: 'lose',
+    height: 175,
+    weight: 70,
+    activityLevel: 'moderate',
+    goal: 'maintenance'
   });
 
-  const runTest = async () => {
-    setLoading(true);
-    setError(null);
-    setResult(null);
+  // Recipe Creator Test
+  const [recipeParams, setRecipeParams] = useState({
+    mood: 'ガッツリした肉料理',
+    targetNutrition: {
+      calories: 600,
+      protein: 30,
+      fat: 20,
+      carbs: 70
+    }
+  });
 
+  const runAgent = async (agentId: string, input: Record<string, unknown>) => {
+    setLoading(true);
+    setResult(null);
     try {
-      const response = await fetch('/api/test-agent', {
+      const res = await fetch('/api/test-agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ agentId, input }),
       });
-
-      const data = await response.json();
-      if (data.error) throw new Error(data.error);
+      const data = await res.json();
       setResult(data);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+    } catch (error) {
+      console.error(error);
+      setResult({ error: 'Failed to run agent' });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="container max-w-screen-md mx-auto p-4 space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Nutrition Planner Agent テスト</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="age">年齢</Label>
-              <Input
-                id="age"
-                type="number"
-                value={formData.age}
-                onChange={(e) => setFormData({ ...formData, age: Number(e.target.value) })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="weight">体重 (kg)</Label>
-              <Input
-                id="weight"
-                type="number"
-                value={formData.weight_kg}
-                onChange={(e) => setFormData({ ...formData, weight_kg: Number(e.target.value) })}
-              />
-            </div>
-          </div>
-          <Button onClick={runTest} disabled={loading} className="w-full">
-            {loading ? '計算中...' : 'エージェントを実行'}
-          </Button>
-        </CardContent>
-      </Card>
+    <div className="container mx-auto p-4 space-y-8">
+      <h1 className="text-2xl font-bold">Agent Test UI</h1>
 
-      {error && (
-        <Card className="border-destructive">
-          <CardContent className="p-4 text-destructive">{error}</CardContent>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Nutrition Planner */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Nutrition Planner Agent</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>Age</Label>
+                <Input type="number" value={bodyInfo.age} onChange={e => setBodyInfo({...bodyInfo, age: Number(e.target.value)})} />
+              </div>
+              <div>
+                <Label>Weight (kg)</Label>
+                <Input type="number" value={bodyInfo.weight} onChange={e => setBodyInfo({...bodyInfo, weight: Number(e.target.value)})} />
+              </div>
+            </div>
+            <Button className="w-full" onClick={() => runAgent('nutrition-planner', bodyInfo)} disabled={loading}>
+              Run Planner
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Recipe Creator */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Recipe Creator Agent</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label>Mood</Label>
+              <Input value={recipeParams.mood} onChange={e => setRecipeParams({...recipeParams, mood: e.target.value})} />
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <Label>Target Calories</Label>
+                <Input type="number" value={recipeParams.targetNutrition.calories} onChange={e => setRecipeParams({...recipeParams, targetNutrition: {...recipeParams.targetNutrition, calories: Number(e.target.value)}})} />
+              </div>
+              <div>
+                <Label>Target Protein</Label>
+                <Input type="number" value={recipeParams.targetNutrition.protein} onChange={e => setRecipeParams({...recipeParams, targetNutrition: {...recipeParams.targetNutrition, protein: Number(e.target.value)}})} />
+              </div>
+            </div>
+            <Button className="w-full" variant="secondary" onClick={() => runAgent('recipe-creator', recipeParams)} disabled={loading}>
+              Run Recipe Creator
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      {loading && <div className="text-center py-8">Generating... (Gemini is thinking)</div>}
+
+      {result && (
+        <Card className="bg-muted">
+          <CardHeader>
+            <CardTitle>Result</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <pre className="text-xs overflow-auto max-h-[500px] bg-black text-green-400 p-4 rounded">
+              {JSON.stringify(result, null, 2)}
+            </pre>
+          </CardContent>
         </Card>
       )}
-
-                {result !== null && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>計算結果</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <pre className="bg-muted p-4 rounded-md overflow-auto text-xs">
-                        {JSON.stringify(result, null, 2)}
-                      </pre>
-                    </CardContent>
-                  </Card>
-                )}    </div>
+    </div>
   );
 }

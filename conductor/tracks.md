@@ -25,7 +25,8 @@
 *リンク: [./conductor/tracks/nutrition_planner_agent_20260118/](./conductor/tracks/nutrition_planner_agent_20260118/)*
 *概要: 身体情報と目標から、1日のカロリー・PFC目標を算出するAIロジックの実装。*
 
-## [ ] トラック: Recipe Creator Agent 実装
+## [~] トラック: Recipe Creator Agent 実装
+*リンク: [./conductor/tracks/recipe_creator_agent_20260118/](./conductor/tracks/recipe_creator_agent_20260118/)*
 *概要: Gemini API を使用し、好みに合わせたレシピを動的に生成する。*
 
 ## [ ] トラック: Preference Learner & フィードバック
