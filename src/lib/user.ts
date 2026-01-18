@@ -1,5 +1,5 @@
 import { db } from './firebase';
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp, FieldValue } from 'firebase/firestore';
 
 export interface UserProfile {
   uid: string;
@@ -22,8 +22,8 @@ export interface UserProfile {
   carbs_g?: number;
   strategy_summary?: string;
 
-  createdAt: any;
-  updatedAt: any;
+  createdAt: FieldValue;
+  updatedAt: FieldValue;
 }
 
 export const getOrCreateUserProfile = async (uid: string): Promise<UserProfile | null> => {

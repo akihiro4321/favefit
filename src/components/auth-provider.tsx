@@ -5,7 +5,7 @@ import { signInAnonymously, onAuthStateChanged, User, signInWithPopup, linkWithP
 import { auth, googleProvider } from '@/lib/firebase';
 import { getOrCreateUserProfile, UserProfile } from '@/lib/user';
 
-interface AuthContextType {
+export interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   loading: boolean;

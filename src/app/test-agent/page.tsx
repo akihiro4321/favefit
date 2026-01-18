@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 
 export default function TestAgentPage() {
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<unknown>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
@@ -35,8 +35,8 @@ export default function TestAgentPage() {
       const data = await response.json();
       if (data.error) throw new Error(data.error);
       setResult(data);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
     }
@@ -81,18 +81,17 @@ export default function TestAgentPage() {
         </Card>
       )}
 
-      {result && (
-        <Card>
-          <CardHeader>
-            <CardTitle>計算結果</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <pre className="bg-muted p-4 rounded-md overflow-auto text-xs">
-              {JSON.stringify(result, null, 2)}
-            </pre>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+                {result !== null && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>計算結果</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <pre className="bg-muted p-4 rounded-md overflow-auto text-xs">
+                        {JSON.stringify(result, null, 2)}
+                      </pre>
+                    </CardContent>
+                  </Card>
+                )}    </div>
   );
 }

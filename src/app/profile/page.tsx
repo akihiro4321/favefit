@@ -1,20 +1,21 @@
 'use client';
 
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth-provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getAuth, signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { ProfileForm } from '@/components/profile-form';
-import { Separator } from '@/components/ui/separator';
+import Link from 'next/link';
 
 export default function ProfilePage() {
   const { user, profile, loading, linkGoogleAccount, signInWithGoogle, refreshProfile } = useAuth();
-  const [isEditing, setIsEditing] = (require('react').useState)(false);
+  const [isEditing, setIsEditing] = useState(false);
   const router = useRouter();
 
   // デバッグ用: プロフィールの内容をコンソールに出力
-  (require('react').useEffect)(() => {
+  useEffect(() => {
     if (profile) {
       console.log('Current Profile Data:', profile);
     }
@@ -30,9 +31,10 @@ export default function ProfilePage() {
     try {
       await linkGoogleAccount();
       alert('Googleアカウントと連携しました！');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      if (error.code === 'auth/credential-already-in-use') {
+      const authError = error as { code?: string };
+      if (authError.code === 'auth/credential-already-in-use') {
         alert('このGoogleアカウントはすでに他のアカウントで使用されています。');
       } else {
         alert('連携に失敗しました。');
@@ -76,7 +78,7 @@ export default function ProfilePage() {
               </div>
             </div>
             <Button variant="outline" className="w-full" asChild>
-              <a href="/">トップページへ戻る</a>
+              <Link href="/">トップページへ戻る</Link>
             </Button>
           </CardContent>
         </Card>

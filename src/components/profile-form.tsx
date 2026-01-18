@@ -59,7 +59,7 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
       
       // 3秒後に成功メッセージを消す
       setTimeout(() => setSuccess(false), 3000);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to update profile:', error);
       alert('更新に失敗しました。');
     } finally {
@@ -94,7 +94,7 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
                 id="gender"
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 value={formData.gender}
-                onChange={(e) => setFormData({ ...formData, gender: e.target.value as any })}
+                onChange={(e) => setFormData({ ...formData, gender: e.target.value as 'male' | 'female' | 'other' })}
               >
                 <option value="male">男性</option>
                 <option value="female">女性</option>
@@ -132,7 +132,7 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
               id="activity"
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               value={formData.activity_level}
-              onChange={(e) => setFormData({ ...formData, activity_level: e.target.value as any })}
+              onChange={(e) => setFormData({ ...formData, activity_level: e.target.value as 'low' | 'moderate' | 'high' })}
             >
               <option value="low">ほとんど動かない</option>
               <option value="moderate">週2-3回の運動</option>
@@ -146,7 +146,7 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
               id="goal"
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               value={formData.goal}
-              onChange={(e) => setFormData({ ...formData, goal: e.target.value as any })}
+              onChange={(e) => setFormData({ ...formData, goal: e.target.value as 'lose' | 'maintain' | 'gain' })}
             >
               <option value="lose">痩せたい（減量）</option>
               <option value="maintain">維持したい</option>
