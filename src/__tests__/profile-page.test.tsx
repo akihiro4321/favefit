@@ -36,6 +36,7 @@ describe('Profile Page', () => {
       profile: null,
       loading: true,
       signInWithGoogle: vi.fn(),
+      signInGuest: vi.fn(),
       linkGoogleAccount: vi.fn(),
     });
 
@@ -50,6 +51,7 @@ describe('Profile Page', () => {
       profile: { id: 'guest-123', isAnonymous: true },
       loading: false,
       signInWithGoogle: vi.fn(),
+      signInGuest: vi.fn(),
       linkGoogleAccount: vi.fn(),
     });
 
@@ -70,6 +72,7 @@ describe('Profile Page', () => {
       profile: { id: 'guest-123', isAnonymous: true },
       loading: false,
       signInWithGoogle: vi.fn(),
+      signInGuest: vi.fn(),
       linkGoogleAccount: mockLinkGoogleAccount,
     });
 

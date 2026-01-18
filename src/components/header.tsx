@@ -3,14 +3,21 @@
 import Link from 'next/link';
 import { User } from 'lucide-react';
 import { useAuth } from './auth-provider';
+import { usePathname } from 'next/navigation';
 
 export function Header() {
   const { user, loading } = useAuth();
+  const pathname = usePathname();
+
+  // トップページ（LP）ではヘッダーを表示しない
+  if (pathname === '/') {
+    return null;
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 items-center justify-between px-4 max-w-screen-md mx-auto">
-        <Link href="/" className="font-bold text-xl text-primary tracking-tight">
+        <Link href="/home" className="font-bold text-xl text-primary tracking-tight">
           FaveFit
         </Link>
         

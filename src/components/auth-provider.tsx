@@ -10,6 +10,7 @@ interface AuthContextType {
   profile: UserProfile | null;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
+  signInGuest: () => Promise<void>;
   linkGoogleAccount: () => Promise<void>;
 }
 
@@ -18,6 +19,7 @@ const AuthContext = createContext<AuthContextType>({
   profile: null,
   loading: true,
   signInWithGoogle: async () => {},
+  signInGuest: async () => {},
   linkGoogleAccount: async () => {},
 });
 
@@ -33,6 +35,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       await signInWithPopup(auth, googleProvider);
     } catch (error) {
       console.error('Google sign-in failed:', error);
+      throw error;
+    }
+  };
+
+  const signInGuest = async () => {
+    try {
+      await signInAnonymously(auth);
+    } catch (error) {
+      console.error('Guest sign-in failed:', error);
       throw error;
     }
   };
@@ -55,17 +66,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
-    // マウント時に自動で匿名ログインを試行
-    const login = async () => {
-      try {
-        if (!auth.currentUser) {
-          await signInAnonymously(auth);
-        }
-      } catch (error) {
-        console.error('Anonymous auth failed:', error);
-      }
-    };
-
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       
@@ -79,13 +79,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(false);
     });
 
-    login();
-
     return () => unsubscribe();
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signInWithGoogle, linkGoogleAccount }}>
+    <AuthContext.Provider value={{ user, profile, loading, signInWithGoogle, signInGuest, linkGoogleAccount }}>
       {children}
     </AuthContext.Provider>
   );

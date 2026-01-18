@@ -5,7 +5,7 @@ import * as firebaseAuth from 'firebase/auth';
 import * as firebaseLib from '../lib/firebase';
 
 const mocks = vi.hoisted(() => ({
-  auth: { currentUser: null },
+  auth: { currentUser: { reload: vi.fn(), uid: 'test-uid' } }, // 初期値としてreloadを持つオブジェクトを設定
 }));
 
 // Mock Firebase Auth functions
@@ -40,6 +40,7 @@ vi.mock('../lib/user', () => ({
 describe('Auth Logic (Hybrid)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // @ts-expect-error
     mocks.auth.currentUser = null;
   });
 
@@ -59,6 +60,25 @@ describe('Auth Logic (Hybrid)', () => {
     expect(typeof result.current.linkGoogleAccount).toBe('function');
   });
 
+  it('should provide signInGuest function', () => {
+    const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
+    // @ts-expect-error
+    expect(result.current.signInGuest).toBeDefined();
+    // @ts-expect-error
+    expect(typeof result.current.signInGuest).toBe('function');
+  });
+
+  it('should call signInAnonymously when signInGuest is called', async () => {
+    const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
+    
+    // @ts-expect-error
+    if (result.current.signInGuest) {
+        // @ts-expect-error
+        await act(async () => { await result.current.signInGuest(); });
+        expect(firebaseAuth.signInAnonymously).toHaveBeenCalled();
+    }
+  });
+
   it('should call signInWithPopup when signInWithGoogle is called', async () => {
     const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
     
@@ -73,7 +93,7 @@ describe('Auth Logic (Hybrid)', () => {
   it('should call linkWithPopup when linkGoogleAccount is called', async () => {
     // Set currentUser for this test
     // @ts-expect-error
-    mocks.auth.currentUser = { uid: 'test-uid' };
+    mocks.auth.currentUser = { uid: 'test-uid', reload: vi.fn() };
 
     const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
@@ -104,7 +124,7 @@ describe('Auth Logic (Hybrid)', () => {
   it('should throw error when linkGoogleAccount fails', async () => {
     // Set currentUser
     // @ts-expect-error
-    mocks.auth.currentUser = { uid: 'test-uid' };
+    mocks.auth.currentUser = { uid: 'test-uid', reload: vi.fn() };
 
     const error = new Error('Linking failed');
     // @ts-expect-error

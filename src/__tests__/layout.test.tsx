@@ -1,12 +1,26 @@
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
-import RootLayout from '@/app/layout';
-import React from 'react';
+import RootLayout from '../app/layout';
 
-// Mock fonts and next/font/google
-import { Geist, Geist_Mono } from 'next/font/google';
+// Mock imports
+vi.mock('firebase/auth', () => ({
+  getAuth: vi.fn(),
+  onAuthStateChanged: vi.fn(() => () => {}),
+  signInAnonymously: vi.fn(),
+  GoogleAuthProvider: class {},
+}));
 
-describe('RootLayout', () => {
+vi.mock('../lib/firebase', () => ({
+  auth: {},
+  db: {},
+  googleProvider: {},
+}));
+
+vi.mock('next/navigation', () => ({
+  usePathname: vi.fn().mockReturnValue('/home'),
+}));
+
+describe('Root Layout', () => {
   it('should render children', () => {
     render(
       <RootLayout>
