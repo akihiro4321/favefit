@@ -33,7 +33,7 @@
 | Frontend | Next.js 16 (App Router) + PWA | Turbopackデフォルト、`next-pwa`でPWA化 |
 | UI | Tailwind CSS + shadcn/ui | ユーティリティCSS + コピペ可能なUIコンポーネント |
 | Backend | ADK TypeScript on Cloud Run | マルチエージェント |
-| AI Model | Gemini 2.5 Flash | コスト効率・高速 |
+| AI Model | Gemini 2.5 Flash Lite | コスト効率・高速 |
 | Database | Firestore | ユーザーデータ・感想履歴 |
 | Auth | Firebase Auth | Google/メール認証 |
 | Storage | Cloud Storage | （Future: 写真保存用） |
@@ -668,7 +668,7 @@ Week 5 (2/13-2/15): 提出準備
 | 観点 | FaveFitの実装 |
 |------|--------------|
 | **アーキテクチャ** | ADKによるマルチエージェント構成で責務を明確に分離 |
-| **AI活用** | gemini 2.5 Flashによる高速・低コストなレシピ生成 |
+| **AI活用** | gemini-2.5-flash-liteによる高速・低コストなレシピ生成 |
 | **データ設計** | Firestoreのドキュメント指向設計でユーザーデータを効率管理 |
 | **認証** | Firebase Authによるセキュアな認証基盤 |
 | **UI/UX** | Next.js 16 + shadcn/uiによるモダンなPWA |
@@ -687,7 +687,7 @@ Week 5 (2/13-2/15): 提出準備
 
 | 項目 | コスト最適化 |
 |------|------------|
-| **LLM** | gemini 2.5 Flash（高速・低コスト）を選択 |
+| **LLM** | gemini-2.5-flash-lite（高速・低コスト）を選択 |
 | **インフラ** | Cloud Runの従量課金でスモールスタート可能 |
 | **DB** | Firestoreの無料枠で初期開発・検証可能 |
 | **認証** | Firebase Authの無料枠で十分 |

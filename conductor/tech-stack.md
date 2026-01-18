@@ -10,7 +10,7 @@
 ## 2. バックエンド & AI
 - **フレームワーク:** Google ADK (Agent Development Kit) TypeScript
 - **実行環境:** Google Cloud Run
-- **AI モデル:** Gemini 2.5 Flash (via Gemini API)
+- **AI モデル:** Gemini 2.5 Flash Lite (via Gemini API)
   - **選定理由:** リアルタイムなインタラクションに適した高速性とコスト効率。
 
 ## 3. データベース & 認証

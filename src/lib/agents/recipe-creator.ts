@@ -1,6 +1,6 @@
+import { UserPreference } from '@/lib/preference';
 import { LlmAgent, zodObjectToSchema } from '@google/adk';
 import { z } from 'zod';
-import { UserPreference } from '@/lib/preference';
 
 /**
  * レシピ生成エージェントの出力スキーマ
@@ -46,7 +46,7 @@ export type RecipeInput = z.infer<typeof RecipeInputSchema>;
 export const recipeCreatorAgent = new LlmAgent({
   name: 'recipe_creator',
   description: 'ユーザーの現在の気分と目標栄養素に合わせて、健康的で美味しいレシピを提案するエージェント。',
-  model: 'gemini-2.5-flash',
+  model: 'gemini-2.5-flash-lite',
   instruction: `あなたは一流のプロの管理栄養士兼シェフです。忙しい現代人が、健康的かつ継続的に自炊を楽しめるよう、**「手軽・時短・美味しい」**をモットーとしたレシピを提案してください。
 
 ユーザーから提供される「現在の気分」、「目標とする1食あたりの栄養素（カロリー、PFC）」、および「個人の好み（好き嫌い・アレルギー）」に基づき、最適なレシピを1つ提案してください。

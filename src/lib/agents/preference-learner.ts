@@ -23,7 +23,7 @@ export type PreferenceAnalysis = z.infer<typeof PreferenceLearnerOutputSchema>;
 export const preferenceLearnerAgent = new LlmAgent({
   name: 'preference_learner',
   description: 'ユーザーのレシピへのフィードバックを分析し、好みの傾向を抽出・数値化するエージェント。',
-  model: 'gemini-2.5-flash',
+  model: 'gemini-2.5-flash-lite',
   instruction: `あなたはユーザーの食の好みを分析するAIです。
 ユーザーが食べたレシピと、それに対するフィードバック（評価・コメント）を分析し、ユーザーの好みの傾向を抽出してください。
 
