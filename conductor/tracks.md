@@ -29,7 +29,8 @@
 *リンク: [./conductor/tracks/recipe_creator_agent_20260118/](./conductor/tracks/recipe_creator_agent_20260118/)*
 *概要: Gemini API を使用し、好みに合わせたレシピを動的に生成する。*
 
-## [ ] トラック: Preference Learner & フィードバック
+## [x] トラック: Preference Learner & フィードバック
+*リンク: [./conductor/tracks/preference_learner_20260118/](./conductor/tracks/preference_learner_20260118/)*
 *概要: 感想入力機能の実装と、AIによる好みの学習・蓄積。*
 
 ## [ ] トラック: デプロイ & 最終調整

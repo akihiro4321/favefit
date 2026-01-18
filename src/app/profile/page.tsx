@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { getAuth, signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { ProfileForm } from '@/components/profile-form';
+import { PreferenceForm } from '@/components/preference-form';
 import Link from 'next/link';
 
 export default function ProfilePage() {
@@ -181,6 +182,14 @@ export default function ProfilePage() {
             </div>
           )}
         </div>
+      )}
+
+      {profile && (
+        <PreferenceForm 
+          userUid={user.uid} 
+          userProfile={profile}
+          onUpdate={refreshProfile}
+        />
       )}
 
       <Button onClick={handleLogout} variant="ghost" className="w-full text-muted-foreground">

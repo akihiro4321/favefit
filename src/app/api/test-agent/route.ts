@@ -1,19 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { InMemoryRunner, stringifyContent } from '@google/adk';
 import { nutritionPlannerAgent } from '@/lib/agents/nutrition-planner';
-import { recipeCreatorAgent } from '@/lib/agents/recipe-creator';
+import { recipeCreatorAgent, buildRecipePrompt } from '@/lib/agents/recipe-creator';
+import { getPreference } from '@/lib/preference';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { agentId, input } = body;
+    const { agentId, input, userId } = body;
 
     let agent;
     let messageText = '';
 
     if (agentId === 'recipe-creator') {
       agent = recipeCreatorAgent;
-      messageText = `以下の「気分」と「目標栄養素」に基づいてレシピを1つ提案してください:\n気分: ${input.mood}\n目標: ${JSON.stringify(input.targetNutrition)}`;
+      
+      // ユーザーの好みをFirestoreから取得
+      let preference = null;
+      if (userId) {
+        try {
+          preference = await getPreference(userId);
+          console.log(`Fetched preference for user ${userId}:`, preference ? 'Found' : 'Not Found');
+        } catch (err) {
+          console.error('Error fetching preference:', err);
+        }
+      }
+
+      // プロンプトの構築
+      messageText = buildRecipePrompt(preference, input.mood, input.targetNutrition);
+      
     } else {
       // デフォルトは nutrition-planner
       agent = nutritionPlannerAgent;
@@ -25,12 +40,13 @@ export async function POST(req: NextRequest) {
       appName: 'FaveFit-Test',
     });
 
-    const userId = 'test-user';
-    const sessionId = `test-session-${agentId}`;
+    // ADKのセッション管理用ID
+    const sessionUserId = userId || 'test-user';
+    const sessionId = `test-session-${agentId}-${Date.now()}`;
 
     await runner.sessionService.createSession({
       sessionId,
-      userId,
+      userId: sessionUserId,
       appName: 'FaveFit-Test',
       state: {},
     });
@@ -41,7 +57,7 @@ export async function POST(req: NextRequest) {
     };
 
     let fullText = '';
-    const events = runner.runAsync({ userId, sessionId, newMessage: userMessage });
+    const events = runner.runAsync({ userId: sessionUserId, sessionId, newMessage: userMessage });
 
     for await (const event of events) {
       const content = stringifyContent(event);

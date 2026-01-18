@@ -47,7 +47,7 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
       const updatedData: Partial<UserProfile> = {
         ...formData,
         ...nutritionData,
-        onboardingCompleted: true,
+        // onboardingCompleted: true, // Preference登録後にtrueにするためここでは設定しない
       };
 
       console.log('Updating Firestore for UID:', profile.uid, updatedData);

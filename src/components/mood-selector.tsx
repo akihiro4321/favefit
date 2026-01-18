@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Mood, CuisineGenre } from '@/types';
 import { cn } from '@/lib/utils';
+import { RecommendedTags } from './recommended-tags';
 
 const genres: CuisineGenre[] = ['和食', '洋食', '中華', 'イタリアン', 'エスニック', 'その他'];
 
@@ -26,6 +27,11 @@ export function MoodSelector({ onSubmit }: MoodSelectorProps) {
       tasteBalance,
       freeText: freeText.trim() || undefined,
     });
+  };
+
+  const handleTagSelect = (tag: string) => {
+    if (freeText.includes(tag)) return;
+    setFreeText(prev => prev ? `${prev}, ${tag}` : tag);
   };
 
   return (
@@ -82,6 +88,7 @@ export function MoodSelector({ onSubmit }: MoodSelectorProps) {
       {/* フリーテキスト入力 */}
       <section className="space-y-4">
         <Label htmlFor="freeText" className="text-lg font-semibold">具体的に食べたいものは？（任意）</Label>
+        <RecommendedTags onSelect={handleTagSelect} />
         <Input
           id="freeText"
           placeholder="例：旬の野菜、温かいスープ..."

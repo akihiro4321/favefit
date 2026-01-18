@@ -9,6 +9,8 @@ import { useEffect, useState } from 'react';
 import { Recipe } from '@/lib/agents/recipe-creator';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, Loader2 } from 'lucide-react';
+import { saveRecipe } from '@/lib/recipe';
+import { FeedbackForm } from '@/components/feedback-form';
 
 export default function HomePage() {
   const { user, profile, loading } = useAuth();
@@ -17,6 +19,10 @@ export default function HomePage() {
   const [generating, setGenerating] = useState(false);
   const [generatedRecipe, setGeneratedRecipe] = useState<Recipe | null>(null);
   const [loadingStep, setLoadingStep] = useState(0);
+
+  const [saving, setSaving] = useState(false);
+  const [feedbackMode, setFeedbackMode] = useState(false);
+  const [savedRecipeId, setSavedRecipeId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -52,6 +58,8 @@ export default function HomePage() {
 
     setGenerating(true);
     setGeneratedRecipe(null);
+    setFeedbackMode(false);
+    setSavedRecipeId(null);
 
     try {
       const input = {
@@ -67,7 +75,11 @@ export default function HomePage() {
       const res = await fetch('/api/test-agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ agentId: 'recipe-creator', input }),
+        body: JSON.stringify({ 
+          agentId: 'recipe-creator', 
+          input,
+          userId: user?.uid 
+        }),
       });
 
       if (!res.ok) throw new Error('生成に失敗しました');
@@ -79,6 +91,27 @@ export default function HomePage() {
     } finally {
       setGenerating(false);
     }
+  };
+
+  const handleDecide = async () => {
+    if (!user || !generatedRecipe) return;
+    setSaving(true);
+    try {
+      const id = await saveRecipe(user.uid, generatedRecipe);
+      setSavedRecipeId(id);
+      setFeedbackMode(true);
+    } catch (error) {
+      console.error(error);
+      alert('保存に失敗しました');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleReset = () => {
+    setGeneratedRecipe(null);
+    setFeedbackMode(false);
+    setSavedRecipeId(null);
   };
 
   if (loading) {
@@ -93,9 +126,11 @@ export default function HomePage() {
   if (!user) return null;
 
   return (
-    <div className="container max-w-2xl mx-auto py-8 px-4 space-y-8">
+    <div className="container max-w-2xl mx-auto py-8 px-4 space-y-8 pb-20">
+      
+      {/* 1. 気分入力モード */}
       {!generatedRecipe && !generating && (
-        <div className="space-y-8">
+        <div className="space-y-8 animate-in fade-in duration-500">
           <div className="text-center space-y-2">
             <h1 className="text-3xl font-bold tracking-tight text-primary">FaveFit</h1>
             <p className="text-muted-foreground italic">今の気分に合わせて、AIが最適なレシピを提案します。</p>
@@ -104,8 +139,9 @@ export default function HomePage() {
         </div>
       )}
 
+      {/* 2. 生成中ローディング */}
       {generating && (
-        <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-6 text-center">
+        <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-6 text-center animate-in fade-in duration-500">
           <div className="relative">
             <Loader2 className="w-16 h-16 animate-spin text-primary" />
             <div className="absolute inset-0 flex items-center justify-center">
@@ -121,24 +157,44 @@ export default function HomePage() {
         </div>
       )}
 
-      {generatedRecipe && (
-        <div className="space-y-6">
+      {/* 3. レシピ表示モード */}
+      {generatedRecipe && !feedbackMode && (
+        <div className="space-y-6 animate-in slide-in-from-bottom-8 duration-500">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setGeneratedRecipe(null)}>
+            <Button variant="ghost" size="sm" onClick={handleReset}>
               <ChevronLeft className="w-4 h-4 mr-1" />
               選び直す
             </Button>
             <h2 className="text-xl font-bold">提案されたレシピ</h2>
           </div>
+          
           <RecipeDisplay recipe={generatedRecipe} />
-          <div className="flex gap-4 pt-4">
-            <Button className="flex-1 h-12 rounded-full" onClick={() => alert('この機能は開発中です（Preference Learner トラックで実装）')}>
-              これに決めた！
+          
+          <div className="flex gap-4 pt-4 sticky bottom-4 z-10 bg-background/80 backdrop-blur-sm p-4 rounded-xl border shadow-lg">
+            <Button className="flex-1 h-12 rounded-full shadow-md text-lg font-bold" onClick={handleDecide} disabled={saving}>
+              {saving ? <Loader2 className="animate-spin" /> : 'これに決めた！'}
             </Button>
             <Button variant="outline" className="flex-1 h-12 rounded-full" onClick={() => handleMoodSubmit({ genre: '和食', tasteBalance: 50, freeText: undefined })}>
               別のを提案して
             </Button>
           </div>
+        </div>
+      )}
+
+      {/* 4. フィードバックモード */}
+      {feedbackMode && savedRecipeId && (
+        <div className="space-y-6 animate-in zoom-in-95 duration-500">
+           <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={handleReset}>
+              <ChevronLeft className="w-4 h-4 mr-1" />
+              トップに戻る
+            </Button>
+          </div>
+          <FeedbackForm 
+            userId={user.uid} 
+            recipeId={savedRecipeId} 
+            onComplete={handleReset} 
+          />
         </div>
       )}
     </div>
