@@ -18,10 +18,13 @@ export function Header() {
           {loading ? (
             <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
           ) : user ? (
-            <div className="flex items-center gap-2 px-3 py-1 bg-muted rounded-full text-xs font-medium">
+            <Link
+              href="/profile"
+              className="flex items-center gap-2 px-3 py-1 bg-muted hover:bg-muted/80 transition-colors rounded-full text-xs font-medium"
+            >
               <User className="h-3.5 w-3.5" />
-              <span>ゲスト</span>
-            </div>
+              <span>{user.isAnonymous ? 'ゲスト' : user.displayName}</span>
+            </Link>
           ) : null}
         </div>
       </div>
