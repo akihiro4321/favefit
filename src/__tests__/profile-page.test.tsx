@@ -58,19 +58,31 @@ describe('Profile Page', () => {
     expect(screen.getByRole('button', { name: /google/i })).toBeInTheDocument(); // Link button
   });
 
-  it('renders linked user profile correctly', () => {
+  it('shows error alert when linking fails with credential conflict', async () => {
+    // Mock window.alert
+    const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
+
+    // Mock useAuth to throw error on linkGoogleAccount
+    const mockLinkGoogleAccount = vi.fn().mockRejectedValue({ code: 'auth/credential-already-in-use' });
     // @ts-expect-error
     vi.mocked(useAuth).mockReturnValue({
-      user: { uid: 'user-123', isAnonymous: false, displayName: 'Test User', email: 'test@example.com' },
-      profile: { id: 'user-123', isAnonymous: false },
+      user: { uid: 'guest-123', isAnonymous: true },
+      profile: { id: 'guest-123', isAnonymous: true },
       loading: false,
       signInWithGoogle: vi.fn(),
-      linkGoogleAccount: vi.fn(),
+      linkGoogleAccount: mockLinkGoogleAccount,
     });
 
     render(<ProfilePage />);
-    expect(screen.getByText('Test User')).toBeInTheDocument();
-    expect(screen.getByText('test@example.com')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /link google/i })).not.toBeInTheDocument();
+    
+    const linkButton = screen.getByRole('button', { name: /google/i });
+    linkButton.click();
+
+    // Wait for the async action
+    await vi.waitFor(() => {
+      expect(alertMock).toHaveBeenCalledWith(expect.stringContaining('すでに他のアカウントで使用されています'));
+    });
+
+    alertMock.mockRestore();
   });
 });

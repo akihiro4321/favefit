@@ -20,9 +20,13 @@ export default function ProfilePage() {
     try {
       await linkGoogleAccount();
       alert('Googleアカウントと連携しました！');
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert('連携に失敗しました。');
+      if (error.code === 'auth/credential-already-in-use') {
+        alert('このGoogleアカウントはすでに他のアカウントで使用されています。');
+      } else {
+        alert('連携に失敗しました。');
+      }
     }
   };
 
