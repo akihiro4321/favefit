@@ -2,11 +2,20 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Clock, Flame } from 'lucide-react';
-import { Recipe } from '@/types';
+import { Clock, Flame, Utensils } from 'lucide-react';
 
 interface RecipeCardProps {
-  recipe: Recipe;
+  recipe: {
+    id: string;
+    title: string;
+    description: string;
+    image?: string;
+    cookingTime: number;
+    nutrition: {
+      calories: number;
+    };
+    genre?: string;
+  };
 }
 
 export function RecipeCard({ recipe }: RecipeCardProps) {
@@ -16,18 +25,27 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
         <span className="sr-only">{recipe.title}の詳細を見る</span>
       </Link>
       
-      <div className="relative aspect-video w-full">
-        <Image
-          src={recipe.image}
-          alt={recipe.title}
-          fill
-          className="object-cover transition-transform group-hover:scale-105"
-        />
-        <div className="absolute top-2 right-2 flex gap-2">
-          <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm text-black">
-            {recipe.genre}
-          </Badge>
-        </div>
+      <div className="relative aspect-video w-full bg-muted flex items-center justify-center overflow-hidden">
+        {recipe.image ? (
+          <Image
+            src={recipe.image}
+            alt={recipe.title}
+            fill
+            className="object-cover transition-transform group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex flex-col items-center justify-center text-muted-foreground transition-transform group-hover:scale-110">
+            <Utensils className="h-12 w-12 mb-2 opacity-20" />
+            <span className="text-xs font-medium opacity-50">Delicious Recipe</span>
+          </div>
+        )}
+        {recipe.genre && (
+          <div className="absolute top-2 right-2 flex gap-2">
+            <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm text-black">
+              {recipe.genre}
+            </Badge>
+          </div>
+        )}
       </div>
       
       <CardHeader className="p-4 pb-2">

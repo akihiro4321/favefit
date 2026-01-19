@@ -1,11 +1,11 @@
 import { db } from './firebase';
-import { collection, addDoc, doc, updateDoc, serverTimestamp, FieldValue, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, query, orderBy, getDocs, getDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { Recipe } from '@/lib/agents/recipe-creator';
 
 export interface SavedRecipe extends Recipe {
-  id?: string;
+  id: string;
   userId: string;
-  createdAt: FieldValue | Timestamp;
+  createdAt: Timestamp;
   feedbackId?: string;
 }
 
@@ -21,6 +21,40 @@ export const saveRecipe = async (userId: string, recipeData: Recipe): Promise<st
   } catch (error) {
     console.error('Error saving recipe:', error);
     throw error;
+  }
+};
+
+export const getSavedRecipes = async (userId: string): Promise<SavedRecipe[]> => {
+  try {
+    const recipesRef = collection(db, 'users', userId, 'recipes');
+    const q = query(recipesRef, orderBy('createdAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+    
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as SavedRecipe));
+  } catch (error) {
+    console.error('Error fetching recipes:', error);
+    return [];
+  }
+};
+
+export const getRecipe = async (userId: string, recipeId: string): Promise<SavedRecipe | null> => {
+  try {
+    const recipeRef = doc(db, 'users', userId, 'recipes', recipeId);
+    const docSnap = await getDoc(recipeRef);
+    
+    if (docSnap.exists()) {
+      return {
+        id: docSnap.id,
+        ...docSnap.data()
+      } as SavedRecipe;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching recipe:', error);
+    return null;
   }
 };
 

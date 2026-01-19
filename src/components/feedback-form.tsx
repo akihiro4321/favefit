@@ -33,7 +33,7 @@ export function FeedbackForm({ userId, recipeId, onComplete }: FeedbackFormProps
   };
 
   const handleSubmit = async () => {
-    if (ratings.overall === 0) {
+    if (cooked && ratings.overall === 0) {
       alert('総合評価を入力してください');
       return;
     }
