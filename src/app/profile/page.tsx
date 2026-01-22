@@ -123,7 +123,7 @@ export default function ProfilePage() {
       {profile && (
         <div className="space-y-6">
           {/* 目標が表示可能で、かつ編集モードでない場合に表示 */}
-          {profile.daily_calorie_target && !isEditing ? (
+          {profile.nutrition?.dailyCalories && !isEditing ? (
             <Card className="bg-primary/5 border-primary/20">
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-center">
@@ -137,29 +137,29 @@ export default function ProfilePage() {
                 <div className="text-center bg-background py-4 rounded-xl border border-primary/10 shadow-sm">
                   <p className="text-sm text-muted-foreground font-medium">1日の目標摂取量</p>
                   <p className="text-4xl font-black text-primary tracking-tighter">
-                    {profile.daily_calorie_target} <span className="text-lg font-normal">kcal</span>
+                    {profile.nutrition.dailyCalories} <span className="text-lg font-normal">kcal</span>
                   </p>
                 </div>
                 
                 <div className="grid grid-cols-3 gap-3">
                   <div className="bg-background p-3 rounded-xl border shadow-sm text-center">
                     <p className="text-[10px] text-muted-foreground font-bold uppercase mb-1">P (タンパク質)</p>
-                    <p className="text-lg font-bold">{profile.protein_g}g</p>
+                    <p className="text-lg font-bold">{profile.nutrition.pfc?.protein || 0}g</p>
                   </div>
                   <div className="bg-background p-3 rounded-xl border shadow-sm text-center">
                     <p className="text-[10px] text-muted-foreground font-bold uppercase mb-1">F (脂質)</p>
-                    <p className="text-lg font-bold">{profile.fat_g}g</p>
+                    <p className="text-lg font-bold">{profile.nutrition.pfc?.fat || 0}g</p>
                   </div>
                   <div className="bg-background p-3 rounded-xl border shadow-sm text-center">
                     <p className="text-[10px] text-muted-foreground font-bold uppercase mb-1">C (炭水化物)</p>
-                    <p className="text-lg font-bold">{profile.carbs_g}g</p>
+                    <p className="text-lg font-bold">{profile.nutrition.pfc?.carbs || 0}g</p>
                   </div>
                 </div>
 
-                {profile.strategy_summary && (
+                {profile.nutrition.strategySummary && (
                   <div className="bg-muted/30 p-3 rounded-lg">
                     <p className="text-xs text-muted-foreground leading-relaxed italic">
-                      &quot;{profile.strategy_summary}&quot;
+                      &quot;{profile.nutrition.strategySummary}&quot;
                     </p>
                   </div>
                 )}
@@ -168,7 +168,8 @@ export default function ProfilePage() {
           ) : (
             <div className="space-y-4">
               <ProfileForm 
-                profile={profile} 
+                userId={user.uid}
+                profile={profile.profile} 
                 onUpdate={async () => {
                   await refreshProfile();
                   setIsEditing(false);
@@ -186,8 +187,8 @@ export default function ProfilePage() {
 
       {profile && (
         <PreferenceForm 
-          userUid={user.uid} 
-          userProfile={profile}
+          userId={user.uid} 
+          profile={profile.profile}
           onUpdate={refreshProfile}
         />
       )}

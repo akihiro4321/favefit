@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { InMemoryRunner, stringifyContent } from '@google/adk';
 import { nutritionPlannerAgent } from '@/lib/agents/nutrition-planner';
 import { recipeCreatorAgent, buildRecipePrompt } from '@/lib/agents/recipe-creator';
-import { getPreference } from '@/lib/preference';
+import { getOrCreateUser } from '@/lib/user';
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,18 +16,18 @@ export async function POST(req: NextRequest) {
       agent = recipeCreatorAgent;
       
       // ユーザーの好みをFirestoreから取得
-      let preference = null;
+      let userDoc = null;
       if (userId) {
         try {
-          preference = await getPreference(userId);
-          console.log(`Fetched preference for user ${userId}:`, preference ? 'Found' : 'Not Found');
+          userDoc = await getOrCreateUser(userId);
+          console.log(`Fetched user document for user ${userId}:`, userDoc ? 'Found' : 'Not Found');
         } catch (err) {
-          console.error('Error fetching preference:', err);
+          console.error('Error fetching user document:', err);
         }
       }
 
       // プロンプトの構築
-      messageText = buildRecipePrompt(preference, input.mood, input.targetNutrition);
+      messageText = buildRecipePrompt(userDoc, input.mood, input.targetNutrition);
       
     } else {
       // デフォルトは nutrition-planner

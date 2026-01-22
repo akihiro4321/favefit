@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/components/auth-provider';
-import { getPreference } from '@/lib/preference';
+import { getOrCreateUser } from '@/lib/user';
 import { Badge } from '@/components/ui/badge';
 import { Sparkles } from 'lucide-react';
 
@@ -18,24 +18,24 @@ export function RecommendedTags({ onSelect }: RecommendedTagsProps) {
     if (!user) return;
 
     const fetchTags = async () => {
-      const pref = await getPreference(user.uid);
-      if (!pref) return;
+      const userDoc = await getOrCreateUser(user.uid);
+      if (!userDoc) return;
 
-      const profile = pref.learnedProfile;
+      const prefs = userDoc.learnedPreferences;
       const candidates: { tag: string; score: number }[] = [];
 
       // 各カテゴリからスコアの高いものを抽出
-      const extractTop = (record: Record<string, number>) => {
+      const extractTop = (record?: Record<string, number>) => {
+        if (!record) return;
         Object.entries(record).forEach(([tag, score]) => {
-          if (score > 0.1) { // 閾値
+          if (score > 1) { // 閾値調整 (V2では整数スコアを想定)
             candidates.push({ tag, score });
           }
         });
       };
 
-      extractTop(profile.preferredCuisines);
-      extractTop(profile.preferredFlavors);
-      extractTop(profile.preferredIngredients);
+      extractTop(prefs.cuisines);
+      extractTop(prefs.flavorProfile);
 
       // スコア順にソートして上位5件を表示
       const topTags = candidates

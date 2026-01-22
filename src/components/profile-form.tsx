@@ -1,28 +1,36 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { UserProfile, updateUserProfile } from '@/lib/user';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Zap, Loader2, CheckCircle2 } from 'lucide-react';
+import { useState } from "react";
+import { UserProfile, updateUserProfile, updateUserNutrition } from "@/lib/user";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Zap, Loader2, CheckCircle2 } from "lucide-react";
 
 interface ProfileFormProps {
+  userId: string;
   profile: UserProfile;
-  onUpdate: (updatedProfile: UserProfile) => void;
+  onUpdate: () => void;
 }
 
-export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
+export function ProfileForm({ userId, profile, onUpdate }: ProfileFormProps) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [formData, setFormData] = useState({
     age: profile.age || 30,
-    gender: profile.gender || 'male',
+    gender: profile.gender || "male",
     height_cm: profile.height_cm || 170,
-    weight_kg: profile.weight_kg || 65,
-    activity_level: profile.activity_level || 'moderate',
-    goal: profile.goal || 'lose',
+    currentWeight: profile.currentWeight || 65,
+    targetWeight: profile.targetWeight || 60,
+    activity_level: profile.activity_level || "moderate",
+    goal: profile.goal || "lose",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -31,37 +39,45 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
     setSuccess(false);
 
     try {
-      console.log('Sending data to AI agent:', formData);
       // 1. AIエージェントを呼び出して栄養目標を計算
-      const response = await fetch('/api/test-agent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+      const response = await fetch("/api/test-agent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agentId: "nutrition-planner",
+          input: formData,
+          userId: userId,
+        }),
       });
 
-      const nutritionData = await response.json();
-      console.log('Received nutrition data:', nutritionData);
-      if (nutritionData.error) throw new Error(nutritionData.error);
+      const nutritionResult = await response.json();
+      if (nutritionResult.error) throw new Error(nutritionResult.error);
 
-      // 2. Firestoreを更新
-      const updatedData: Partial<UserProfile> = {
+      // 2. Firestoreを更新 (プロファイルと栄養情報を両方)
+      const updatedProfile: Partial<UserProfile> = {
         ...formData,
-        ...nutritionData,
-        // onboardingCompleted: true, // Preference登録後にtrueにするためここでは設定しない
       };
 
-      console.log('Updating Firestore for UID:', profile.uid, updatedData);
-      await updateUserProfile(profile.uid, updatedData);
-      console.log('Firestore update successful');
-      
+      await Promise.all([
+        updateUserProfile(userId, updatedProfile),
+        updateUserNutrition(userId, {
+          dailyCalories: nutritionResult.daily_calorie_target,
+          pfc: {
+            protein: nutritionResult.protein_g,
+            fat: nutritionResult.fat_g,
+            carbs: nutritionResult.carbs_g,
+          },
+        }),
+      ]);
+
       setSuccess(true);
-      onUpdate({ ...profile, ...updatedData });
-      
+      onUpdate();
+
       // 3秒後に成功メッセージを消す
       setTimeout(() => setSuccess(false), 3000);
     } catch (error: unknown) {
-      console.error('Failed to update profile:', error);
-      alert('更新に失敗しました。');
+      console.error("Failed to update profile:", error);
+      alert("更新に失敗しました。");
     } finally {
       setLoading(false);
     }
@@ -84,7 +100,9 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
                 id="age"
                 type="number"
                 value={formData.age}
-                onChange={(e) => setFormData({ ...formData, age: Number(e.target.value) })}
+                onChange={(e) =>
+                  setFormData({ ...formData, age: Number(e.target.value) })
+                }
                 required
               />
             </div>
@@ -94,7 +112,12 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
                 id="gender"
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 value={formData.gender}
-                onChange={(e) => setFormData({ ...formData, gender: e.target.value as 'male' | 'female' | 'other' })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    gender: e.target.value as "male" | "female" | "other",
+                  })
+                }
               >
                 <option value="male">男性</option>
                 <option value="female">女性</option>
@@ -110,17 +133,44 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
                 id="height"
                 type="number"
                 value={formData.height_cm}
-                onChange={(e) => setFormData({ ...formData, height_cm: Number(e.target.value) })}
+                onChange={(e) =>
+                  setFormData({ ...formData, height_cm: Number(e.target.value) })
+                }
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="weight">現在の体重 (kg)</Label>
+              <Input
+                id="weight"
+                type="number"
+                step="0.1"
+                value={formData.currentWeight}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    currentWeight: Number(e.target.value),
+                  })
+                }
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="weight">体重 (kg)</Label>
+              <Label htmlFor="targetWeight">目標体重 (kg)</Label>
               <Input
-                id="weight"
+                id="targetWeight"
                 type="number"
-                value={formData.weight_kg}
-                onChange={(e) => setFormData({ ...formData, weight_kg: Number(e.target.value) })}
+                step="0.1"
+                value={formData.targetWeight}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    targetWeight: Number(e.target.value),
+                  })
+                }
                 required
               />
             </div>
@@ -132,7 +182,12 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
               id="activity"
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               value={formData.activity_level}
-              onChange={(e) => setFormData({ ...formData, activity_level: e.target.value as 'low' | 'moderate' | 'high' })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  activity_level: e.target.value as "low" | "moderate" | "high",
+                })
+              }
             >
               <option value="low">ほとんど動かない</option>
               <option value="moderate">週2-3回の運動</option>
@@ -146,7 +201,12 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
               id="goal"
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               value={formData.goal}
-              onChange={(e) => setFormData({ ...formData, goal: e.target.value as 'lose' | 'maintain' | 'gain' })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  goal: e.target.value as "lose" | "maintain" | "gain",
+                })
+              }
             >
               <option value="lose">痩せたい（減量）</option>
               <option value="maintain">維持したい</option>
@@ -168,7 +228,7 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
             ) : (
               <>
                 <Zap className="mr-2 h-4 w-4 fill-current" />
-                AIプランを更新
+                AIプランを算出
               </>
             )}
           </Button>

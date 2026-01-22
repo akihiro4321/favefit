@@ -3,11 +3,11 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { signInAnonymously, onAuthStateChanged, User, signInWithPopup, linkWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
-import { getOrCreateUserProfile, UserProfile } from '@/lib/user';
+import { getOrCreateUser, UserDocument } from '@/lib/user';
 
 export interface AuthContextType {
   user: User | null;
-  profile: UserProfile | null;
+  profile: UserDocument | null;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
   signInGuest: () => Promise<void>;
@@ -29,12 +29,12 @@ export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profile, setProfile] = useState<UserDocument | null>(null);
   const [loading, setLoading] = useState(true);
 
   const refreshProfile = async () => {
     if (auth.currentUser) {
-      const userProfile = await getOrCreateUserProfile(auth.currentUser.uid);
+      const userProfile = await getOrCreateUser(auth.currentUser.uid);
       setProfile(userProfile);
     }
   };
@@ -66,7 +66,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser({ ...auth.currentUser });
       
       // プロファイル情報も再取得
-      const userProfile = await getOrCreateUserProfile(auth.currentUser.uid);
+      const userProfile = await getOrCreateUser(auth.currentUser.uid);
       setProfile(userProfile);
     } catch (error) {
       console.error('Account linking failed:', error);
@@ -79,7 +79,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(currentUser);
       
       if (currentUser) {
-        const userProfile = await getOrCreateUserProfile(currentUser.uid);
+        const userProfile = await getOrCreateUser(currentUser.uid);
         setProfile(userProfile);
       } else {
         setProfile(null);

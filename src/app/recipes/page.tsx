@@ -7,18 +7,24 @@ import { getSavedRecipes, SavedRecipe } from '@/lib/recipe';
 import { ChevronLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { DocumentSnapshot } from 'firebase/firestore';
 
 export default function RecipesPage() {
   const { user, loading: authLoading } = useAuth();
   const [recipes, setRecipes] = useState<SavedRecipe[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [lastVisible, setLastVisible] = useState<DocumentSnapshot | null>(null);
+  const [hasMore, setHasMore] = useState(false);
 
   useEffect(() => {
     async function loadRecipes() {
       if (user) {
         setLoading(true);
-        const data = await getSavedRecipes(user.uid);
-        setRecipes(data);
+        const data = await getSavedRecipes(user.uid, 20);
+        setRecipes(data.recipes);
+        setLastVisible(data.lastVisible);
+        setHasMore(data.hasMore);
         setLoading(false);
       }
     }
@@ -26,6 +32,17 @@ export default function RecipesPage() {
       loadRecipes();
     }
   }, [user, authLoading]);
+
+  async function loadMoreRecipes() {
+    if (!user || !lastVisible || !hasMore) return;
+
+    setLoadingMore(true);
+    const data = await getSavedRecipes(user.uid, 20, lastVisible);
+    setRecipes([...recipes, ...data.recipes]);
+    setLastVisible(data.lastVisible);
+    setHasMore(data.hasMore);
+    setLoadingMore(false);
+  }
 
   if (authLoading || loading) {
     return (
@@ -56,6 +73,26 @@ export default function RecipesPage() {
           <RecipeCard key={recipe.id} recipe={recipe} />
         ))}
       </div>
+
+      {hasMore && recipes.length > 0 && (
+        <div className="flex justify-center pt-4">
+          <Button
+            onClick={loadMoreRecipes}
+            disabled={loadingMore}
+            variant="outline"
+            className="rounded-full"
+          >
+            {loadingMore ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                読み込み中...
+              </>
+            ) : (
+              'さらに読み込む'
+            )}
+          </Button>
+        </div>
+      )}
 
       {recipes.length === 0 && (
         <div className="text-center py-20 space-y-4 bg-muted/30 rounded-2xl border-2 border-dashed">
