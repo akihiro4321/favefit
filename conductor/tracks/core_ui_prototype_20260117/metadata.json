@@ -1,8 +1,0 @@
-{
-  "track_id": "core_ui_prototype_20260117",
-  "type": "feature",
-  "status": "new",
-  "created_at": "2026-01-17T00:00:00Z",
-  "updated_at": "2026-01-17T00:00:00Z",
-  "description": "Next.js 16 と shadcn/ui を使用し、「今日の気分」入力画面からレシピ提案表示、レシピ詳細画面までのフロントエンド基盤を実装します。"
-}
