@@ -1,6 +1,6 @@
-import { UserPreference } from '@/lib/preference';
 import { LlmAgent, zodObjectToSchema } from '@google/adk';
 import { z } from 'zod';
+import { UserDocument } from '@/lib/user';
 
 /**
  * レシピ生成エージェントの出力スキーマ
@@ -74,14 +74,14 @@ export const recipeCreatorAgent = new LlmAgent({
 /**
  * 学習済みプロファイルをフォーマットするヘルパー関数
  */
-const formatLearnedProfile = (profile: UserPreference['learnedProfile']) => {
-  const topCuisines = Object.entries(profile.preferredCuisines)
+const formatLearnedProfile = (learnedPrefs: UserDocument['learnedPreferences']) => {
+  const topCuisines = Object.entries(learnedPrefs.cuisines || {})
     .sort(([, a], [, b]) => b - a)
     .slice(0, 3)
     .map(([k]) => k)
     .join(', ');
   
-  const topFlavors = Object.entries(profile.preferredFlavors)
+  const topFlavors = Object.entries(learnedPrefs.flavorProfile || {})
     .sort(([, a], [, b]) => b - a)
     .slice(0, 3)
     .map(([k]) => k)
@@ -94,7 +94,7 @@ const formatLearnedProfile = (profile: UserPreference['learnedProfile']) => {
  * レシピ生成用のプロンプトを構築する関数
  */
 export const buildRecipePrompt = (
-  preference: UserPreference | null,
+  userDoc: UserDocument | null,
   mood: string,
   targetNutrition: RecipeInput['targetNutrition']
 ) => {
@@ -104,22 +104,24 @@ export const buildRecipePrompt = (
 - 目標栄養素: カロリー${targetNutrition.calories}kcal, タンパク質${targetNutrition.protein}g, 脂質${targetNutrition.fat}g, 炭水化物${targetNutrition.carbs}g
 `;
 
-  if (!preference) {
+  if (!userDoc) {
     return basePrompt + '\n※ユーザーの好みデータはありません。一般的なレシピを提案してください。';
   }
 
+  const { profile, learnedPreferences } = userDoc;
+
   return basePrompt + `
 【ユーザーの好み情報】
-- 好きな食材: ${preference.favoriteIngredients.join(', ') || '特になし'}
-- 苦手な食材: ${preference.dislikedIngredients.join(', ') || '特になし'}
-- アレルギー: ${preference.allergies.length > 0 ? preference.allergies.join(', ') : 'なし'}
-- 料理スキル: ${preference.cookingSkillLevel}
-- かけられる時間: ${preference.availableTime}
-- 過去の傾向: ${formatLearnedProfile(preference.learnedProfile)}
+- 好きな食材: ${(profile.favoriteIngredients || []).join(', ') || '特になし'}
+- 苦手な食材: ${(learnedPreferences.dislikedIngredients || []).join(', ') || '特になし'}
+- アレルギー: ${(profile.allergies || []).length > 0 ? profile.allergies!.join(', ') : 'なし'}
+- 料理スキル: ${profile.cookingSkillLevel || 'intermediate'}
+- かけられる時間: ${profile.availableTime || 'medium'}
+- 過去の傾向: ${formatLearnedProfile(learnedPreferences)}
 
 【重要】
 1. **リクエストの最優先:** 「今日の気分」に具体的な料理名や食材（例: エスカルゴ、ステーキ等）が含まれる場合、入手難易度や調理時間を問わず、**必ずその食材を使用したレシピ**を提案してください。
-2. **安全性の確保:** アレルギー食材 (${preference.allergies.join(', ')}) は絶対に使用しないでください。
+2. **安全性の確保:** アレルギー食材 (${(profile.allergies || []).join(', ')}) は絶対に使用しないでください。
 3. **好みの反映:** 苦手な食材も可能な限り避けてください。好きな食材を積極的に活用し、ユーザーのスキルレベルと時間に合ったレシピを考案してください。
 `;
 };
