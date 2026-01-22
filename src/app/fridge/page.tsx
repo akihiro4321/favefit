@@ -1,0 +1,225 @@
+"use client";
+
+import { useAuth } from "@/components/auth-provider";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  Loader2,
+  Refrigerator,
+  ChefHat,
+  ThumbsUp,
+  ThumbsDown,
+  ChevronRight,
+  Sparkles,
+} from "lucide-react";
+
+interface SuggestedRecipe {
+  recipeId: string;
+  title: string;
+  description: string;
+  tags: string[];
+  additionalIngredients: string[];
+  nutrition: {
+    calories: number;
+    protein: number;
+  };
+}
+
+export default function FridgePage() {
+  const { user, profile, loading } = useAuth();
+  const router = useRouter();
+
+  const [ingredients, setIngredients] = useState("");
+  const [comment, setComment] = useState("");
+  const [suggestions, setSuggestions] = useState<SuggestedRecipe[]>([]);
+  const [generating, setGenerating] = useState(false);
+  const [previousSuggestions, setPreviousSuggestions] = useState<string[]>([]);
+
+  const handleSubmit = async () => {
+    if (!ingredients.trim() || !user || !profile) return;
+
+    setGenerating(true);
+
+    try {
+      const res = await fetch("/api/test-agent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agentId: "menu-adjuster",
+          input: {
+            availableIngredients: ingredients.split(/[,、\n]/).map((s) => s.trim()).filter(Boolean),
+            targetNutrition: {
+              calories: Math.round((profile.nutrition?.dailyCalories || 600) / 3),
+              protein: Math.round((profile.nutrition?.pfc?.protein || 30) / 3),
+              fat: Math.round((profile.nutrition?.pfc?.fat || 20) / 3),
+              carbs: Math.round((profile.nutrition?.pfc?.carbs || 60) / 3),
+            },
+            userComment: comment || undefined,
+            previousSuggestions: previousSuggestions.length > 0 ? previousSuggestions : undefined,
+          },
+          userId: user.uid,
+        }),
+      });
+
+      if (!res.ok) throw new Error("提案に失敗しました");
+      const data = await res.json();
+      setSuggestions(data.suggestions || []);
+      setComment("");
+    } catch (error) {
+      console.error(error);
+      alert("提案の生成中にエラーが発生しました。");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleRegenerate = (feedback: string) => {
+    setPreviousSuggestions((prev) => [
+      ...prev,
+      ...suggestions.map((s) => s.title),
+    ]);
+    setComment(feedback);
+  };
+
+  const handleSelect = (recipe: SuggestedRecipe) => {
+    router.push(`/recipe/${recipe.recipeId}`);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) return null;
+
+  return (
+    <div className="container max-w-2xl mx-auto py-8 px-4 space-y-6 pb-24">
+      {/* ヘッダー */}
+      <div className="space-y-2 animate-slide-up">
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <Refrigerator className="w-6 h-6 text-primary" />
+          冷蔵庫からメニュー提案
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          手元にある食材から、AIがレシピを提案します
+        </p>
+      </div>
+
+      {/* 入力フォーム */}
+      {suggestions.length === 0 && (
+        <Card className="animate-pop-in">
+          <CardHeader>
+            <CardTitle className="text-base">食材を入力</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Textarea
+              placeholder="例: 鶏もも肉、キャベツ、にんじん、卵..."
+              value={ingredients}
+              onChange={(e) => setIngredients(e.target.value)}
+              className="min-h-[100px]"
+            />
+            <Textarea
+              placeholder="希望があれば（例: さっぱりしたもの、辛いもの）"
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              className="min-h-[60px]"
+            />
+            <Button
+              onClick={handleSubmit}
+              disabled={generating || !ingredients.trim()}
+              className="w-full rounded-full"
+            >
+              {generating ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <ChefHat className="w-4 h-4 mr-2" />
+                  レシピを提案してもらう
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 提案結果 */}
+      {suggestions.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-primary" />
+            <h2 className="font-bold">3つのレシピを提案します</h2>
+          </div>
+
+          {suggestions.map((recipe, idx) => (
+            <Card
+              key={idx}
+              className="cursor-pointer hover:shadow-lg transition-all"
+              onClick={() => handleSelect(recipe)}
+            >
+              <CardContent className="pt-4 pb-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 space-y-2">
+                    <h3 className="font-medium">{recipe.title}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {recipe.description}
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {recipe.tags.map((tag) => (
+                        <Badge key={tag} variant="secondary" className="text-xs">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                    {recipe.additionalIngredients.length > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        追加で必要: {recipe.additionalIngredients.join(", ")}
+                      </p>
+                    )}
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+
+          {/* 再提案ボタン */}
+          <div className="flex gap-2 pt-4">
+            <Button
+              variant="outline"
+              className="flex-1 rounded-full"
+              onClick={() => handleRegenerate("もっとさっぱりしたもの")}
+            >
+              <ThumbsUp className="w-4 h-4 mr-1" />
+              さっぱり系で
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1 rounded-full"
+              onClick={() => handleRegenerate("もっとこってりしたもの")}
+            >
+              <ThumbsDown className="w-4 h-4 mr-1" />
+              こってり系で
+            </Button>
+          </div>
+          <Button
+            variant="ghost"
+            className="w-full"
+            onClick={() => {
+              setSuggestions([]);
+              setPreviousSuggestions([]);
+            }}
+          >
+            食材を入力し直す
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
