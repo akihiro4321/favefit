@@ -1,5 +1,5 @@
 import { db } from './firebase';
-import { collection, addDoc, doc, updateDoc, query, orderBy, getDocs, getDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, query, orderBy, getDocs, getDoc, serverTimestamp, Timestamp, limit, startAfter, DocumentSnapshot } from 'firebase/firestore';
 import { Recipe } from '@/lib/agents/recipe-creator';
 
 export interface SavedRecipe extends Recipe {
@@ -24,19 +24,47 @@ export const saveRecipe = async (userId: string, recipeData: Recipe): Promise<st
   }
 };
 
-export const getSavedRecipes = async (userId: string): Promise<SavedRecipe[]> => {
+export interface PaginatedRecipes {
+  recipes: SavedRecipe[];
+  lastVisible: DocumentSnapshot | null;
+  hasMore: boolean;
+}
+
+export const getSavedRecipes = async (
+  userId: string,
+  pageSize: number = 20,
+  lastVisibleDoc?: DocumentSnapshot
+): Promise<PaginatedRecipes> => {
   try {
     const recipesRef = collection(db, 'users', userId, 'recipes');
-    const q = query(recipesRef, orderBy('createdAt', 'desc'));
+    let q = query(recipesRef, orderBy('createdAt', 'desc'), limit(pageSize));
+
+    if (lastVisibleDoc) {
+      q = query(recipesRef, orderBy('createdAt', 'desc'), startAfter(lastVisibleDoc), limit(pageSize));
+    }
+
     const querySnapshot = await getDocs(q);
-    
-    return querySnapshot.docs.map(doc => ({
+
+    const recipes = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     } as SavedRecipe));
+
+    const lastVisible = querySnapshot.docs[querySnapshot.docs.length - 1] || null;
+    const hasMore = querySnapshot.docs.length === pageSize;
+
+    return {
+      recipes,
+      lastVisible,
+      hasMore
+    };
   } catch (error) {
     console.error('Error fetching recipes:', error);
-    return [];
+    return {
+      recipes: [],
+      lastVisible: null,
+      hasMore: false
+    };
   }
 };
 
