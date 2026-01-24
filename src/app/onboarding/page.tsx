@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { updateUserProfile, completeOnboarding } from "@/lib/user";
 import { db } from "@/lib/firebase";
-import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp, Timestamp } from "firebase/firestore";
 
 const TOTAL_STEPS = 5;
 
@@ -54,6 +54,7 @@ export default function OnboardingPage() {
     displayName: "",
     currentWeight: 65,
     targetWeight: 60,
+    deadline: "", // YYYY-MM-DD形式
     cheatDayFrequency: "weekly" as "weekly" | "biweekly",
     // Step 2: 身体情報
     age: 30,
@@ -76,11 +77,20 @@ export default function OnboardingPage() {
   // プロフィールから初期値を設定
   useEffect(() => {
     if (profile?.profile) {
+      // deadlineをYYYY-MM-DD形式に変換
+      const deadlineDate = profile.profile.deadline
+        ? new Date(profile.profile.deadline.toDate())
+        : null;
+      const deadlineStr = deadlineDate
+        ? deadlineDate.toISOString().split("T")[0]
+        : "";
+
       setFormData((prev) => ({
         ...prev,
         displayName: profile.profile.displayName || "",
         currentWeight: profile.profile.currentWeight || 65,
         targetWeight: profile.profile.targetWeight || 60,
+        deadline: deadlineStr,
         cheatDayFrequency: profile.profile.cheatDayFrequency || "weekly",
         age: profile.profile.age || 30,
         gender: profile.profile.gender || "male",
@@ -165,10 +175,17 @@ export default function OnboardingPage() {
       // Step 4 完了時: プロフィール保存
       setSubmitting(true);
       try {
+        // deadlineをTimestampに変換
+        const deadlineDate = formData.deadline
+          ? new Date(formData.deadline + "T00:00:00")
+          : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000); // デフォルト: 90日後
+        const deadlineTimestamp = Timestamp.fromDate(deadlineDate);
+
         await updateUserProfile(user!.uid, {
           displayName: formData.displayName || "ユーザー",
           currentWeight: formData.currentWeight,
           targetWeight: formData.targetWeight,
+          deadline: deadlineTimestamp,
           cheatDayFrequency: formData.cheatDayFrequency,
           age: formData.age,
           gender: formData.gender,
@@ -412,6 +429,20 @@ export default function OnboardingPage() {
                   onChange={(e) => setFormData({ ...formData, targetWeight: Number(e.target.value) })}
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="deadline">目標達成期限</Label>
+              <Input
+                id="deadline"
+                type="date"
+                value={formData.deadline}
+                onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                min={new Date().toISOString().split("T")[0]}
+              />
+              <p className="text-xs text-muted-foreground">
+                目標体重を達成したい日を選択してください
+              </p>
             </div>
 
             <div className="space-y-2">

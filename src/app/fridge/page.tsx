@@ -1,8 +1,8 @@
 "use client";
 
 import { useAuth } from "@/components/auth-provider";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,22 +22,51 @@ interface SuggestedRecipe {
   title: string;
   description: string;
   tags: string[];
+  ingredients: string[];
+  steps: string[];
   additionalIngredients: string[];
   nutrition: {
     calories: number;
     protein: number;
+    fat: number;
+    carbs: number;
   };
 }
 
 export default function FridgePage() {
   const { user, profile, loading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [ingredients, setIngredients] = useState("");
   const [comment, setComment] = useState("");
   const [suggestions, setSuggestions] = useState<SuggestedRecipe[]>([]);
   const [generating, setGenerating] = useState(false);
   const [previousSuggestions, setPreviousSuggestions] = useState<string[]>([]);
+  const [swapInfo, setSwapInfo] = useState<{
+    planId: string;
+    date: string;
+    mealType: string;
+    oldRecipeId: string;
+  } | null>(null);
+  const [swapping, setSwapping] = useState(false);
+
+  // URLパラメータからswap情報を取得
+  useEffect(() => {
+    const swap = searchParams.get("swap");
+    const planId = searchParams.get("planId");
+    const date = searchParams.get("date");
+    const mealType = searchParams.get("mealType");
+
+    if (swap && planId && date && mealType) {
+      setSwapInfo({
+        planId,
+        date,
+        mealType,
+        oldRecipeId: swap,
+      });
+    }
+  }, [searchParams]);
 
   const handleSubmit = async () => {
     if (!ingredients.trim() || !user || !profile) return;
@@ -76,8 +105,56 @@ export default function FridgePage() {
     setComment(feedback);
   };
 
-  const handleSelect = (recipe: SuggestedRecipe) => {
-    router.push(`/recipe/${recipe.recipeId}`);
+  const handleSelect = async (recipe: SuggestedRecipe) => {
+    // 差し替えモードの場合
+    if (swapInfo) {
+      setSwapping(true);
+      try {
+        // レシピをMealSlot形式に変換
+        const mealSlot = {
+          recipeId: recipe.recipeId,
+          title: recipe.title,
+          status: "swapped" as const,
+          nutrition: {
+            calories: recipe.nutrition.calories,
+            protein: recipe.nutrition.protein || 0,
+            fat: recipe.nutrition.fat || 0,
+            carbs: recipe.nutrition.carbs || 0,
+          },
+          tags: recipe.tags,
+          ingredients: recipe.ingredients || [],
+          steps: recipe.steps || [],
+        };
+
+        const res = await fetch("/api/swap-meal", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.uid,
+            planId: swapInfo.planId,
+            date: swapInfo.date,
+            mealType: swapInfo.mealType,
+            newMeal: mealSlot,
+          }),
+        });
+
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.error || "レシピの差し替えに失敗しました");
+        }
+
+        alert("レシピを差し替えました！");
+        router.push("/home");
+      } catch (error) {
+        console.error("Swap meal error:", error);
+        alert(error instanceof Error ? error.message : "レシピの差し替えに失敗しました");
+      } finally {
+        setSwapping(false);
+      }
+    } else {
+      // 通常モード：レシピ詳細画面へ
+      router.push(`/recipe/${recipe.recipeId}`);
+    }
   };
 
   if (loading) {
@@ -99,7 +176,9 @@ export default function FridgePage() {
           冷蔵庫からメニュー提案
         </h1>
         <p className="text-sm text-muted-foreground">
-          手元にある食材から、AIがレシピを提案します
+          {swapInfo
+            ? "プラン内のレシピを差し替えるレシピを選んでください"
+            : "手元にある食材から、AIがレシピを提案します"}
         </p>
       </div>
 
@@ -151,8 +230,10 @@ export default function FridgePage() {
           {suggestions.map((recipe, idx) => (
             <Card
               key={idx}
-              className="cursor-pointer hover:shadow-lg transition-all"
-              onClick={() => handleSelect(recipe)}
+              className={`cursor-pointer hover:shadow-lg transition-all ${
+                swapping ? "opacity-50" : ""
+              }`}
+              onClick={() => !swapping && handleSelect(recipe)}
             >
               <CardContent className="pt-4 pb-4">
                 <div className="flex items-start justify-between gap-4">

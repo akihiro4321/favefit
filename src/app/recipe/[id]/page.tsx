@@ -17,6 +17,8 @@ import {
 import { getActivePlan } from "@/lib/plan";
 import { addToFavorites, markAsCooked } from "@/lib/recipeHistory";
 import { MealSlot } from "@/lib/schema";
+import { FeedbackForm } from "@/components/feedback-form";
+import { Star } from "lucide-react";
 
 export default function RecipePage() {
   const { user, loading } = useAuth();
@@ -28,6 +30,8 @@ export default function RecipePage() {
   const [fetching, setFetching] = useState(true);
   const [completing, setCompleting] = useState(false);
   const [favoriting, setFavoriting] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [planInfo, setPlanInfo] = useState<{ planId: string; date: string; mealType: string } | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -46,6 +50,9 @@ export default function RecipePage() {
             for (const [slot, meal] of Object.entries(dayPlan.meals)) {
               if ((meal as MealSlot).recipeId === recipeId) {
                 const currentRecipe = meal as MealSlot;
+                
+                // プラン情報を保存（評価フォーム用）
+                setPlanInfo({ planId: plan.id, date, mealType: slot });
                 
                 // 詳細（材料・手順）が不足している場合は API を叩いて生成・保存する
                 if (!currentRecipe.ingredients || currentRecipe.ingredients.length === 0) {
@@ -90,6 +97,8 @@ export default function RecipePage() {
     try {
       await markAsCooked(user.uid, recipeId);
       setRecipe((prev) => (prev ? { ...prev, status: "completed" } : null));
+      // 評価フォームを表示
+      setShowFeedback(true);
     } catch (error) {
       console.error(error);
     } finally {
@@ -234,42 +243,68 @@ export default function RecipePage() {
         </Card>
       </div>
 
+      {/* 評価フォーム */}
+      {showFeedback && user && (
+        <div className="pt-4">
+          <FeedbackForm
+            userId={user.uid}
+            recipeId={recipeId}
+            onComplete={() => {
+              setShowFeedback(false);
+              router.push("/home");
+            }}
+          />
+        </div>
+      )}
+
       {/* アクションボタン */}
-      <div className="flex gap-4 pt-4 sticky bottom-20 z-10 bg-background/80 backdrop-blur-sm p-4 rounded-xl border shadow-lg">
-        {!isCompleted ? (
-          <>
-            <Button
-              className="flex-1 h-12 rounded-full"
-              onClick={handleComplete}
-              disabled={completing}
-            >
-              {completing ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <>
+      {!showFeedback && (
+        <div className="flex gap-4 pt-4 sticky bottom-20 z-10 bg-background/80 backdrop-blur-sm p-4 rounded-xl border shadow-lg">
+          {!isCompleted ? (
+            <>
+              <Button
+                className="flex-1 h-12 rounded-full"
+                onClick={handleComplete}
+                disabled={completing}
+              >
+                {completing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                    作った！
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1 h-12 rounded-full"
+                onClick={() => router.push(`/fridge?swap=${recipeId}&planId=${planInfo?.planId}&date=${planInfo?.date}&mealType=${planInfo?.mealType}`)}
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                別のレシピに変更
+              </Button>
+            </>
+          ) : (
+            <div className="flex gap-2 w-full">
+              <div className="flex-1 text-center py-3">
+                <Badge variant="default" className="px-4 py-2 text-base">
                   <CheckCircle2 className="w-4 h-4 mr-2" />
-                  作った！
-                </>
-              )}
-            </Button>
-            <Button
-              variant="outline"
-              className="flex-1 h-12 rounded-full"
-              onClick={() => router.push("/fridge")}
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              別のレシピに変更
-            </Button>
-          </>
-        ) : (
-          <div className="flex-1 text-center py-3">
-            <Badge variant="default" className="px-4 py-2 text-base">
-              <CheckCircle2 className="w-4 h-4 mr-2" />
-              完了済み
-            </Badge>
-          </div>
-        )}
-      </div>
+                  完了済み
+                </Badge>
+              </div>
+              <Button
+                variant="outline"
+                className="h-12 rounded-full"
+                onClick={() => setShowFeedback(true)}
+              >
+                <Star className="w-4 h-4 mr-2" />
+                評価する
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
