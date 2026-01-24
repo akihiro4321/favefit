@@ -136,7 +136,7 @@ function RecipeCard({ recipe }: { recipe: RecipeHistoryItem }) {
 
   return (
     <Link href={`/recipe/${recipe.id}`}>
-      <Card className="cursor-pointer hover:shadow-md transition-all">
+      <Card className="cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all">
         <CardContent className="pt-4 pb-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex-1 space-y-1">
@@ -169,17 +169,20 @@ function RecipeCard({ recipe }: { recipe: RecipeHistoryItem }) {
             <div className="flex items-center gap-2">
               {!recipe.isFavorite && (
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
                   onClick={handleAddToFavorites}
                   disabled={adding}
-                  className="h-8 px-2"
+                  className="h-9 px-3 rounded-full border-primary/30 hover:border-primary/50 hover:bg-primary/5 transition-all"
                   title="また作りたい"
                 >
                   {adding ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
                   ) : (
-                    <Repeat className="w-4 h-4" />
+                    <>
+                      <Repeat className="w-4 h-4 mr-1" />
+                      <span className="text-xs">保存</span>
+                    </>
                   )}
                 </Button>
               )}
@@ -195,7 +198,7 @@ function RecipeCard({ recipe }: { recipe: RecipeHistoryItem }) {
 function FavoriteCard({ recipe }: { recipe: FavoriteRecipe }) {
   return (
     <Link href={`/recipe/${recipe.id}`}>
-      <Card className="cursor-pointer hover:shadow-md transition-all">
+      <Card className="cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all">
         <CardContent className="pt-4 pb-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex-1 space-y-1">

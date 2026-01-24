@@ -15,9 +15,9 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-14 items-center justify-between px-4 max-w-screen-md mx-auto">
-        <Link href="/home" className="font-bold text-xl text-primary tracking-tight">
+    <header className="sticky top-0 z-50 w-full border-b-4 border-primary/30 bg-gradient-to-r from-background via-background/98 to-background backdrop-blur supports-[backdrop-filter]:bg-background/80 shadow-lg">
+      <div className="container flex h-16 items-center justify-between px-6 max-w-screen-md mx-auto">
+        <Link href="/home" className="font-extrabold text-2xl text-primary tracking-tight hover:text-primary/80 transition-colors">
           FaveFit
         </Link>
         
@@ -27,9 +27,9 @@ export function Header() {
           ) : user ? (
             <Link
               href="/profile"
-              className="flex items-center gap-2 px-3 py-1 bg-muted hover:bg-muted/80 transition-colors rounded-full text-xs font-medium"
+              className="flex items-center gap-2 px-4 py-2 bg-muted/80 hover:bg-muted border border-border/50 hover:border-primary/30 transition-all rounded-full text-sm font-semibold shadow-sm hover:shadow-md"
             >
-              <User className="h-3.5 w-3.5" />
+              <User className="h-4 w-4" />
               <span>
                 {user.isAnonymous 
                   ? 'ゲスト' 
@@ -39,9 +39,9 @@ export function Header() {
           ) : (
             <Link
               href="/profile"
-              className="flex items-center gap-2 px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors rounded-full text-xs font-medium"
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-all rounded-full text-sm font-semibold shadow-md hover:shadow-lg"
             >
-              <User className="h-3.5 w-3.5" />
+              <User className="h-4 w-4" />
               <span>ログイン</span>
             </Link>
           )}
