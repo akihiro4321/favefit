@@ -87,12 +87,24 @@ export async function withLangfuseTrace<T>(
  * @param trace `withLangfuseTrace`から受け取ったtraceオブジェクト
  * @param events ADKのイベントストリーム（runner.runAsyncの戻り値）
  * @param userMessage ユーザーメッセージ（オプション、generationのinputとして使用）
+ * @param systemPrompt システムプロンプト（エージェントのinstruction、オプション）
  * @returns イベントから抽出したテキストコンテンツの全体
  */
+/**
+ * エージェントのinstructionを文字列に変換するヘルパー
+ */
+function getInstructionAsString(instruction: string | ((...args: unknown[]) => string) | undefined): string | undefined {
+  if (!instruction) return undefined;
+  if (typeof instruction === "string") return instruction;
+  // InstructionProviderが関数の場合は空文字列を返す（実際には文字列として定義されているはず）
+  return "";
+}
+
 export async function processAdkEventsWithTrace(
   trace: any,
   events: AsyncGenerator<Event, void, undefined>,
-  userMessage?: { role: string; parts: Array<{ text?: string }> }
+  userMessage?: { role: string; parts: Array<{ text?: string }> },
+  systemPrompt?: any
 ): Promise<string> {
   let currentGeneration: any = null;
   const toolSpans: Map<string, any> = new Map();
@@ -107,6 +119,27 @@ export async function processAdkEventsWithTrace(
       .filter(Boolean)
       .join("\n");
   }
+
+  // systemPromptを文字列に変換
+  const systemPromptStr = getInstructionAsString(systemPrompt);
+
+  // systemPromptとuserPromptを組み合わせてLangfuseに送信するためのinputを構築
+  const buildInput = (): string | Record<string, unknown> => {
+    if (systemPromptStr && userPrompt) {
+      // systemPromptとuserMessageの両方がある場合は、構造化して送信
+      return {
+        system: systemPromptStr,
+        user: userPrompt,
+      };
+    } else if (systemPromptStr) {
+      return {
+        system: systemPromptStr,
+      };
+    } else if (userPrompt) {
+      return userPrompt;
+    }
+    return "No input provided";
+  };
 
   for await (const event of events) {
     // ユーザーメッセージを記録
@@ -129,7 +162,7 @@ export async function processAdkEventsWithTrace(
           currentGeneration = trace.generation({
             name: `llm-call-${event.author}`,
             model: event.author,
-            input: userPrompt || "No input provided",
+            input: buildInput(),
             metadata: {
               invocationId: event.invocationId,
               eventId: event.id,

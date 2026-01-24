@@ -251,7 +251,7 @@ ${JSON.stringify(input, null, 2)}${feedbackText}`;
         };
 
         const events = runner.runAsync({ userId, sessionId, newMessage: userMessage });
-        const fullText = await processAdkEventsWithTrace(trace, events, userMessage);
+        const fullText = await processAdkEventsWithTrace(trace, events, userMessage, planGeneratorAgent.instruction as string);
 
         const jsonMatch = fullText.match(/\{[\s\S]*\}/);
         if (!jsonMatch) {
@@ -401,7 +401,7 @@ ${JSON.stringify(userDoc.learnedPreferences, null, 2)}`,
           newMessage: analyzerMessage,
         });
 
-        const analyzerText = await processAdkEventsWithTrace(trace, analyzerEvents, analyzerMessage);
+        const analyzerText = await processAdkEventsWithTrace(trace, analyzerEvents, analyzerMessage, boredomAnalyzerAgent.instruction as string);
 
         const analyzerMatch = analyzerText.match(/\{[\s\S]*\}/);
         if (!analyzerMatch) {
@@ -517,7 +517,7 @@ ${JSON.stringify(userDoc.learnedPreferences, null, 2)}`,
         newMessage: analyzerMessage,
       });
 
-      const analyzerText = await processAdkEventsWithTrace(trace, analyzerEvents, analyzerMessage);
+      const analyzerText = await processAdkEventsWithTrace(trace, analyzerEvents, analyzerMessage, boredomAnalyzerAgent.instruction as string);
 
       const analyzerMatch = analyzerText.match(/\{[\s\S]*\}/);
       if (!analyzerMatch) {
@@ -645,7 +645,7 @@ ${Array.from(existingTitles).slice(0, 20).join(", ")}
       newMessage: message,
     });
 
-    const planText = await processAdkEventsWithTrace(trace, planEvents, message);
+    const planText = await processAdkEventsWithTrace(trace, planEvents, message, planGeneratorAgent.instruction as string);
 
     const planMatch = planText.match(/\{[\s\S]*\}/);
     if (!planMatch) {
@@ -731,7 +731,7 @@ ${existingTitles.join(", ")}
         newMessage: planMessage,
       });
 
-      const planText = await processAdkEventsWithTrace(trace, planEvents, planMessage);
+      const planText = await processAdkEventsWithTrace(trace, planEvents, planMessage, planGeneratorAgent.instruction as string);
 
       const planMatch = planText.match(/\{[\s\S]*\}/);
       if (!planMatch) {
@@ -824,7 +824,7 @@ ${userDoc.learnedPreferences.dislikedIngredients.join(", ") || "なし"}
         newMessage: planMessage,
       });
 
-      const planText = await processAdkEventsWithTrace(trace, planEvents, planMessage);
+      const planText = await processAdkEventsWithTrace(trace, planEvents, planMessage, planGeneratorAgent.instruction as string);
 
       const planMatch = planText.match(/\{[\s\S]*\}/);
       if (!planMatch) {
@@ -958,7 +958,7 @@ async function generateSingleRecipeDetail(
     async (trace) => {
       const events = runner.runAsync({ userId, sessionId, newMessage: userMessage });
 
-      const fullText = await processAdkEventsWithTrace(trace, events, userMessage);
+      const fullText = await processAdkEventsWithTrace(trace, events, userMessage, recipeCreatorAgent.instruction as string);
 
       const jsonMatch = fullText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
