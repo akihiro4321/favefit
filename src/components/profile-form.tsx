@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { UserProfile, updateUserProfile, updateUserNutrition } from "@/lib/user";
+import { UserProfile, updateUserProfile } from "@/lib/user";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,36 +39,32 @@ export function ProfileForm({ userId, profile, onUpdate }: ProfileFormProps) {
     setSuccess(false);
 
     try {
-      // 1. AIエージェントを呼び出して栄養目標を計算
-      const response = await fetch("/api/test-agent", {
+      // 1. AIエージェントを呼び出して栄養目標を計算（Firestoreへの保存も行う）
+      const response = await fetch("/api/calculate-nutrition", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          agentId: "nutrition-planner",
-          input: formData,
           userId: userId,
+          profile: {
+            age: formData.age,
+            gender: formData.gender,
+            height_cm: formData.height_cm,
+            weight_kg: formData.currentWeight,
+            activity_level: formData.activity_level,
+            goal: formData.goal,
+          },
         }),
       });
 
-      const nutritionResult = await response.json();
-      if (nutritionResult.error) throw new Error(nutritionResult.error);
+      const result = await response.json();
+      if (result.error) throw new Error(result.error);
 
-      // 2. Firestoreを更新 (プロファイルと栄養情報を両方)
+      // 2. プロファイルを更新（栄養情報はAPIで保存済み）
       const updatedProfile: Partial<UserProfile> = {
         ...formData,
       };
 
-      await Promise.all([
-        updateUserProfile(userId, updatedProfile),
-        updateUserNutrition(userId, {
-          dailyCalories: nutritionResult.daily_calorie_target,
-          pfc: {
-            protein: nutritionResult.protein_g,
-            fat: nutritionResult.fat_g,
-            carbs: nutritionResult.carbs_g,
-          },
-        }),
-      ]);
+      await updateUserProfile(userId, updatedProfile);
 
       setSuccess(true);
       onUpdate();

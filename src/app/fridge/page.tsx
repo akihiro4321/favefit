@@ -45,23 +45,14 @@ export default function FridgePage() {
     setGenerating(true);
 
     try {
-      const res = await fetch("/api/test-agent", {
+      const res = await fetch("/api/suggest-menu", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          agentId: "menu-adjuster",
-          input: {
-            availableIngredients: ingredients.split(/[,、\n]/).map((s) => s.trim()).filter(Boolean),
-            targetNutrition: {
-              calories: Math.round((profile.nutrition?.dailyCalories || 600) / 3),
-              protein: Math.round((profile.nutrition?.pfc?.protein || 30) / 3),
-              fat: Math.round((profile.nutrition?.pfc?.fat || 20) / 3),
-              carbs: Math.round((profile.nutrition?.pfc?.carbs || 60) / 3),
-            },
-            userComment: comment || undefined,
-            previousSuggestions: previousSuggestions.length > 0 ? previousSuggestions : undefined,
-          },
           userId: user.uid,
+          ingredients: ingredients.split(/[,、\n]/).map((s) => s.trim()).filter(Boolean),
+          comment: comment || undefined,
+          previousSuggestions: previousSuggestions.length > 0 ? previousSuggestions : undefined,
         }),
       });
 

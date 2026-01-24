@@ -60,6 +60,62 @@ export default function PlanPage() {
 
   if (!user) return null;
 
+  const handleGeneratePlan = async () => {
+    setFetching(true);
+    try {
+      const res = await fetch("/api/generate-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.uid }),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "プラン生成に失敗しました");
+      }
+
+      // プランを再取得
+      const plan = await getActivePlan(user.uid);
+      setActivePlan(plan);
+    } catch (error) {
+      console.error("Generate plan error:", error);
+      alert(error instanceof Error ? error.message : "プラン生成に失敗しました");
+    } finally {
+      setFetching(false);
+    }
+  };
+
+  const handleRefreshPlan = async () => {
+    if (!activePlan) return;
+    setFetching(true);
+    try {
+      const res = await fetch("/api/refresh-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.uid }),
+      });
+
+      const result = await res.json();
+      if (!res.ok) {
+        throw new Error(result.error || "リフレッシュに失敗しました");
+      }
+
+      if (result.refreshed) {
+        // プランを再取得
+        const plan = await getActivePlan(user.uid);
+        setActivePlan(plan);
+        alert(result.message);
+      } else {
+        alert(result.message || "リフレッシュは不要です");
+      }
+    } catch (error) {
+      console.error("Refresh plan error:", error);
+      alert(error instanceof Error ? error.message : "リフレッシュに失敗しました");
+    } finally {
+      setFetching(false);
+    }
+  };
+
   if (!activePlan) {
     return (
       <div className="container max-w-2xl mx-auto py-8 px-4 space-y-8">
@@ -72,9 +128,17 @@ export default function PlanPage() {
           <Button
             size="lg"
             className="rounded-full px-8 mt-4"
-            onClick={() => router.push("/onboarding")}
+            onClick={handleGeneratePlan}
+            disabled={fetching}
           >
-            プランを作成する
+            {fetching ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                AIがプランを作成中...
+              </>
+            ) : (
+              "プランを作成する"
+            )}
           </Button>
         </div>
       </div>
@@ -98,7 +162,13 @@ export default function PlanPage() {
             {activePlan.startDate} 〜
           </p>
         </div>
-        <Button variant="outline" size="sm" className="rounded-full gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-full gap-2"
+          onClick={handleRefreshPlan}
+          disabled={fetching}
+        >
           <RefreshCw className="w-4 h-4" />
           再生成
         </Button>
