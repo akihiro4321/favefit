@@ -52,10 +52,10 @@ const LearnPreferenceRequestSchema = z.object({
  */
 export async function POST(
   req: NextRequest,
-  { params }: { params: { action: string } }
+  { params }: { params: Promise<{ action: string }> }
 ) {
   try {
-    const { action } = params;
+    const { action } = await params;
     const body = await req.json();
 
     switch (action) {
