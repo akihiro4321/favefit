@@ -6,7 +6,7 @@
 import { InMemoryRunner, stringifyContent } from "@google/adk";
 import { menuAdjusterAgent, MenuAdjusterInput } from "@/lib/agents/menu-adjuster";
 import { getOrCreateUser } from "@/lib/user";
-import { withLangfuseTrace } from "@/lib/langfuse";
+import { withLangfuseTrace, processAdkEventsWithTrace } from "@/lib/langfuse";
 
 export interface SuggestMenuRequest {
   userId: string;
@@ -101,14 +101,10 @@ ${JSON.stringify(input, null, 2)}`;
     "suggest-menu",
     userId,
     { ingredients, comment },
-    async () => {
-      let fullText = "";
+    async (trace) => {
       const events = runner.runAsync({ userId, sessionId, newMessage: userMessage });
 
-      for await (const event of events) {
-        const content = stringifyContent(event);
-        if (content) fullText += content;
-      }
+      const fullText = await processAdkEventsWithTrace(trace, events);
 
       const jsonMatch = fullText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {

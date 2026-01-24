@@ -9,7 +9,7 @@ import { getOrCreateUser } from "@/lib/user";
 import { getPlan, updateMealSlot, swapMeal } from "@/lib/plan";
 import { MealSlot } from "@/lib/schema";
 import { addToHistory } from "@/lib/recipeHistory";
-import { withLangfuseTrace } from "@/lib/langfuse";
+import { withLangfuseTrace, processAdkEventsWithTrace } from "@/lib/langfuse";
 
 export interface GetRecipeDetailRequest {
   userId: string;
@@ -85,14 +85,10 @@ export async function getRecipeDetail(
     "generate-recipe-detail",
     userId,
     { recipeTitle: currentMeal.title },
-    async () => {
-      let fullText = "";
+    async (trace) => {
       const events = runner.runAsync({ userId, sessionId, newMessage: userMessage });
 
-      for await (const event of events) {
-        const content = stringifyContent(event);
-        if (content) fullText += content;
-      }
+      const fullText = await processAdkEventsWithTrace(trace, events);
 
       const jsonMatch = fullText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {

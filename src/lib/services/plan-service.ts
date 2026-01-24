@@ -11,7 +11,7 @@ import { createPlan, updatePlanStatus, getActivePlan, updatePlanDays } from "@/l
 import { createShoppingList } from "@/lib/shoppingList";
 import { getFavorites } from "@/lib/recipeHistory";
 import { DayPlan, MealSlot, ShoppingItem } from "@/lib/schema";
-import { withLangfuseTrace } from "@/lib/langfuse";
+import { withLangfuseTrace, processAdkEventsWithTrace } from "@/lib/langfuse";
 
 interface MealInfo {
   date: string;
@@ -123,7 +123,7 @@ async function generatePlanBackground(
         nutrition: userDoc.nutrition,
         preferences: userDoc.learnedPreferences,
       },
-      async () => {
+      async (trace) => {
         const favorites = await getFavorites(userId);
         const favoriteRecipes = favorites.map((f) => ({
           id: f.id,
@@ -177,13 +177,8 @@ ${JSON.stringify(input, null, 2)}`;
           parts: [{ text: messageText }],
         };
 
-        let fullText = "";
         const events = runner.runAsync({ userId, sessionId, newMessage: userMessage });
-
-        for await (const event of events) {
-          const content = stringifyContent(event);
-          if (content) fullText += content;
-        }
+        const fullText = await processAdkEventsWithTrace(trace, events);
 
         const jsonMatch = fullText.match(/\{[\s\S]*\}/);
         if (!jsonMatch) {
@@ -325,18 +320,14 @@ ${JSON.stringify(userDoc.learnedPreferences, null, 2)}`,
       "boredom-analysis",
       userId,
       { recentMealsCount: recentMeals.length },
-      async () => {
-        let analyzerText = "";
+      async (trace) => {
         const analyzerEvents = analyzerRunner.runAsync({
           userId,
           sessionId: analyzerSessionId,
           newMessage: analyzerMessage,
         });
 
-        for await (const event of analyzerEvents) {
-          const content = stringifyContent(event);
-          if (content) analyzerText += content;
-        }
+        const analyzerText = await processAdkEventsWithTrace(trace, analyzerEvents);
 
         const analyzerMatch = analyzerText.match(/\{[\s\S]*\}/);
         if (!analyzerMatch) {
@@ -445,18 +436,14 @@ ${JSON.stringify(userDoc.learnedPreferences, null, 2)}`,
       goodCount: goodRecipes.length,
       badCount: badRecipes.length,
     },
-    async () => {
-      let analyzerText = "";
+    async (trace) => {
       const analyzerEvents = analyzerRunner.runAsync({
         userId,
         sessionId: analyzerSessionId,
         newMessage: analyzerMessage,
       });
 
-      for await (const event of analyzerEvents) {
-        const content = stringifyContent(event);
-        if (content) analyzerText += content;
-      }
+      const analyzerText = await processAdkEventsWithTrace(trace, analyzerEvents);
 
       const analyzerMatch = analyzerText.match(/\{[\s\S]*\}/);
       if (!analyzerMatch) {
@@ -577,18 +564,14 @@ ${Array.from(existingTitles).slice(0, 20).join(", ")}
     ],
   };
 
-  const result = await withLangfuseTrace("boredom-recipe-suggestions", userId, {}, async () => {
-    let planText = "";
+  const result = await withLangfuseTrace("boredom-recipe-suggestions", userId, {}, async (trace) => {
     const planEvents = planRunner.runAsync({
       userId,
       sessionId,
       newMessage: message,
     });
 
-    for await (const event of planEvents) {
-      const content = stringifyContent(event);
-      if (content) planText += content;
-    }
+    const planText = await processAdkEventsWithTrace(trace, planEvents);
 
     const planMatch = planText.match(/\{[\s\S]*\}/);
     if (!planMatch) {
@@ -667,18 +650,14 @@ ${existingTitles.join(", ")}
     "refresh-plan-generation",
     userId,
     { datesCount: dates.length },
-    async () => {
-      let planText = "";
+    async (trace) => {
       const planEvents = planRunner.runAsync({
         userId,
         sessionId: planSessionId,
         newMessage: planMessage,
       });
 
-      for await (const event of planEvents) {
-        const content = stringifyContent(event);
-        if (content) planText += content;
-      }
+      const planText = await processAdkEventsWithTrace(trace, planEvents);
 
       const planMatch = planText.match(/\{[\s\S]*\}/);
       if (!planMatch) {
@@ -764,18 +743,14 @@ ${userDoc.learnedPreferences.dislikedIngredients.join(", ") || "なし"}
     "refresh-plan-with-feedback",
     userId,
     { datesCount: dates.length },
-    async () => {
-      let planText = "";
+    async (trace) => {
       const planEvents = planRunner.runAsync({
         userId,
         sessionId: planSessionId,
         newMessage: planMessage,
       });
 
-      for await (const event of planEvents) {
-        const content = stringifyContent(event);
-        if (content) planText += content;
-      }
+      const planText = await processAdkEventsWithTrace(trace, planEvents);
 
       const planMatch = planText.match(/\{[\s\S]*\}/);
       if (!planMatch) {

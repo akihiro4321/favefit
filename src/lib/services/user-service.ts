@@ -9,7 +9,7 @@ import { preferenceLearnerAgent, PreferenceAnalysis } from "@/lib/agents/prefere
 import { updateUserNutrition, getOrCreateUser, updateLearnedPreferences } from "@/lib/user";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
-import { withLangfuseTrace } from "@/lib/langfuse";
+import { withLangfuseTrace, processAdkEventsWithTrace } from "@/lib/langfuse";
 
 export interface CalculateNutritionRequest {
   userId: string;
@@ -82,14 +82,10 @@ ${JSON.stringify(profile)}`;
     "calculate-nutrition",
     userId,
     profile,
-    async () => {
-      let fullText = "";
+    async (trace) => {
       const events = runner.runAsync({ userId, sessionId, newMessage: userMessage });
 
-      for await (const event of events) {
-        const content = stringifyContent(event);
-        if (content) fullText += content;
-      }
+      const fullText = await processAdkEventsWithTrace(trace, events);
 
       const jsonMatch = fullText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
