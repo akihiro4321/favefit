@@ -126,7 +126,7 @@ export default function FridgePage() {
           steps: recipe.steps || [],
         };
 
-        const res = await fetch("/api/recipe?action=swap-meal", {
+        const res = await fetch("/api/recipe/swap-meal", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
