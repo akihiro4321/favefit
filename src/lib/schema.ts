@@ -51,6 +51,9 @@ export interface UserDocument {
   nutrition: UserNutrition;
   learnedPreferences: LearnedPreferences;
   onboardingCompleted: boolean;
+  // プラン作成状態: creating=作成中, null/undefined=未作成or完了
+  planCreationStatus?: "creating" | null;
+  planCreationStartedAt?: Timestamp | FieldValue;
   updatedAt: Timestamp | FieldValue;
 }
 

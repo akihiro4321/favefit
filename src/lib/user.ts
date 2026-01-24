@@ -140,6 +140,39 @@ export const completeOnboarding = async (uid: string): Promise<void> => {
   }
 };
 
+/**
+ * プラン作成状態を「作成中」に設定
+ */
+export const setPlanCreating = async (uid: string): Promise<void> => {
+  try {
+    const userRef = doc(db, "users", uid);
+    await updateDoc(userRef, {
+      planCreationStatus: "creating",
+      planCreationStartedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    console.error("Error setting plan creating status:", error);
+    throw error;
+  }
+};
+
+/**
+ * プラン作成状態を「完了」に設定（statusをnullにクリア）
+ */
+export const setPlanCreated = async (uid: string): Promise<void> => {
+  try {
+    const userRef = doc(db, "users", uid);
+    await updateDoc(userRef, {
+      planCreationStatus: null,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    console.error("Error clearing plan creation status:", error);
+    throw error;
+  }
+};
+
 // ========================================
 // 嗜好学習関連
 // ========================================
