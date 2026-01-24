@@ -66,7 +66,7 @@ export default function PlanPage() {
   const handleGeneratePlan = async () => {
     setFetching(true);
     try {
-      const res = await fetch("/api/generate-plan", {
+      const res = await fetch("/api/plan?action=generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: user.uid }),
@@ -104,7 +104,7 @@ export default function PlanPage() {
       // 全14日分の日付を指定して一括再生成
       const allDates = Object.keys(activePlan.days).sort();
       
-      const res = await fetch("/api/refresh-plan", {
+      const res = await fetch("/api/plan?action=refresh", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

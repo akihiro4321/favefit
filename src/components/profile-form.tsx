@@ -40,7 +40,7 @@ export function ProfileForm({ userId, profile, onUpdate }: ProfileFormProps) {
 
     try {
       // 1. AIエージェントを呼び出して栄養目標を計算（Firestoreへの保存も行う）
-      const response = await fetch("/api/calculate-nutrition", {
+      const response = await fetch("/api/user?action=calculate-nutrition", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

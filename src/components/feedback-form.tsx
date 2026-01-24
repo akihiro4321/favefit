@@ -51,7 +51,7 @@ export function FeedbackForm({ userId, recipeId, onComplete }: FeedbackFormProps
 
       // AI学習のトリガー
       try {
-        await fetch('/api/learn-preference', {
+        await fetch('/api/user?action=learn-preference', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId, recipeId, feedbackId }),

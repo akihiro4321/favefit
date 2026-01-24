@@ -57,7 +57,7 @@ export default function RecipePage() {
                 // 詳細（材料・手順）が不足している場合は API を叩いて生成・保存する
                 if (!currentRecipe.ingredients || currentRecipe.ingredients.length === 0) {
                   setFetching(true); // 生成中表示のために true に戻す
-                  const res = await fetch("/api/get-recipe-detail", {
+                  const res = await fetch("/api/recipe?action=get-detail", {
                     method: "POST",
                     body: JSON.stringify({
                       userId: user.uid,

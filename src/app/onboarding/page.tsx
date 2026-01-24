@@ -144,7 +144,7 @@ export default function OnboardingPage() {
       // Step 2 完了時: AI で栄養計算
       setSubmitting(true);
       try {
-        const response = await fetch("/api/calculate-nutrition", {
+        const response = await fetch("/api/user?action=calculate-nutrition", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -248,7 +248,7 @@ export default function OnboardingPage() {
       await completeOnboarding(user!.uid);
 
       // 2. プラン生成をリクエスト（バックグラウンドで実行される）
-      const response = await fetch("/api/generate-plan", {
+      const response = await fetch("/api/plan?action=generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: user!.uid }),

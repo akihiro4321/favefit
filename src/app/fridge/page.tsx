@@ -74,7 +74,7 @@ export default function FridgePage() {
     setGenerating(true);
 
     try {
-      const res = await fetch("/api/suggest-menu", {
+      const res = await fetch("/api/menu", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -126,7 +126,7 @@ export default function FridgePage() {
           steps: recipe.steps || [],
         };
 
-        const res = await fetch("/api/swap-meal", {
+        const res = await fetch("/api/recipe?action=swap-meal", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

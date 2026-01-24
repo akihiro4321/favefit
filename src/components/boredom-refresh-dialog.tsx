@@ -45,7 +45,7 @@ export function BoredomRefreshDialog({
   useEffect(() => {
     const fetchRecipes = async () => {
       try {
-        const res = await fetch("/api/suggest-boredom-recipes", {
+        const res = await fetch("/api/plan?action=suggest-boredom-recipes", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId }),
@@ -91,7 +91,7 @@ export function BoredomRefreshDialog({
     setStep("refreshing");
 
     try {
-      const res = await fetch("/api/refresh-plan-with-feedback", {
+      const res = await fetch("/api/plan?action=refresh-with-feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
