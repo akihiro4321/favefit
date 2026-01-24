@@ -13,6 +13,7 @@ import { getFavorites } from "@/lib/recipeHistory";
 import { DayPlan, MealSlot, ShoppingItem } from "@/lib/schema";
 import { withLangfuseTrace, processAdkEventsWithTrace } from "@/lib/langfuse";
 import { recipeCreatorAgent, buildRecipePrompt } from "@/lib/agents/recipe-creator";
+import { calculateMacroGoals } from "@/lib/tools/calculateMacroGoals";
 
 interface MealInfo {
   date: string;
@@ -161,9 +162,52 @@ async function generatePlanBackground(
           await updatePlanStatus(existingPlan.id, "archived");
         }
 
+        // 栄養目標の動的計算
+        let targetCalories: number;
+        let pfc: { protein: number; fat: number; carbs: number };
+
+        // userDoc.nutritionに値が設定されている場合はそれを使用
+        if (
+          userDoc.nutrition?.dailyCalories &&
+          userDoc.nutrition.dailyCalories > 0 &&
+          userDoc.nutrition.pfc?.protein &&
+          userDoc.nutrition.pfc.protein > 0
+        ) {
+          targetCalories = userDoc.nutrition.dailyCalories;
+          pfc = userDoc.nutrition.pfc;
+        } else {
+          // プロファイル情報から動的に計算
+          const profile = userDoc.profile;
+          const hasRequiredProfileData =
+            profile.age &&
+            profile.gender &&
+            (profile.gender === "male" || profile.gender === "female") &&
+            profile.height_cm &&
+            profile.currentWeight &&
+            profile.activity_level &&
+            profile.goal;
+
+          if (hasRequiredProfileData) {
+            const macroGoals = calculateMacroGoals({
+              age: profile.age!,
+              gender: profile.gender as "male" | "female",
+              height_cm: profile.height_cm!,
+              weight_kg: profile.currentWeight,
+              activity_level: profile.activity_level!,
+              goal: profile.goal!,
+            });
+            targetCalories = macroGoals.targetCalories;
+            pfc = macroGoals.pfc;
+          } else {
+            // プロファイル情報が不足している場合はデフォルト値を使用
+            targetCalories = 1800;
+            pfc = { protein: 100, fat: 50, carbs: 200 };
+          }
+        }
+
         const input: PlanGeneratorInput = {
-          targetCalories: userDoc.nutrition.dailyCalories || 1800,
-          pfc: userDoc.nutrition.pfc || { protein: 100, fat: 50, carbs: 200 },
+          targetCalories,
+          pfc,
           preferences: {
             cuisines: userDoc.learnedPreferences.cuisines,
             flavorProfile: userDoc.learnedPreferences.flavorProfile,
