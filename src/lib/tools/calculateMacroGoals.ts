@@ -103,7 +103,7 @@ const calculatePFC = (
 };
 
 /**
- * メイン計算関数 (ADK Tool として使用)
+ * メイン計算関数 (Mastra Tool として使用)
  */
 export const calculateMacroGoals = (
   input: z.infer<typeof CalculateMacroGoalsInputSchema>

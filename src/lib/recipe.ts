@@ -1,6 +1,6 @@
 import { db } from './firebase';
 import { collection, addDoc, doc, updateDoc, query, orderBy, getDocs, getDoc, serverTimestamp, Timestamp, limit, startAfter, DocumentSnapshot } from 'firebase/firestore';
-import { Recipe } from '@/lib/agents/recipe-creator';
+import { Recipe } from '@/mastra/agents/recipe-creator';
 
 export interface SavedRecipe extends Recipe {
   id: string;

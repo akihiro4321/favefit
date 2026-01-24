@@ -1,10 +1,10 @@
 # FaveFit
 
-AIエージェントベースの食事プランアプリケーション。Google Agent Development Kit (ADK) を使用して、ユーザーの栄養目標と好みに基づいた14日間の食事プランを自動生成します。
+AIエージェントベースの食事プランアプリケーション。Mastra v1.0を使用して、ユーザーの栄養目標と好みに基づいた14日間の食事プランを自動生成します。
 
 ## 特徴
 
-- 🤖 **AIエージェント駆動**: Google ADKを使用した複数の専門エージェントによる食事プラン生成
+- 🤖 **AIエージェント駆動**: Mastra v1.0を使用した複数の専門エージェントによる食事プラン生成
 - 📊 **栄養管理**: BMR/TDEE計算に基づく最適な栄養目標の自動算出
 - 🎯 **パーソナライズ**: ユーザーの好みを学習し、嗜好に合わせたレシピ提案
 - 📝 **詳細なトレーサビリティ**: LangfuseによるAIモデルの動作監視と分析
@@ -14,7 +14,7 @@ AIエージェントベースの食事プランアプリケーション。Google
 
 - **フレームワーク**: Next.js 16.1.3
 - **UI**: React 19.2.3, Tailwind CSS 4, Radix UI
-- **AI/エージェント**: Google Agent Development Kit (ADK) 0.2.4
+- **AI/エージェント**: Mastra v1.0 (@mastra/core)
 - **データベース**: Firebase Firestore
 - **認証**: Firebase Authentication
 - **可観測性**: Langfuse 3.38.6
@@ -65,7 +65,7 @@ NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 
 # Google Gemini API
-GOOGLE_GENAI_API_KEY=your_gemini_api_key
+GOOGLE_GENERATIVE_AI_API_KEY=your_gemini_api_key
 
 # Langfuse (オプション - AIトレーサビリティ用)
 LANGFUSE_PUBLIC_KEY=your_langfuse_public_key
@@ -87,52 +87,35 @@ pnpm dev
 
 ## Langfuse統合
 
-FaveFitはLangfuseを使用してAIエージェントの動作をトレースしています。これにより、以下の情報をLangfuse上で確認できます：
+FaveFitはMastraのLangfuseExporterを使用してAIエージェントの動作を自動的にトレースしています。これにより、以下の情報をLangfuse上で確認できます：
 
 - **トレース全体**: 各エージェント呼び出しの入力と出力
 - **LLM呼び出し**: プロンプト、レスポンス、トークン使用量
 - **ツール呼び出し**: ツール名、引数、レスポンス
 - **イベント階層**: エージェントの実行フロー
 
-### 使用方法
+### 設定
 
-`src/lib/langfuse.ts`に実装されているヘルパー関数を使用します：
-
-```typescript
-import { withLangfuseTrace, processAdkEventsWithTrace } from "@/lib/langfuse";
-
-// トレースの作成と管理
-const result = await withLangfuseTrace(
-  "trace-name",
-  userId,
-  input,
-  async (trace) => {
-    const events = runner.runAsync({ userId, sessionId, newMessage });
-    
-    // イベントストリームを処理しながらトレース
-    const fullText = await processAdkEventsWithTrace(trace, events);
-    
-    return processResult(fullText);
-  }
-);
-```
-
-### リアルタイム送信について
-
-**注意**: デフォルトでは、Langfuse SDKはバッチングを使用するため、トレースは処理完了後に送信されます。よりリアルタイムに送信するには、`src/lib/langfuse.ts`の設定を調整してください：
+`src/mastra/index.ts`でLangfuseExporterが設定されています：
 
 ```typescript
-const langfuse = new Langfuse({
-  // ...
-  flushAt: 1, // 1イベントごとに送信（パフォーマンスに影響する可能性）
-  flushInterval: 1000, // 1秒ごとに送信
+import { LangfuseExporter } from "@mastra/langfuse";
+
+export const mastra = new Mastra({
+  agents: { /* ... */ },
+  observability: {
+    exporters: [
+      new LangfuseExporter({
+        publicKey: process.env.LANGFUSE_PUBLIC_KEY!,
+        secretKey: process.env.LANGFUSE_SECRET_KEY!,
+        baseUrl: process.env.LANGFUSE_BASE_URL || "https://cloud.langfuse.com",
+      }),
+    ],
+  },
 });
 ```
 
-### ADKとMastraの比較
-
-- **Mastra**: Langfuseとの統合が組み込まれており、よりシンプルに使用可能
-- **ADK**: まだ新しいフレームワークで、Langfuseとの統合は公式には提供されていないため、手動で統合する必要があります（本実装がその例）
+Mastraが自動的にすべてのエージェント実行をトレースするため、手動でのトレース実装は不要です。
 
 ## プロジェクト構造
 
@@ -144,11 +127,13 @@ src/
 ├── components/            # Reactコンポーネント
 │   └── ui/               # UIコンポーネント（Radix UI）
 ├── lib/
-│   ├── agents/           # ADKエージェント定義
 │   ├── services/         # ビジネスロジック
 │   ├── tools/            # エージェント用ツール
-│   ├── langfuse.ts       # Langfuse統合
 │   └── ...
+├── mastra/               # Mastraエージェント定義
+│   ├── agents/           # エージェント定義
+│   ├── tools/             # エージェント用ツール
+│   └── index.ts          # Mastraインスタンス設定
 └── types/                # TypeScript型定義
 ```
 
@@ -217,6 +202,6 @@ firebase deploy
 ## 参考資料
 
 - [Next.js Documentation](https://nextjs.org/docs)
-- [Google Agent Development Kit](https://github.com/google/adk)
+- [Mastra Documentation](https://mastra.ai/docs)
 - [Langfuse Documentation](https://langfuse.com/docs)
 - [Firebase Documentation](https://firebase.google.com/docs)

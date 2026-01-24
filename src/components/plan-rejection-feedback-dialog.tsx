@@ -27,13 +27,13 @@ export function PlanRejectionFeedbackDialog({
     onOpenChange(false);
   };
 
-  const handleCancel = () => {
+  const handleCancel = React.useCallback(() => {
     if (onCancel) {
       onCancel();
     }
     setFeedback("");
     onOpenChange(false);
-  };
+  }, [onCancel, onOpenChange]);
 
   // ESCキーで閉じる
   React.useEffect(() => {
@@ -47,7 +47,7 @@ export function PlanRejectionFeedbackDialog({
 
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
-  }, [open]);
+  }, [open, handleCancel]);
 
   if (!open) return null;
 
