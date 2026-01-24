@@ -21,7 +21,6 @@ import {
   Sparkles,
   Settings,
   CalendarDays,
-  Clock,
 } from "lucide-react";
 import { updateUserProfile, completeOnboarding } from "@/lib/user";
 import { db } from "@/lib/firebase";

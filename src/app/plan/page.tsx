@@ -20,7 +20,7 @@ import { BoredomRefreshDialog } from "@/components/boredom-refresh-dialog";
 import { PlanSummary } from "@/components/plan-summary";
 import Link from "next/link";
 import { CheckCircle2, XCircle } from "lucide-react";
-import { ConfirmDialog, useConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 import { PlanCreatingScreen } from "@/components/plan-creating-screen";
 import { PlanRejectionFeedbackDialog } from "@/components/plan-rejection-feedback-dialog";

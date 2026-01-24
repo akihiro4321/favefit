@@ -3,8 +3,6 @@
 import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface ConfirmDialogProps {
   open: boolean;
