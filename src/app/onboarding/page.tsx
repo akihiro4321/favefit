@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Slider } from "@/components/ui/slider";
 import {
   Loader2,
   ChevronRight,
@@ -24,6 +25,8 @@ import {
   Clock,
 } from "lucide-react";
 import { updateUserProfile, completeOnboarding } from "@/lib/user";
+import { db } from "@/lib/firebase";
+import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 
 const TOTAL_STEPS = 5;
 
@@ -61,6 +64,8 @@ export default function OnboardingPage() {
     // Step 4: 好み
     allergies: [] as string[],
     favoriteIngredients: [] as string[],
+    preferredCuisines: [] as string[],
+    flavorProfile: "medium" as "light" | "medium" | "rich",
     cookingSkillLevel: "intermediate" as "beginner" | "intermediate" | "advanced",
     availableTime: "medium" as "short" | "medium" | "long",
   });
@@ -84,6 +89,15 @@ export default function OnboardingPage() {
         goal: profile.profile.goal || "lose",
         allergies: profile.profile.allergies || [],
         favoriteIngredients: profile.profile.favoriteIngredients || [],
+        preferredCuisines: Object.keys(profile.learnedPreferences?.cuisines || {}).map((c) => {
+          // 小文字を大文字に変換（和食、洋食など）
+          return c.charAt(0).toUpperCase() + c.slice(1);
+        }),
+        flavorProfile: Object.keys(profile.learnedPreferences?.flavorProfile || {}).includes("light")
+          ? "light"
+          : Object.keys(profile.learnedPreferences?.flavorProfile || {}).includes("rich")
+          ? "rich"
+          : "medium",
         cookingSkillLevel: profile.profile.cookingSkillLevel || "intermediate",
         availableTime: profile.profile.availableTime || "medium",
       }));
@@ -166,6 +180,33 @@ export default function OnboardingPage() {
           cookingSkillLevel: formData.cookingSkillLevel,
           availableTime: formData.availableTime,
         });
+
+        // 初期嗜好プロファイルを設定
+        if (formData.preferredCuisines.length > 0 || formData.flavorProfile) {
+          const initialCuisines: Record<string, number> = {};
+          formData.preferredCuisines.forEach((cuisine) => {
+            initialCuisines[cuisine.toLowerCase()] = 10; // 初期スコア
+          });
+
+          const initialFlavorProfile: Record<string, number> = {};
+          if (formData.flavorProfile === "light") {
+            initialFlavorProfile["light"] = 10;
+            initialFlavorProfile["sour"] = 5;
+          } else if (formData.flavorProfile === "rich") {
+            initialFlavorProfile["rich"] = 10;
+            initialFlavorProfile["heavy"] = 5;
+          } else {
+            initialFlavorProfile["medium"] = 10;
+          }
+
+          // learnedPreferencesを更新
+          const userRef = doc(db, "users", user!.uid);
+          await updateDoc(userRef, {
+            "learnedPreferences.cuisines": initialCuisines,
+            "learnedPreferences.flavorProfile": initialFlavorProfile,
+            updatedAt: serverTimestamp(),
+          });
+        }
         setCurrentStep(5);
       } catch (error) {
         console.error("Profile save failed:", error);
@@ -597,6 +638,73 @@ export default function OnboardingPage() {
                     {item} ×
                   </Badge>
                 ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>好きなジャンル（複数選択可）</Label>
+              <div className="flex flex-wrap gap-2">
+                {(["和食", "洋食", "中華", "イタリアン", "エスニック", "その他"] as const).map((cuisine) => {
+                  const isSelected = formData.preferredCuisines.includes(cuisine);
+                  return (
+                    <Badge
+                      key={cuisine}
+                      variant={isSelected ? "default" : "outline"}
+                      className="cursor-pointer"
+                      onClick={() => {
+                        if (isSelected) {
+                          setFormData({
+                            ...formData,
+                            preferredCuisines: formData.preferredCuisines.filter((c) => c !== cuisine),
+                          });
+                        } else {
+                          setFormData({
+                            ...formData,
+                            preferredCuisines: [...formData.preferredCuisines, cuisine],
+                          });
+                        }
+                      }}
+                    >
+                      {cuisine}
+                    </Badge>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <Label>味付けの好み</Label>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>さっぱり</span>
+                  <span>こってり</span>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={formData.flavorProfile === "light" ? "default" : "outline"}
+                    className="flex-1"
+                    onClick={() => setFormData({ ...formData, flavorProfile: "light" })}
+                  >
+                    さっぱり
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={formData.flavorProfile === "medium" ? "default" : "outline"}
+                    className="flex-1"
+                    onClick={() => setFormData({ ...formData, flavorProfile: "medium" })}
+                  >
+                    普通
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={formData.flavorProfile === "rich" ? "default" : "outline"}
+                    className="flex-1"
+                    onClick={() => setFormData({ ...formData, flavorProfile: "rich" })}
+                  >
+                    こってり
+                  </Button>
+                </div>
               </div>
             </div>
 

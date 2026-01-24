@@ -102,7 +102,7 @@ export default function RecipePage() {
     setFavoriting(true);
     try {
       await addToFavorites(user.uid, recipeId);
-      alert("お気に入りに追加しました！");
+      alert("また作りたいリストに追加しました！");
     } catch (error) {
       console.error(error);
     } finally {

@@ -12,9 +12,11 @@ import {
   PartyPopper,
   RefreshCw,
   ChevronRight,
+  Sparkles,
 } from "lucide-react";
 import { getActivePlan } from "@/lib/plan";
 import { PlanDocument, DayPlan } from "@/lib/schema";
+import { BoredomRefreshDialog } from "@/components/boredom-refresh-dialog";
 import Link from "next/link";
 
 export default function PlanPage() {
@@ -25,6 +27,7 @@ export default function PlanPage() {
     (PlanDocument & { id: string }) | null
   >(null);
   const [fetching, setFetching] = useState(true);
+  const [showBoredomDialog, setShowBoredomDialog] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -87,30 +90,45 @@ export default function PlanPage() {
 
   const handleRefreshPlan = async () => {
     if (!activePlan) return;
+    
+    // 確認ダイアログ
+    const confirmed = confirm(
+      "14日間のプランを一括で再生成しますか？\n" +
+      "現在のプランは上書きされます。"
+    );
+    
+    if (!confirmed) return;
+
     setFetching(true);
     try {
+      // 全14日分の日付を指定して一括再生成
+      const allDates = Object.keys(activePlan.days).sort();
+      
       const res = await fetch("/api/refresh-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.uid }),
+        body: JSON.stringify({ 
+          userId: user.uid,
+          forceDates: allDates, // 全日付を強制指定
+        }),
       });
 
       const result = await res.json();
       if (!res.ok) {
-        throw new Error(result.error || "リフレッシュに失敗しました");
+        throw new Error(result.error || "一括再生成に失敗しました");
       }
 
       if (result.refreshed) {
         // プランを再取得
         const plan = await getActivePlan(user.uid);
         setActivePlan(plan);
-        alert(result.message);
+        alert(`14日間のプランを一括再生成しました！\n${result.message}`);
       } else {
-        alert(result.message || "リフレッシュは不要です");
+        alert(result.message || "再生成は完了しました");
       }
     } catch (error) {
       console.error("Refresh plan error:", error);
-      alert(error instanceof Error ? error.message : "リフレッシュに失敗しました");
+      alert(error instanceof Error ? error.message : "一括再生成に失敗しました");
     } finally {
       setFetching(false);
     }
@@ -162,17 +180,45 @@ export default function PlanPage() {
             {activePlan.startDate} 〜
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="rounded-full gap-2"
-          onClick={handleRefreshPlan}
-          disabled={fetching}
-        >
-          <RefreshCw className="w-4 h-4" />
-          再生成
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-full gap-2"
+            onClick={() => setShowBoredomDialog(true)}
+            disabled={fetching}
+          >
+            <Sparkles className="w-4 h-4" />
+            飽きた
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-full gap-2"
+            onClick={handleRefreshPlan}
+            disabled={fetching}
+            title="14日間のプランを一括で再生成します"
+          >
+            <RefreshCw className="w-4 h-4" />
+            一括再生成
+          </Button>
+        </div>
       </div>
+
+      {/* 飽き防止ダイアログ */}
+      {showBoredomDialog && user && (
+        <BoredomRefreshDialog
+          userId={user.uid}
+          onComplete={() => {
+            setShowBoredomDialog(false);
+            // プランを再取得
+            getActivePlan(user.uid).then((plan) => {
+              setActivePlan(plan);
+            });
+          }}
+          onClose={() => setShowBoredomDialog(false)}
+        />
+      )}
 
       {/* 日別カード */}
       <div className="space-y-3">

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Loader2,
@@ -12,8 +13,9 @@ import {
   Heart,
   ChefHat,
   ChevronRight,
+  Repeat,
 } from "lucide-react";
-import { getRecipeHistory, getFavorites } from "@/lib/recipeHistory";
+import { getRecipeHistory, getFavorites, addToFavorites } from "@/lib/recipeHistory";
 import { RecipeHistoryItem, FavoriteRecipe } from "@/lib/schema";
 import Link from "next/link";
 
@@ -76,7 +78,7 @@ export default function HistoryPage() {
       <Tabs defaultValue="history" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="history">すべて</TabsTrigger>
-          <TabsTrigger value="favorites">お気に入り</TabsTrigger>
+          <TabsTrigger value="favorites">また作りたい</TabsTrigger>
         </TabsList>
 
         <TabsContent value="history" className="space-y-3 mt-4">
@@ -96,7 +98,7 @@ export default function HistoryPage() {
           {favorites.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Heart className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>お気に入りがありません</p>
+              <p>また作りたいレシピがありません</p>
             </div>
           ) : (
             favorites.map((recipe) => (
@@ -110,7 +112,27 @@ export default function HistoryPage() {
 }
 
 function RecipeCard({ recipe }: { recipe: RecipeHistoryItem }) {
+  const { user } = useAuth();
+  const [adding, setAdding] = useState(false);
   const wasCooked = recipe.cookedAt !== null;
+
+  const handleAddToFavorites = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user || recipe.isFavorite) return;
+    
+    setAdding(true);
+    try {
+      await addToFavorites(user.uid, recipe.id);
+      // 状態を更新するためにページをリロード
+      window.location.reload();
+    } catch (error) {
+      console.error("Error adding to favorites:", error);
+      alert("また作りたいリストへの追加に失敗しました");
+    } finally {
+      setAdding(false);
+    }
+  };
 
   return (
     <Link href={`/recipe/${recipe.id}`}>
@@ -144,7 +166,25 @@ function RecipeCard({ recipe }: { recipe: RecipeHistoryItem }) {
                 {recipe.nutrition.calories} kcal
               </p>
             </div>
-            <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+            <div className="flex items-center gap-2">
+              {!recipe.isFavorite && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleAddToFavorites}
+                  disabled={adding}
+                  className="h-8 px-2"
+                  title="また作りたい"
+                >
+                  {adding ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Repeat className="w-4 h-4" />
+                  )}
+                </Button>
+              )}
+              <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+            </div>
           </div>
         </CardContent>
       </Card>
