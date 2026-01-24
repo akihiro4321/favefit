@@ -45,6 +45,7 @@ const ApprovePlanRequestSchema = z.object({
 const RejectPlanRequestSchema = z.object({
   userId: z.string().min(1, "userId は必須です"),
   planId: z.string().min(1, "planId は必須です"),
+  feedback: z.string().optional(),
 });
 
 /**

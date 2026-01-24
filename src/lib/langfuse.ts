@@ -45,13 +45,14 @@ export async function withLangfuseTrace<T>(
 
   try {
     const result = await fn(trace);
-    trace.update({
+    trace.end({
       output: result as any,
     });
     return result;
   } catch (error) {
-    trace.update({
+    trace.end({
       output: { error: error instanceof Error ? error.message : String(error) } as any,
+      level: "ERROR",
     });
     throw error;
   } finally {
@@ -85,17 +86,27 @@ export async function withLangfuseTrace<T>(
  * 
  * @param trace `withLangfuseTrace`から受け取ったtraceオブジェクト
  * @param events ADKのイベントストリーム（runner.runAsyncの戻り値）
+ * @param userMessage ユーザーメッセージ（オプション、generationのinputとして使用）
  * @returns イベントから抽出したテキストコンテンツの全体
  */
 export async function processAdkEventsWithTrace(
   trace: any,
-  events: AsyncGenerator<Event, void, undefined>
+  events: AsyncGenerator<Event, void, undefined>,
+  userMessage?: { role: string; parts: Array<{ text?: string }> }
 ): Promise<string> {
   let currentGeneration: any = null;
   const toolSpans: Map<string, any> = new Map();
   let accumulatedContent = "";
   let userPrompt = "";
   let fullText = "";
+
+  // userMessageから初期プロンプトを抽出
+  if (userMessage && userMessage.parts) {
+    userPrompt = userMessage.parts
+      .map((part) => part.text || "")
+      .filter(Boolean)
+      .join("\n");
+  }
 
   for await (const event of events) {
     // ユーザーメッセージを記録
@@ -118,7 +129,7 @@ export async function processAdkEventsWithTrace(
           currentGeneration = trace.generation({
             name: `llm-call-${event.author}`,
             model: event.author,
-            input: userPrompt,
+            input: userPrompt || "No input provided",
             metadata: {
               invocationId: event.invocationId,
               eventId: event.id,

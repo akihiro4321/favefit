@@ -59,7 +59,7 @@ const nutritionCalculatorTool = new FunctionTool({
  */
 export const nutritionPlannerAgent = new LlmAgent({
   name: "nutrition_planner",
-  model: "gemini-2.5-flash",
+  model: "gemini-2.5-flash-lite",
   description: "ユーザーの身体情報から最適な栄養計画を策定する専門家。",
   instruction: `
 あなたは科学的根拠に基づく栄養計画の専門家です。

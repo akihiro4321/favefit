@@ -43,6 +43,7 @@ export interface ApprovePlanResponse {
 export interface RejectPlanRequest {
   userId: string;
   planId: string;
+  feedback?: string;
 }
 
 export interface RejectPlanResponse {
@@ -188,10 +189,17 @@ async function generatePlanBackground(
           state: {},
         });
 
+        const feedbackText = userDoc.planRejectionFeedback
+          ? `\n\n【前回のプラン拒否時のフィードバック】
+${userDoc.planRejectionFeedback}
+
+このフィードバックを考慮して、より適切なプランを生成してください。`
+          : "";
+
         const messageText = `以下の情報に基づいて14日間の食事プランと買い物リストを生成してください。必ずJSON形式で出力してください。
 
 【ユーザー情報】
-${JSON.stringify(input, null, 2)}`;
+${JSON.stringify(input, null, 2)}${feedbackText}`;
 
         const userMessage = {
           role: "user",
@@ -199,7 +207,7 @@ ${JSON.stringify(input, null, 2)}`;
         };
 
         const events = runner.runAsync({ userId, sessionId, newMessage: userMessage });
-        const fullText = await processAdkEventsWithTrace(trace, events);
+        const fullText = await processAdkEventsWithTrace(trace, events, userMessage);
 
         const jsonMatch = fullText.match(/\{[\s\S]*\}/);
         if (!jsonMatch) {
@@ -259,6 +267,17 @@ ${JSON.stringify(input, null, 2)}`;
         return { planId, daysCount: Object.keys(days).length };
       }
     );
+
+    // プラン生成完了後、フィードバックをクリア
+    if (userDoc.planRejectionFeedback) {
+      const { db } = await import("@/lib/firebase");
+      const { doc, updateDoc, serverTimestamp } = await import("firebase/firestore");
+      const userRef = doc(db, "users", userId);
+      await updateDoc(userRef, {
+        planRejectionFeedback: null,
+        updatedAt: serverTimestamp(),
+      });
+    }
   } finally {
     await setPlanCreated(userId);
   }
@@ -338,7 +357,7 @@ ${JSON.stringify(userDoc.learnedPreferences, null, 2)}`,
           newMessage: analyzerMessage,
         });
 
-        const analyzerText = await processAdkEventsWithTrace(trace, analyzerEvents);
+        const analyzerText = await processAdkEventsWithTrace(trace, analyzerEvents, analyzerMessage);
 
         const analyzerMatch = analyzerText.match(/\{[\s\S]*\}/);
         if (!analyzerMatch) {
@@ -454,7 +473,7 @@ ${JSON.stringify(userDoc.learnedPreferences, null, 2)}`,
         newMessage: analyzerMessage,
       });
 
-      const analyzerText = await processAdkEventsWithTrace(trace, analyzerEvents);
+      const analyzerText = await processAdkEventsWithTrace(trace, analyzerEvents, analyzerMessage);
 
       const analyzerMatch = analyzerText.match(/\{[\s\S]*\}/);
       if (!analyzerMatch) {
@@ -582,7 +601,7 @@ ${Array.from(existingTitles).slice(0, 20).join(", ")}
       newMessage: message,
     });
 
-    const planText = await processAdkEventsWithTrace(trace, planEvents);
+    const planText = await processAdkEventsWithTrace(trace, planEvents, message);
 
     const planMatch = planText.match(/\{[\s\S]*\}/);
     if (!planMatch) {
@@ -668,7 +687,7 @@ ${existingTitles.join(", ")}
         newMessage: planMessage,
       });
 
-      const planText = await processAdkEventsWithTrace(trace, planEvents);
+      const planText = await processAdkEventsWithTrace(trace, planEvents, planMessage);
 
       const planMatch = planText.match(/\{[\s\S]*\}/);
       if (!planMatch) {
@@ -761,7 +780,7 @@ ${userDoc.learnedPreferences.dislikedIngredients.join(", ") || "なし"}
         newMessage: planMessage,
       });
 
-      const planText = await processAdkEventsWithTrace(trace, planEvents);
+      const planText = await processAdkEventsWithTrace(trace, planEvents, planMessage);
 
       const planMatch = planText.match(/\{[\s\S]*\}/);
       if (!planMatch) {
@@ -895,7 +914,7 @@ async function generateSingleRecipeDetail(
     async (trace) => {
       const events = runner.runAsync({ userId, sessionId, newMessage: userMessage });
 
-      const fullText = await processAdkEventsWithTrace(trace, events);
+      const fullText = await processAdkEventsWithTrace(trace, events, userMessage);
 
       const jsonMatch = fullText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
@@ -1179,7 +1198,7 @@ async function approvePlanAndGenerateDetails(
 export async function rejectPlan(
   request: RejectPlanRequest
 ): Promise<RejectPlanResponse> {
-  const { userId, planId } = request;
+  const { userId, planId, feedback } = request;
 
   // プランを取得して確認
   const plan = await getPlan(planId);
@@ -1197,6 +1216,17 @@ export async function rejectPlan(
 
   // プランをarchivedに変更（削除の代わり）
   await updatePlanStatus(planId, "archived");
+
+  // フィードバックがある場合はユーザードキュメントに保存
+  if (feedback && feedback.trim()) {
+    const { db } = await import("@/lib/firebase");
+    const { doc, updateDoc, serverTimestamp } = await import("firebase/firestore");
+    const userRef = doc(db, "users", userId);
+    await updateDoc(userRef, {
+      planRejectionFeedback: feedback.trim(),
+      updatedAt: serverTimestamp(),
+    });
+  }
 
   return {
     success: true,

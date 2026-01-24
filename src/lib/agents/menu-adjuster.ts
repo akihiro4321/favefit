@@ -76,7 +76,7 @@ export type MenuAdjusterOutput = z.infer<typeof MenuAdjusterOutputSchema>;
  */
 export const menuAdjusterAgent = new LlmAgent({
   name: "menu_adjuster",
-  model: "gemini-2.5-flash",
+  model: "gemini-2.5-flash-lite",
   description: "冷蔵庫の食材から臨機応変にレシピを提案する専門家。",
   instruction: `
 あなたは「今あるもので何とかする」料理の達人です。

@@ -14,9 +14,10 @@ import {
   Sparkles,
   PartyPopper,
 } from "lucide-react";
-import { getActivePlan } from "@/lib/plan";
+import { getActivePlan, getPendingPlan } from "@/lib/plan";
 import { DayPlan, PlanDocument } from "@/lib/schema";
 import Link from "next/link";
+import { PlanCreatingScreen } from "@/components/plan-creating-screen";
 
 export default function HomePage() {
   const { user, profile, loading, refreshProfile } = useAuth();
@@ -24,6 +25,9 @@ export default function HomePage() {
 
   const [todaysMeals, setTodaysMeals] = useState<DayPlan | null>(null);
   const [activePlan, setActivePlan] = useState<
+    (PlanDocument & { id: string }) | null
+  >(null);
+  const [pendingPlan, setPendingPlan] = useState<
     (PlanDocument & { id: string }) | null
   >(null);
   const [fetching, setFetching] = useState(true);
@@ -41,11 +45,17 @@ export default function HomePage() {
     const fetchData = async () => {
       if (!user) return;
       try {
-        const plan = await getActivePlan(user.uid);
-        setActivePlan(plan);
-        if (plan) {
+        const [active, pending] = await Promise.all([
+          getActivePlan(user.uid),
+          getPendingPlan(user.uid),
+        ]);
+        setActivePlan(active);
+        setPendingPlan(pending);
+        
+        // Activeプランがある場合は今日のメニューを設定
+        if (active) {
           const today = new Date().toISOString().split("T")[0];
-          setTodaysMeals(plan.days[today] || null);
+          setTodaysMeals(active.days[today] || null);
         }
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -64,11 +74,15 @@ export default function HomePage() {
       const interval = setInterval(async () => {
         await refreshProfile();
         // プランも再取得
-        const plan = await getActivePlan(user.uid);
-        if (plan) {
-          setActivePlan(plan);
+        const [active, pending] = await Promise.all([
+          getActivePlan(user.uid),
+          getPendingPlan(user.uid),
+        ]);
+        setActivePlan(active);
+        setPendingPlan(pending);
+        if (active) {
           const today = new Date().toISOString().split("T")[0];
-          setTodaysMeals(plan.days[today] || null);
+          setTodaysMeals(active.days[today] || null);
         }
       }, 5000); // 5秒ごとにチェック
       return () => clearInterval(interval);
@@ -87,32 +101,11 @@ export default function HomePage() {
   if (!user) return null;
 
   if (isPlanCreating) {
-    return (
-      <div className="container max-w-2xl mx-auto py-8 px-4 space-y-8">
-        <div className="text-center space-y-4 animate-pop-in">
-          <div className="w-20 h-20 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
-            <Loader2 className="w-10 h-10 text-primary animate-spin" />
-          </div>
-          <h1 className="text-2xl font-bold">プラン作成中...</h1>
-          <p className="text-muted-foreground">
-            AIが14日間の食事プランを生成しています。
-            <br />
-            作成には1〜2分かかります。
-          </p>
-          <div className="p-4 bg-muted/50 rounded-xl">
-            <p className="text-sm text-muted-foreground">
-              このページを開いたままお待ちいただくか、
-              <br />
-              しばらくしてから再度アクセスしてください。
-            </p>
-          </div>
-        </div>
-      </div>
-    );
+    return <PlanCreatingScreen />;
   }
 
-  // プランがない場合
-  if (!activePlan) {
+  // プランがない場合（activeもpendingもない）
+  if (!activePlan && !pendingPlan) {
     // オンボーディング完了済みならプラン作成ページへ、未完了ならオンボーディングへ
     const targetPath = profile?.onboardingCompleted ? "/plan" : "/onboarding";
     const buttonText = profile?.onboardingCompleted ? "プランを作成する" : "はじめる";
@@ -133,6 +126,30 @@ export default function HomePage() {
             onClick={() => router.push(targetPath)}
           >
             {buttonText}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Pending状態のプランがある場合は、プラン画面に誘導
+  if (!activePlan && pendingPlan) {
+    return (
+      <div className="container max-w-2xl mx-auto py-8 px-4 space-y-8">
+        <div className="text-center space-y-4 animate-pop-in">
+          <Sparkles className="w-16 h-16 mx-auto text-primary" />
+          <h1 className="text-3xl font-bold text-primary">プランが承認待ちです</h1>
+          <p className="text-muted-foreground">
+            プランが作成されました。
+            <br />
+            プラン画面で確認して承認してください。
+          </p>
+          <Button
+            size="lg"
+            className="rounded-full px-8 mt-4"
+            onClick={() => router.push("/plan")}
+          >
+            プランを確認する
           </Button>
         </div>
       </div>

@@ -51,7 +51,7 @@ export type PreferenceAnalysis = PreferenceLearnerOutput;
  */
 export const preferenceLearnerAgent = new LlmAgent({
   name: "preference_learner",
-  model: "gemini-2.5-flash",
+  model: "gemini-2.5-flash-lite",
   description: "ユーザーのフィードバックから嗜好を学習するエージェント。",
   instruction: `
 あなたはユーザーの食の好みを分析するAIです。
@@ -111,7 +111,7 @@ export type BoredomAnalysisOutput = z.infer<typeof BoredomAnalysisOutputSchema>;
  */
 export const boredomAnalyzerAgent = new LlmAgent({
   name: "boredom_analyzer",
-  model: "gemini-2.5-flash",
+  model: "gemini-2.5-flash-lite",
   description: "ユーザーの飽き状態を分析し、新しい方向性を提案するエージェント。",
   instruction: `
 あなたはユーザーの「食の飽き」を解消するスペシャリストです。

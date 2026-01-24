@@ -5,6 +5,7 @@ import "./globals.css";
 import { AuthProvider } from "@/components/auth-provider";
 import { Header } from "@/components/header";
 import { BottomNav } from "@/components/bottom-nav";
+import { Toaster } from "@/components/ui/toaster";
 
 const outfit = Outfit({
   variable: "--font-outfit",
@@ -34,12 +35,13 @@ export default function RootLayout({
         <AuthProvider>
           <Header />
 
-          <main className="flex-1 pb-20 container py-6 max-w-screen-md mx-auto">
+          <main className="flex-1 pb-20 pt-0 container py-6 max-w-screen-md mx-auto px-4">
             {children}
           </main>
 
           <BottomNav />
         </AuthProvider>
+        <Toaster />
       </body>
     </html>
   );

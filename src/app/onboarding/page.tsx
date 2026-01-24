@@ -26,6 +26,7 @@ import {
 import { updateUserProfile, completeOnboarding } from "@/lib/user";
 import { db } from "@/lib/firebase";
 import { doc, updateDoc, serverTimestamp, Timestamp } from "firebase/firestore";
+import { PlanCreatingScreen } from "@/components/plan-creating-screen";
 
 const TOTAL_STEPS = 5;
 
@@ -328,38 +329,10 @@ export default function OnboardingPage() {
   // プラン作成中画面
   if (isPlanCreating) {
     return (
-      <div className="container max-w-lg mx-auto py-8 px-4 min-h-screen flex flex-col justify-center">
-        <Card className="animate-pop-in">
-          <CardContent className="text-center py-12 space-y-6">
-            <div className="w-20 h-20 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
-              <Loader2 className="w-10 h-10 text-primary animate-spin" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-2xl font-bold">プラン作成中...</h2>
-              <p className="text-muted-foreground">
-                AIが14日間の食事プランを生成しています。
-              </p>
-            </div>
-            <div className="p-4 bg-muted/50 rounded-xl space-y-3">
-              <div className="flex items-center gap-2 justify-center text-sm text-muted-foreground">
-                <Clock className="w-4 h-4" />
-                <span>1〜2分程度かかります</span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                このページを閉じても問題ありません。
-                <br />
-                作成が完了したら、再度アクセスしてください。
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              onClick={() => router.push("/home")}
-            >
-              ホームに戻る
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <PlanCreatingScreen
+        showBackButton={true}
+        onBack={() => router.push("/home")}
+      />
     );
   }
 

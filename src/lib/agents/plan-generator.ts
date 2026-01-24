@@ -94,7 +94,7 @@ export type PlanGeneratorOutput = z.infer<typeof PlanGeneratorOutputSchema>;
  */
 export const planGeneratorAgent = new LlmAgent({
   name: "plan_generator",
-  model: "gemini-2.5-flash",
+  model: "gemini-2.5-flash-lite",
   description: "14日間の食事プランと買い物リストを生成する専門家。",
   instruction: `
 あなたはダイエット成功をサポートする献立プランナーです。

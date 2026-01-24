@@ -88,7 +88,7 @@ export async function getRecipeDetail(
     async (trace) => {
       const events = runner.runAsync({ userId, sessionId, newMessage: userMessage });
 
-      const fullText = await processAdkEventsWithTrace(trace, events);
+      const fullText = await processAdkEventsWithTrace(trace, events, userMessage);
 
       const jsonMatch = fullText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {

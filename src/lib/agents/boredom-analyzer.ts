@@ -59,7 +59,7 @@ export type BoredomAnalyzerOutput = z.infer<typeof BoredomAnalyzerOutputSchema>;
  */
 export const boredomAnalyzerAgent = new LlmAgent({
   name: "boredom_analyzer",
-  model: "gemini-2.5-flash",
+  model: "gemini-2.5-flash-lite",
   description: "ユーザーの食事パターンを分析し、飽きを防止するための提案を行う専門家。",
   instruction: `
 あなたは「食事の飽き」を分析する専門家です。

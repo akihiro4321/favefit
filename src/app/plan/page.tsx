@@ -20,6 +20,10 @@ import { BoredomRefreshDialog } from "@/components/boredom-refresh-dialog";
 import { PlanSummary } from "@/components/plan-summary";
 import Link from "next/link";
 import { CheckCircle2, XCircle } from "lucide-react";
+import { ConfirmDialog, useConfirmDialog } from "@/components/ui/confirm-dialog";
+import { toast } from "sonner";
+import { PlanCreatingScreen } from "@/components/plan-creating-screen";
+import { PlanRejectionFeedbackDialog } from "@/components/plan-rejection-feedback-dialog";
 
 export default function PlanPage() {
   const { user, profile, loading, refreshProfile } = useAuth();
@@ -35,6 +39,8 @@ export default function PlanPage() {
   const [showBoredomDialog, setShowBoredomDialog] = useState(false);
   const [approving, setApproving] = useState(false);
   const [targetCalories, setTargetCalories] = useState<number | undefined>();
+  const [showRefreshDialog, setShowRefreshDialog] = useState(false);
+  const [showRejectFeedbackDialog, setShowRejectFeedbackDialog] = useState(false);
 
   // プラン作成中かどうか
   const isPlanCreating = profile?.planCreationStatus === "creating";
@@ -109,21 +115,7 @@ export default function PlanPage() {
 
   // プラン作成中の場合はスピナーを表示
   if (isPlanCreating) {
-    return (
-      <div className="container max-w-2xl mx-auto py-8 px-4 space-y-8">
-        <div className="text-center space-y-4 animate-pop-in">
-          <div className="w-20 h-20 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
-            <Loader2 className="w-10 h-10 text-primary animate-spin" />
-          </div>
-          <h1 className="text-2xl font-bold">プラン作成中...</h1>
-          <p className="text-muted-foreground">
-            AIが14日間の食事プランを生成しています。
-            <br />
-            作成には1〜2分かかります。
-          </p>
-        </div>
-      </div>
-    );
+    return <PlanCreatingScreen />;
   }
 
   const handleGeneratePlan = async () => {
@@ -140,17 +132,15 @@ export default function PlanPage() {
         throw new Error(error.error || "プラン生成に失敗しました");
       }
 
-      // プランを再取得（pending状態で生成される）
-      const [active, pending] = await Promise.all([
-        getActivePlan(user.uid),
-        getPendingPlan(user.uid),
-      ]);
-      setActivePlan(active);
-      setPendingPlan(pending);
+      // プロフィールを更新してplanCreationStatusを確認
+      // これにより、isPlanCreatingがtrueになり、プラン作成中画面が表示される
+      await refreshProfile();
+      
+      // プラン作成中画面が表示されるため、ここではプランを再取得しない
+      // プラン生成完了後、useEffectのポーリングで自動的にプランが取得される
     } catch (error) {
       console.error("Generate plan error:", error);
-      alert(error instanceof Error ? error.message : "プラン生成に失敗しました");
-    } finally {
+      toast.error(error instanceof Error ? error.message : "プラン生成に失敗しました");
       setFetching(false);
     }
   };
@@ -182,32 +172,33 @@ export default function PlanPage() {
       setActivePlan(active);
       setPendingPlan(pending);
 
-      alert("プランを承認しました。レシピ詳細を生成中です。\n完了まで1〜2分かかる場合があります。");
+      toast.success("プランを承認しました。レシピ詳細を生成中です。完了まで1〜2分かかる場合があります。");
     } catch (error) {
       console.error("Approve plan error:", error);
-      alert(error instanceof Error ? error.message : "プラン承認に失敗しました");
+      toast.error(error instanceof Error ? error.message : "プラン承認に失敗しました");
     } finally {
       setApproving(false);
     }
   };
 
-  const handleRejectPlan = async () => {
+  const handleRejectPlan = () => {
     if (!pendingPlan) return;
+    setShowRejectFeedbackDialog(true);
+  };
 
-    const confirmed = confirm(
-      "このプランを拒否しますか？\n別のプランを生成できます。"
-    );
-
-    if (!confirmed) return;
+  const executeRejectPlan = async (feedback: string = "") => {
+    if (!pendingPlan) return;
 
     setFetching(true);
     try {
+      // プランを拒否
       const res = await fetch("/api/plan/reject", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: user.uid,
           planId: pendingPlan.id,
+          feedback: feedback || undefined,
         }),
       });
 
@@ -216,30 +207,47 @@ export default function PlanPage() {
         throw new Error(result.error || "プラン拒否に失敗しました");
       }
 
-      // プランを再取得
+      // プランを再取得（拒否後はプランなし状態になる）
       const pending = await getPendingPlan(user.uid);
       setPendingPlan(pending);
 
-      alert("プランを拒否しました。");
+      toast.success("プランを拒否しました。フィードバックを参考に新しいプランを生成します。");
+      
+      // プロフィールを更新
+      await refreshProfile();
+
+      // フィードバックを参考に新しいプラン生成を自動的に開始
+      const generateRes = await fetch("/api/plan/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.uid }),
+      });
+
+      if (!generateRes.ok) {
+        const error = await generateRes.json();
+        throw new Error(error.error || "プラン生成に失敗しました");
+      }
+
+      // プロフィールを更新してplanCreationStatusを確認
+      // これにより、isPlanCreatingがtrueになり、プラン作成中画面が表示される
+      await refreshProfile();
+      
+      // プラン作成中画面が表示されるため、ここではプランを再取得しない
+      // プラン生成完了後、useEffectのポーリングで自動的にプランが取得される
     } catch (error) {
       console.error("Reject plan error:", error);
-      alert(error instanceof Error ? error.message : "プラン拒否に失敗しました");
-    } finally {
+      toast.error(error instanceof Error ? error.message : "プラン拒否または生成に失敗しました");
       setFetching(false);
     }
   };
 
-  const handleRefreshPlan = async () => {
+  const handleRefreshPlan = () => {
     if (!activePlan) return;
-    
-    // 確認ダイアログ
-    const confirmed = confirm(
-      "14日間のプランを一括で再生成しますか？\n" +
-      "現在のプランはアーカイブされ、新しいプランが生成されます。\n" +
-      "生成後、プランを確認して承認してください。"
-    );
-    
-    if (!confirmed) return;
+    setShowRefreshDialog(true);
+  };
+
+  const executeRefreshPlan = async () => {
+    if (!activePlan) return;
 
     setFetching(true);
     try {
@@ -256,24 +264,17 @@ export default function PlanPage() {
         throw new Error(error.error || "一括再生成に失敗しました");
       }
 
-      const result = await res.json();
+      // プロフィールを更新してplanCreationStatusを確認
+      // これにより、isPlanCreatingがtrueになり、プラン作成中画面が表示される
+      await refreshProfile();
       
-      // プランを再取得（pending状態で生成される）
-      const [active, pending] = await Promise.all([
-        getActivePlan(user.uid),
-        getPendingPlan(user.uid),
-      ]);
-      setActivePlan(active);
-      setPendingPlan(pending);
-
-      alert(
-        "14日間のプランを一括再生成しました。\n" +
-        "プランを確認して承認してください。"
-      );
+      toast.success("14日間のプランを一括再生成しました。プラン生成中です...");
+      
+      // プラン作成中画面が表示されるため、ここではプランを再取得しない
+      // プラン生成完了後、useEffectのポーリングで自動的にプランが取得される
     } catch (error) {
       console.error("Refresh plan error:", error);
-      alert(error instanceof Error ? error.message : "一括再生成に失敗しました");
-    } finally {
+      toast.error(error instanceof Error ? error.message : "一括再生成に失敗しました");
       setFetching(false);
     }
   };
@@ -413,6 +414,24 @@ export default function PlanPage() {
           onClose={() => setShowBoredomDialog(false)}
         />
       )}
+
+      {/* 一括再生成確認ダイアログ */}
+      <ConfirmDialog
+        open={showRefreshDialog}
+        onOpenChange={setShowRefreshDialog}
+        title="14日間のプランを一括で再生成しますか？"
+        description="現在のプランはアーカイブされ、新しいプランが生成されます。生成後、プランを確認して承認してください。"
+        confirmText="再生成する"
+        cancelText="キャンセル"
+        onConfirm={executeRefreshPlan}
+      />
+
+      {/* プラン拒否フィードバックダイアログ */}
+      <PlanRejectionFeedbackDialog
+        open={showRejectFeedbackDialog}
+        onOpenChange={setShowRejectFeedbackDialog}
+        onConfirm={executeRejectPlan}
+      />
 
       {/* 日別カード */}
       <div className="space-y-3">
