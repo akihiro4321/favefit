@@ -5,6 +5,7 @@
  * Tailwind CSS v4の依存関係として必要なlightningcssが正しく動作するようにします
  */
 
+/* eslint-disable @typescript-eslint/no-require-imports */
 const fs = require('fs');
 const path = require('path');
 

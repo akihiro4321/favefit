@@ -6,7 +6,6 @@
  * 注意: 本番環境では Cloud Functions 等でバッチ実行する想定
  */
 
-import { NextResponse } from "next/server";
 import { updateMarketPrices, getMarketPrices } from "@/lib/services/market-service";
 import { HttpError, successResponse } from "@/lib/api-utils";
 

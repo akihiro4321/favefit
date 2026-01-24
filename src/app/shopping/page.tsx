@@ -29,7 +29,6 @@ export default function ShoppingPage() {
     Record<string, Record<string, ShoppingItem[]>>
   >({});
   const [planId, setPlanId] = useState<string | null>(null);
-  const [startDate, setStartDate] = useState<string | null>(null);
   const [fetching, setFetching] = useState(true);
   const [viewMode, setViewMode] = useState<"category" | "week">("category");
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
@@ -52,7 +51,6 @@ export default function ShoppingPage() {
         const plan = await getActivePlan(user.uid);
         if (plan) {
           setPlanId(plan.id);
-          setStartDate(plan.startDate);
           
           // カテゴリ別表示
           const items = await getItemsByCategory(plan.id);

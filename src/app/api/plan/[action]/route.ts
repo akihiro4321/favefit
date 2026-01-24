@@ -13,6 +13,8 @@ import {
   refreshPlan,
   refreshPlanWithFeedback,
   suggestBoredomRecipes,
+  approvePlan,
+  rejectPlan,
 } from "@/lib/services/plan-service";
 import { HttpError, successResponse } from "@/lib/api-utils";
 
@@ -33,6 +35,16 @@ const RefreshPlanWithFeedbackRequestSchema = z.object({
 
 const SuggestBoredomRecipesRequestSchema = z.object({
   userId: z.string().min(1, "userId は必須です"),
+});
+
+const ApprovePlanRequestSchema = z.object({
+  userId: z.string().min(1, "userId は必須です"),
+  planId: z.string().min(1, "planId は必須です"),
+});
+
+const RejectPlanRequestSchema = z.object({
+  userId: z.string().min(1, "userId は必須です"),
+  planId: z.string().min(1, "planId は必須です"),
 });
 
 /**
@@ -65,6 +77,16 @@ export async function POST(
       case "suggest-boredom-recipes": {
         const validated = SuggestBoredomRecipesRequestSchema.parse(body);
         const result = await suggestBoredomRecipes(validated);
+        return successResponse(result);
+      }
+      case "approve": {
+        const validated = ApprovePlanRequestSchema.parse(body);
+        const result = await approvePlan(validated);
+        return successResponse(result);
+      }
+      case "reject": {
+        const validated = RejectPlanRequestSchema.parse(body);
+        const result = await rejectPlan(validated);
         return successResponse(result);
       }
       default:

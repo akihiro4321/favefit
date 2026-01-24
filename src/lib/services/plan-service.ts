@@ -3,15 +3,16 @@
  * プラン生成・リフレッシュに関するビジネスロジック
  */
 
-import { InMemoryRunner, stringifyContent } from "@google/adk";
+import { InMemoryRunner } from "@google/adk";
 import { planGeneratorAgent, PlanGeneratorInput } from "@/lib/agents/plan-generator";
 import { boredomAnalyzerAgent } from "@/lib/agents/boredom-analyzer";
 import { getOrCreateUser, setPlanCreating, setPlanCreated } from "@/lib/user";
-import { createPlan, updatePlanStatus, getActivePlan, updatePlanDays } from "@/lib/plan";
+import { createPlan, updatePlanStatus, getActivePlan, updatePlanDays, getPlan, updateMealSlot } from "@/lib/plan";
 import { createShoppingList } from "@/lib/shoppingList";
 import { getFavorites } from "@/lib/recipeHistory";
 import { DayPlan, MealSlot, ShoppingItem } from "@/lib/schema";
 import { withLangfuseTrace, processAdkEventsWithTrace } from "@/lib/langfuse";
+import { recipeCreatorAgent, buildRecipePrompt } from "@/lib/agents/recipe-creator";
 
 interface MealInfo {
   date: string;
@@ -26,6 +27,26 @@ export interface GeneratePlanRequest {
 
 export interface GeneratePlanResponse {
   status: "started" | "already_creating";
+  message: string;
+}
+
+export interface ApprovePlanRequest {
+  userId: string;
+  planId: string;
+}
+
+export interface ApprovePlanResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface RejectPlanRequest {
+  userId: string;
+  planId: string;
+}
+
+export interface RejectPlanResponse {
+  success: boolean;
   message: string;
 }
 
@@ -231,20 +252,10 @@ ${JSON.stringify(input, null, 2)}`;
           };
         }
 
-        const planId = await createPlan(userId, startDate, days);
+        // pending状態でプランを作成（承認後にレシピ詳細を生成）
+        const planId = await createPlan(userId, startDate, days, "pending");
 
-        const shoppingItems: ShoppingItem[] = (result.shoppingList || []).map(
-          (item: { ingredient: string; amount: string; category: string }) => ({
-            ingredient: item.ingredient,
-            amount: item.amount,
-            category: item.category || "その他",
-            checked: false,
-          })
-        );
-
-        await createShoppingList(planId, shoppingItems);
-
-        console.log(`Plan created successfully for user ${userId}: planId=${planId}`);
+        console.log(`Plan created successfully for user ${userId}: planId=${planId} (pending)`);
         return { planId, daysCount: Object.keys(days).length };
       }
     );
@@ -838,4 +849,357 @@ function convertPlanResultToDays(planResult: {
   }
 
   return updatedDays;
+}
+
+/**
+ * レシピ詳細を1つ生成（内部関数）
+ */
+async function generateSingleRecipeDetail(
+  userId: string,
+  planId: string,
+  date: string,
+  mealType: "breakfast" | "lunch" | "dinner",
+  meal: MealSlot
+): Promise<void> {
+  // 既に詳細が存在する場合はスキップ
+  if (meal.ingredients && meal.ingredients.length > 0 && meal.steps && meal.steps.length > 0) {
+    return;
+  }
+
+  const userDoc = await getOrCreateUser(userId);
+  const prompt = buildRecipePrompt(userDoc, meal.title, meal.nutrition);
+
+  const runner = new InMemoryRunner({
+    agent: recipeCreatorAgent,
+    appName: "FaveFit",
+  });
+
+  const sessionId = `recipe-gen-${userId}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+  await runner.sessionService.createSession({
+    sessionId,
+    userId,
+    appName: "FaveFit",
+    state: {},
+  });
+
+  const userMessage = {
+    role: "user",
+    parts: [{ text: prompt }],
+  };
+
+  const aiResult = await withLangfuseTrace(
+    "generate-recipe-detail-batch",
+    userId,
+    { recipeTitle: meal.title, date, mealType },
+    async (trace) => {
+      const events = runner.runAsync({ userId, sessionId, newMessage: userMessage });
+
+      const fullText = await processAdkEventsWithTrace(trace, events);
+
+      const jsonMatch = fullText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error("AI応答からレシピ詳細JSONを抽出できませんでした");
+      }
+
+      return JSON.parse(jsonMatch[0]);
+    }
+  );
+
+  const ingredients = aiResult.ingredients.map(
+    (i: { name: string; amount: string }) => `${i.name}: ${i.amount}`
+  );
+  const steps = aiResult.instructions || aiResult.steps;
+
+  const updates = {
+    ingredients,
+    steps: steps || [],
+  };
+
+  await updateMealSlot(planId, date, mealType, updates);
+}
+
+/**
+ * レシピ詳細をバッチ処理で生成
+ * 5食ずつ、並列3件、バッチ間に1秒待機
+ */
+async function generateRecipeDetailsBatch(
+  userId: string,
+  planId: string,
+  days: Record<string, DayPlan>
+): Promise<void> {
+  // すべてのレシピをキューに追加
+  const recipeQueue: Array<{
+    date: string;
+    mealType: "breakfast" | "lunch" | "dinner";
+    meal: MealSlot;
+  }> = [];
+
+  for (const [date, dayPlan] of Object.entries(days)) {
+    for (const mealType of ["breakfast", "lunch", "dinner"] as const) {
+      const meal = dayPlan.meals[mealType];
+      // 既に詳細がある場合はスキップ
+      if (!meal.ingredients || meal.ingredients.length === 0) {
+        recipeQueue.push({ date, mealType, meal });
+      }
+    }
+  }
+
+  if (recipeQueue.length === 0) {
+    console.log("All recipes already have details, skipping generation");
+    return;
+  }
+
+  const BATCH_SIZE = 5;
+  const CONCURRENT_LIMIT = 3;
+
+  console.log(`Generating recipe details for ${recipeQueue.length} meals in batches of ${BATCH_SIZE}`);
+
+  for (let i = 0; i < recipeQueue.length; i += BATCH_SIZE) {
+    const batch = recipeQueue.slice(i, i + BATCH_SIZE);
+    const concurrentBatch = batch.slice(0, CONCURRENT_LIMIT);
+
+    // 並列実行（制限あり）
+    const promises = concurrentBatch.map(({ date, mealType, meal }) =>
+      generateSingleRecipeDetail(userId, planId, date, mealType, meal).catch((error) => {
+        console.error(`Failed to generate recipe for ${date} ${mealType}:`, error);
+        return null; // エラーでも続行
+      })
+    );
+
+    await Promise.allSettled(promises);
+
+    // バッチ間に待機（APIレート制限対策）
+    if (i + BATCH_SIZE < recipeQueue.length) {
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // 1秒待機
+    }
+  }
+
+  console.log(`Completed generating recipe details for ${recipeQueue.length} meals`);
+}
+
+/**
+ * レシピ詳細から買い物リストを生成
+ */
+async function generateShoppingListFromRecipes(
+  planId: string,
+  days: Record<string, DayPlan>
+): Promise<void> {
+  // すべてのレシピの材料を集計
+  const ingredientMap = new Map<string, { amount: string; category: string }>();
+
+  for (const dayPlan of Object.values(days)) {
+    for (const meal of Object.values(dayPlan.meals)) {
+      if (meal.ingredients && meal.ingredients.length > 0) {
+        for (const ingredientStr of meal.ingredients) {
+          // "材料名: 分量" の形式をパース
+          const match = ingredientStr.match(/^(.+?):\s*(.+)$/);
+          if (match) {
+            const [, name, amount] = match;
+            const normalizedName = name.trim();
+
+            // 既に存在する場合は統合（分量を合計）
+            if (ingredientMap.has(normalizedName)) {
+              const existing = ingredientMap.get(normalizedName)!;
+              // 分量の統合は簡易的に「,」で結合（実際のアプリではより高度な統合が必要）
+              existing.amount = `${existing.amount}, ${amount.trim()}`;
+            } else {
+              // カテゴリの推定（簡易版）
+              const category = categorizeIngredient(normalizedName);
+              ingredientMap.set(normalizedName, {
+                amount: amount.trim(),
+                category,
+              });
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // ShoppingItemに変換
+  const shoppingItems: ShoppingItem[] = Array.from(ingredientMap.entries()).map(
+    ([ingredient, { amount, category }]) => ({
+      ingredient,
+      amount,
+      category,
+      checked: false,
+    })
+  );
+
+  // カテゴリ別にソート
+  const categoryOrder: Record<string, number> = {
+    野菜: 1,
+    肉: 2,
+    魚: 3,
+    調味料: 4,
+    その他: 99,
+  };
+
+  shoppingItems.sort((a, b) => {
+    const orderA = categoryOrder[a.category] || 99;
+    const orderB = categoryOrder[b.category] || 99;
+    if (orderA !== orderB) {
+      return orderA - orderB;
+    }
+    return a.ingredient.localeCompare(b.ingredient);
+  });
+
+  await createShoppingList(planId, shoppingItems);
+  console.log(`Created shopping list with ${shoppingItems.length} items`);
+}
+
+/**
+ * 材料名からカテゴリを推定（簡易版）
+ */
+function categorizeIngredient(ingredient: string): string {
+  const lower = ingredient.toLowerCase();
+
+  if (
+    lower.includes("野菜") ||
+    lower.includes("キャベツ") ||
+    lower.includes("もやし") ||
+    lower.includes("トマト") ||
+    lower.includes("玉ねぎ") ||
+    lower.includes("にんじん") ||
+    lower.includes("きゅうり") ||
+    lower.includes("レタス") ||
+    lower.includes("ほうれん草")
+  ) {
+    return "野菜";
+  }
+
+  if (
+    lower.includes("肉") ||
+    lower.includes("鶏") ||
+    lower.includes("豚") ||
+    lower.includes("牛") ||
+    lower.includes("ハム") ||
+    lower.includes("ベーコン")
+  ) {
+    return "肉";
+  }
+
+  if (
+    lower.includes("魚") ||
+    lower.includes("サーモン") ||
+    lower.includes("マグロ") ||
+    lower.includes("サバ") ||
+    lower.includes("イワシ")
+  ) {
+    return "魚";
+  }
+
+  if (
+    lower.includes("醤油") ||
+    lower.includes("塩") ||
+    lower.includes("胡椒") ||
+    lower.includes("砂糖") ||
+    lower.includes("油") ||
+    lower.includes("酢") ||
+    lower.includes("みそ") ||
+    lower.includes("だし")
+  ) {
+    return "調味料";
+  }
+
+  return "その他";
+}
+
+/**
+ * プランを承認し、レシピ詳細生成を開始
+ */
+export async function approvePlan(
+  request: ApprovePlanRequest
+): Promise<ApprovePlanResponse> {
+  const { userId, planId } = request;
+
+  // プランを取得して確認
+  const plan = await getPlan(planId);
+  if (!plan) {
+    throw new Error("プランが見つかりません");
+  }
+
+  if (plan.userId !== userId) {
+    throw new Error("このプランにアクセスする権限がありません");
+  }
+
+  if (plan.status !== "pending") {
+    throw new Error("このプランは承認可能な状態ではありません");
+  }
+
+  // プランのステータスをactiveに変更
+  await updatePlanStatus(planId, "active");
+
+  // バックグラウンドでレシピ詳細生成を開始
+  approvePlanAndGenerateDetails(userId, planId, plan.days).catch((error) => {
+    console.error("Background recipe detail generation failed:", error);
+  });
+
+  return {
+    success: true,
+    message: "プランを承認しました。レシピ詳細を生成中です。",
+  };
+}
+
+/**
+ * プラン承認後のレシピ詳細生成（バックグラウンド処理）
+ */
+async function approvePlanAndGenerateDetails(
+  userId: string,
+  planId: string,
+  days: Record<string, DayPlan>
+): Promise<void> {
+  try {
+    await withLangfuseTrace(
+      "approve-plan-and-generate-details",
+      userId,
+      { planId, daysCount: Object.keys(days).length },
+      async () => {
+        // レシピ詳細をバッチ処理で生成
+        await generateRecipeDetailsBatch(userId, planId, days);
+
+        // 買い物リストを生成
+        await generateShoppingListFromRecipes(planId, days);
+
+        console.log(
+          `Completed recipe detail generation and shopping list for plan ${planId}`
+        );
+      }
+    );
+  } catch (error) {
+    console.error("Error in approvePlanAndGenerateDetails:", error);
+    throw error;
+  }
+}
+
+/**
+ * プランを拒否（削除）
+ */
+export async function rejectPlan(
+  request: RejectPlanRequest
+): Promise<RejectPlanResponse> {
+  const { userId, planId } = request;
+
+  // プランを取得して確認
+  const plan = await getPlan(planId);
+  if (!plan) {
+    throw new Error("プランが見つかりません");
+  }
+
+  if (plan.userId !== userId) {
+    throw new Error("このプランにアクセスする権限がありません");
+  }
+
+  if (plan.status !== "pending") {
+    throw new Error("このプランは拒否可能な状態ではありません");
+  }
+
+  // プランをarchivedに変更（削除の代わり）
+  await updatePlanStatus(planId, "archived");
+
+  return {
+    success: true,
+    message: "プランを拒否しました。",
+  };
 }

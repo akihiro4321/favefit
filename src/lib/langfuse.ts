@@ -210,7 +210,7 @@ export async function processAdkEventsWithTrace(
   }
 
   // 残っているtool spanを完了
-  for (const [name, span] of toolSpans.entries()) {
+  for (const [, span] of toolSpans.entries()) {
     span.end();
   }
 

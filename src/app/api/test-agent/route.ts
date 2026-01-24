@@ -3,7 +3,6 @@
  * POST /api/test-agent
  */
 
-import { NextRequest } from "next/server";
 import { testAgent } from "@/lib/services/test-agent-service";
 import { HttpError, successResponse, withValidation } from "@/lib/api-utils";
 import { z } from "zod";

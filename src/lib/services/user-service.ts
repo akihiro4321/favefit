@@ -6,7 +6,7 @@
 import { InMemoryRunner, stringifyContent } from "@google/adk";
 import { nutritionPlannerAgent } from "@/lib/agents/nutrition-planner";
 import { preferenceLearnerAgent, PreferenceAnalysis } from "@/lib/agents/preference-learner";
-import { updateUserNutrition, getOrCreateUser, updateLearnedPreferences } from "@/lib/user";
+import { updateUserNutrition, updateLearnedPreferences } from "@/lib/user";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { withLangfuseTrace, processAdkEventsWithTrace } from "@/lib/langfuse";

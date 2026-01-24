@@ -3,7 +3,6 @@
  * POST /api/menu
  */
 
-import { NextRequest } from "next/server";
 import { suggestMenu } from "@/lib/services/menu-service";
 import { HttpError, successResponse, withValidation } from "@/lib/api-utils";
 import { z } from "zod";

@@ -106,6 +106,11 @@ export default function FridgePage() {
   };
 
   const handleSelect = async (recipe: SuggestedRecipe) => {
+    if (!user) {
+      alert("ログインが必要です");
+      return;
+    }
+
     // 差し替えモードの場合
     if (swapInfo) {
       setSwapping(true);

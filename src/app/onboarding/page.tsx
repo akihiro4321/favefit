@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Slider } from "@/components/ui/slider";
 import {
   Loader2,
   ChevronRight,
@@ -78,9 +77,33 @@ export default function OnboardingPage() {
   useEffect(() => {
     if (profile?.profile) {
       // deadlineをYYYY-MM-DD形式に変換
-      const deadlineDate = profile.profile.deadline
-        ? new Date(profile.profile.deadline.toDate())
-        : null;
+      let deadlineDate: Date | null = null;
+      if (profile.profile.deadline) {
+        // FirestoreのTimestampオブジェクトの場合
+        if (typeof profile.profile.deadline.toDate === "function") {
+          deadlineDate = profile.profile.deadline.toDate();
+        }
+        // 既にDateオブジェクトの場合
+        else if (profile.profile.deadline instanceof Date) {
+          deadlineDate = profile.profile.deadline;
+        }
+        // 数値（タイムスタンプ）の場合
+        else if (typeof profile.profile.deadline === "number") {
+          deadlineDate = new Date(profile.profile.deadline);
+        }
+        // 文字列の場合
+        else if (typeof profile.profile.deadline === "string") {
+          deadlineDate = new Date(profile.profile.deadline);
+        }
+        // secondsとnanosecondsプロパティがある場合（Firestore Timestampのシリアライズ形式）
+        else if (
+          typeof profile.profile.deadline === "object" &&
+          "seconds" in profile.profile.deadline
+        ) {
+          const ts = profile.profile.deadline as { seconds: number; nanoseconds?: number };
+          deadlineDate = new Date(ts.seconds * 1000 + (ts.nanoseconds || 0) / 1000000);
+        }
+      }
       const deadlineStr = deadlineDate
         ? deadlineDate.toISOString().split("T")[0]
         : "";

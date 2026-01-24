@@ -35,7 +35,8 @@ import {
 export const createPlan = async (
   userId: string,
   startDate: string,
-  days: Record<string, DayPlan>
+  days: Record<string, DayPlan>,
+  status: PlanStatus = "active"
 ): Promise<string> => {
   try {
     const plansRef = collection(db, "plans");
@@ -44,7 +45,7 @@ export const createPlan = async (
     const newPlan: PlanDocument = {
       userId,
       startDate,
-      status: "active",
+      status,
       days,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -103,6 +104,36 @@ export const getActivePlan = async (
     return { ...doc.data(), id: doc.id } as PlanDocument & { id: string };
   } catch (error) {
     console.error("Error getting active plan:", error);
+    return null;
+  }
+};
+
+/**
+ * ユーザーのpending状態のプランを取得
+ */
+export const getPendingPlan = async (
+  userId: string
+): Promise<(PlanDocument & { id: string }) | null> => {
+  try {
+    const plansRef = collection(db, "plans");
+    const q = query(
+      plansRef,
+      where("userId", "==", userId),
+      where("status", "==", "pending"),
+      orderBy("createdAt", "desc"),
+      limit(1)
+    );
+
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+      return null;
+    }
+
+    const doc = querySnapshot.docs[0];
+    return { ...doc.data(), id: doc.id } as PlanDocument & { id: string };
+  } catch (error) {
+    console.error("Error getting pending plan:", error);
     return null;
   }
 };

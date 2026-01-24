@@ -3,7 +3,7 @@
  * メニュー提案に関するビジネスロジック
  */
 
-import { InMemoryRunner, stringifyContent } from "@google/adk";
+import { InMemoryRunner } from "@google/adk";
 import { menuAdjusterAgent, MenuAdjusterInput } from "@/lib/agents/menu-adjuster";
 import { getOrCreateUser } from "@/lib/user";
 import { withLangfuseTrace, processAdkEventsWithTrace } from "@/lib/langfuse";

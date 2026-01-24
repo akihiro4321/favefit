@@ -62,7 +62,7 @@ export interface UserDocument {
 // ========================================
 
 export type MealStatus = "planned" | "completed" | "swapped";
-export type PlanStatus = "active" | "completed" | "archived";
+export type PlanStatus = "pending" | "active" | "completed" | "archived";
 
 export interface MealSlot {
   recipeId: string;
