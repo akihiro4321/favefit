@@ -22,22 +22,38 @@ export function PlanSummary({ days, targetCalories }: PlanSummaryProps) {
     day.meals.dinner,
   ]);
 
-  // 平均カロリー
+  // 平均カロリー（NaNチェック付き）
   const avgCalories =
-    allMeals.reduce((sum, meal) => sum + meal.nutrition.calories, 0) /
-    allMeals.length;
+    allMeals.length > 0
+      ? allMeals.reduce((sum, meal) => {
+          const calories = Number(meal.nutrition?.calories) || 0;
+          return sum + (isNaN(calories) ? 0 : calories);
+        }, 0) / allMeals.length
+      : 0;
 
-  // 平均PFC
+  // 平均PFC（NaNチェック付き）
   const avgPFC = {
     protein:
-      allMeals.reduce((sum, meal) => sum + meal.nutrition.protein, 0) /
-      allMeals.length,
+      allMeals.length > 0
+        ? allMeals.reduce((sum, meal) => {
+            const protein = Number(meal.nutrition?.protein) || 0;
+            return sum + (isNaN(protein) ? 0 : protein);
+          }, 0) / allMeals.length
+        : 0,
     fat:
-      allMeals.reduce((sum, meal) => sum + meal.nutrition.fat, 0) /
-      allMeals.length,
+      allMeals.length > 0
+        ? allMeals.reduce((sum, meal) => {
+            const fat = Number(meal.nutrition?.fat) || 0;
+            return sum + (isNaN(fat) ? 0 : fat);
+          }, 0) / allMeals.length
+        : 0,
     carbs:
-      allMeals.reduce((sum, meal) => sum + meal.nutrition.carbs, 0) /
-      allMeals.length,
+      allMeals.length > 0
+        ? allMeals.reduce((sum, meal) => {
+            const carbs = Number(meal.nutrition?.carbs) || 0;
+            return sum + (isNaN(carbs) ? 0 : carbs);
+          }, 0) / allMeals.length
+        : 0,
   };
 
   // タグの出現頻度

@@ -4,7 +4,7 @@
  */
 
 import { mastra } from "@/mastra";
-import { PlanGeneratorInput } from "@/mastra/agents/plan-generator";
+import { PlanGeneratorInput, PlanGeneratorOutputSchema } from "@/mastra/agents/plan-generator";
 import { getOrCreateUser, setPlanCreating, setPlanCreated } from "@/lib/user";
 import { createPlan, updatePlanStatus, getActivePlan, updatePlanDays, getPlan, updateMealSlot } from "@/lib/plan";
 import { createShoppingList } from "@/lib/shoppingList";
@@ -218,26 +218,44 @@ ${userDoc.planRejectionFeedback}
 このフィードバックを考慮して、より適切なプランを生成してください。`
       : "";
 
-    const messageText = `以下の情報に基づいて14日間の食事プランと買い物リストを生成してください。必ずJSON形式で出力してください。
+    const messageText = `以下の情報に基づいて14日間の食事プランと買い物リストを生成してください。
 
 【ユーザー情報】
 ${JSON.stringify(input, null, 2)}${feedbackText}`;
 
-    const result = await agent.generate(messageText);
+    // 構造化出力を使用してスキーマに準拠したデータを取得
+    const result = await agent.generate(messageText, {
+      structuredOutput: {
+        schema: PlanGeneratorOutputSchema,
+        // Gemini 2.5モデルではjsonPromptInjectionが必要な場合がある
+        jsonPromptInjection: true,
+      },
+    });
 
-    // 構造化出力が有効な場合は直接取得、そうでない場合はJSONをパース
+    // 構造化出力が有効な場合はresult.objectから直接取得
     let parsedResult;
-    if (result.text) {
+    if (result.object) {
+      parsedResult = result.object;
+    } else if (result.text) {
+      // フォールバック: テキストからJSONを抽出
       const jsonMatch = result.text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         console.error("Failed to extract JSON:", result.text);
         throw new Error("AI応答からJSONを抽出できませんでした");
       }
       parsedResult = JSON.parse(jsonMatch[0]);
-    } else if (result.object) {
-      parsedResult = result.object;
     } else {
       throw new Error("AI応答が無効です");
+    }
+
+    // スキーマ検証（PlanGeneratorOutputSchemaで検証）
+    if (!parsedResult.days || !Array.isArray(parsedResult.days)) {
+      throw new Error("AI応答にdays配列が含まれていません");
+    }
+
+    // 14日間のプランであることを検証
+    if (parsedResult.days.length !== 14) {
+      throw new Error(`プランは14日間である必要がありますが、${parsedResult.days.length}日間でした`);
     }
 
     const days: Record<string, DayPlan> = {};
@@ -252,28 +270,49 @@ ${JSON.stringify(input, null, 2)}${feedbackText}`;
         ingredients?: string[];
         steps?: string[];
         nutrition: { calories: number; protein: number; fat: number; carbs: number };
-      }): MealSlot => ({
-        recipeId:
-          meal.recipeId || `recipe-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        title: meal.title,
-        status: "planned",
-        nutrition: meal.nutrition,
-        tags: meal.tags || [],
-        ingredients: meal.ingredients || [],
-        steps: meal.steps || [],
-      });
+      }): MealSlot => {
+        // nutritionの各フィールドを検証・変換（防御的プログラミング）
+        const safeNutrition = {
+          calories: Number(meal.nutrition?.calories) || 0,
+          protein: Number(meal.nutrition?.protein) || 0,
+          fat: Number(meal.nutrition?.fat) || 0,
+          carbs: Number(meal.nutrition?.carbs) || 0,
+        };
+
+        return {
+          recipeId:
+            meal.recipeId || `recipe-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          title: meal.title,
+          status: "planned",
+          nutrition: safeNutrition,
+          tags: meal.tags || [],
+          ingredients: meal.ingredients || [],
+          steps: meal.steps || [],
+        };
+      };
 
       const breakfast = convertMeal(day.breakfast);
       const lunch = convertMeal(day.lunch);
       const dinner = convertMeal(day.dinner);
 
+      // totalNutrition計算時のNaNチェック（防御的プログラミング）
       const totalNutrition = {
         calories:
-          breakfast.nutrition.calories + lunch.nutrition.calories + dinner.nutrition.calories,
+          (Number(breakfast.nutrition.calories) || 0) +
+          (Number(lunch.nutrition.calories) || 0) +
+          (Number(dinner.nutrition.calories) || 0),
         protein:
-          breakfast.nutrition.protein + lunch.nutrition.protein + dinner.nutrition.protein,
-        fat: breakfast.nutrition.fat + lunch.nutrition.fat + dinner.nutrition.fat,
-        carbs: breakfast.nutrition.carbs + lunch.nutrition.carbs + dinner.nutrition.carbs,
+          (Number(breakfast.nutrition.protein) || 0) +
+          (Number(lunch.nutrition.protein) || 0) +
+          (Number(dinner.nutrition.protein) || 0),
+        fat:
+          (Number(breakfast.nutrition.fat) || 0) +
+          (Number(lunch.nutrition.fat) || 0) +
+          (Number(dinner.nutrition.fat) || 0),
+        carbs:
+          (Number(breakfast.nutrition.carbs) || 0) +
+          (Number(lunch.nutrition.carbs) || 0) +
+          (Number(dinner.nutrition.carbs) || 0),
       };
 
       days[date] = {
@@ -579,7 +618,7 @@ async function generatePlanDays(
 ): Promise<Record<string, DayPlan>> {
   const planAgent = mastra.getAgent("planGenerator");
 
-  const planMessageText = `以下の日付の食事プランを新しく生成してください。既存のメニューとは異なるものにしてください。JSON形式で出力してください。
+  const planMessageText = `以下の日付の食事プランを新しく生成してください。既存のメニューとは異なるものにしてください。
 
 【対象日】
 ${dates.join(", ")}
@@ -594,33 +633,27 @@ ${dates.join(", ")}
 ${userDoc.learnedPreferences.dislikedIngredients.join(", ") || "なし"}
 
 【既存のメニュー（これらとは異なるものを提案）】
-${existingTitles.join(", ")}
+${existingTitles.join(", ")}`;
 
-出力形式:
-{
-  "days": [
-    {
-      "date": "YYYY-MM-DD",
-      "isCheatDay": false,
-      "breakfast": { "recipeId": "...", "title": "...", "tags": [...], "nutrition": {...} },
-      "lunch": { ... },
-      "dinner": { ... }
-    }
-  ]
-}`;
+  // 構造化出力を使用してスキーマに準拠したデータを取得
+  const planResult1 = await planAgent.generate(planMessageText, {
+    structuredOutput: {
+      schema: PlanGeneratorOutputSchema,
+      jsonPromptInjection: true,
+    },
+  });
 
-  const planResult1 = await planAgent.generate(planMessageText);
-
-  // 構造化出力が有効な場合は直接取得、そうでない場合はJSONをパース
+  // 構造化出力が有効な場合はresult.objectから直接取得
   let parsedPlanResult1;
-  if (planResult1.text) {
+  if (planResult1.object) {
+    parsedPlanResult1 = planResult1.object;
+  } else if (planResult1.text) {
+    // フォールバック: テキストからJSONを抽出
     const planMatch = planResult1.text.match(/\{[\s\S]*\}/);
     if (!planMatch) {
       throw new Error("Plan generation failed to return JSON");
     }
     parsedPlanResult1 = JSON.parse(planMatch[0]);
-  } else if (planResult1.object) {
-    parsedPlanResult1 = planResult1.object;
   } else {
     throw new Error("AI応答が無効です");
   }
@@ -662,33 +695,27 @@ ${dates.join(", ")}
 ${explorationProfile?.avoidCuisines?.join(", ") || "なし"}
 
 【避けるべき食材】
-${userDoc.learnedPreferences.dislikedIngredients.join(", ") || "なし"}
+${userDoc.learnedPreferences.dislikedIngredients.join(", ") || "なし"}`;
 
-出力形式:
-{
-  "days": [
-    {
-      "date": "YYYY-MM-DD",
-      "isCheatDay": false,
-      "breakfast": { "recipeId": "...", "title": "...", "tags": [...], "nutrition": {...}, "ingredients": [...], "steps": [...] },
-      "lunch": { ... },
-      "dinner": { ... }
-    }
-  ]
-}`;
+  // 構造化出力を使用してスキーマに準拠したデータを取得
+  const planResult2 = await planAgent.generate(planMessageText, {
+    structuredOutput: {
+      schema: PlanGeneratorOutputSchema,
+      jsonPromptInjection: true,
+    },
+  });
 
-  const planResult2 = await planAgent.generate(planMessageText);
-
-  // 構造化出力が有効な場合は直接取得、そうでない場合はJSONをパース
+  // 構造化出力が有効な場合はresult.objectから直接取得
   let parsedPlanResult2;
-  if (planResult2.text) {
+  if (planResult2.object) {
+    parsedPlanResult2 = planResult2.object;
+  } else if (planResult2.text) {
+    // フォールバック: テキストからJSONを抽出
     const planMatch = planResult2.text.match(/\{[\s\S]*\}/);
     if (!planMatch) {
       throw new Error("New plan generation failed to return JSON");
     }
     parsedPlanResult2 = JSON.parse(planMatch[0]);
-  } else if (planResult2.object) {
-    parsedPlanResult2 = planResult2.object;
   } else {
     throw new Error("AI応答が無効です");
   }
@@ -741,25 +768,48 @@ function convertPlanResultToDays(planResult: {
       ingredients?: string[];
       steps?: string[];
       nutrition: { calories: number; protein: number; fat: number; carbs: number };
-    }): MealSlot => ({
-      recipeId: meal.recipeId || `recipe-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      title: meal.title,
-      status: "planned",
-      nutrition: meal.nutrition,
-      tags: meal.tags || [],
-      ingredients: meal.ingredients || [],
-      steps: meal.steps || [],
-    });
+    }): MealSlot => {
+      // nutritionの各フィールドを検証・変換（防御的プログラミング）
+      const safeNutrition = {
+        calories: Number(meal.nutrition?.calories) || 0,
+        protein: Number(meal.nutrition?.protein) || 0,
+        fat: Number(meal.nutrition?.fat) || 0,
+        carbs: Number(meal.nutrition?.carbs) || 0,
+      };
+
+      return {
+        recipeId: meal.recipeId || `recipe-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        title: meal.title,
+        status: "planned",
+        nutrition: safeNutrition,
+        tags: meal.tags || [],
+        ingredients: meal.ingredients || [],
+        steps: meal.steps || [],
+      };
+    };
 
     const breakfast = convertMeal(day.breakfast);
     const lunch = convertMeal(day.lunch);
     const dinner = convertMeal(day.dinner);
 
+    // totalNutrition計算時のNaNチェック（防御的プログラミング）
     const totalNutrition = {
-      calories: breakfast.nutrition.calories + lunch.nutrition.calories + dinner.nutrition.calories,
-      protein: breakfast.nutrition.protein + lunch.nutrition.protein + dinner.nutrition.protein,
-      fat: breakfast.nutrition.fat + lunch.nutrition.fat + dinner.nutrition.fat,
-      carbs: breakfast.nutrition.carbs + lunch.nutrition.carbs + dinner.nutrition.carbs,
+      calories:
+        (Number(breakfast.nutrition.calories) || 0) +
+        (Number(lunch.nutrition.calories) || 0) +
+        (Number(dinner.nutrition.calories) || 0),
+      protein:
+        (Number(breakfast.nutrition.protein) || 0) +
+        (Number(lunch.nutrition.protein) || 0) +
+        (Number(dinner.nutrition.protein) || 0),
+      fat:
+        (Number(breakfast.nutrition.fat) || 0) +
+        (Number(lunch.nutrition.fat) || 0) +
+        (Number(dinner.nutrition.fat) || 0),
+      carbs:
+        (Number(breakfast.nutrition.carbs) || 0) +
+        (Number(lunch.nutrition.carbs) || 0) +
+        (Number(dinner.nutrition.carbs) || 0),
     };
 
     updatedDays[date] = {

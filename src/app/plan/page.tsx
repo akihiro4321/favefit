@@ -514,13 +514,30 @@ function DayCard({
           </div>
           <div className="text-right">
             <div className="text-sm font-medium">
-              {dayPlan.totalNutrition?.calories || 0} kcal
+              {(() => {
+                const calories = Number(dayPlan.totalNutrition?.calories) || 0;
+                return isNaN(calories) ? 0 : calories;
+              })()}{" "}
+              kcal
             </div>
             {isPending && dayPlan.totalNutrition && (
               <div className="text-xs text-muted-foreground">
-                P:{Math.round(dayPlan.totalNutrition.protein)}g F:
-                {Math.round(dayPlan.totalNutrition.fat)}g C:
-                {Math.round(dayPlan.totalNutrition.carbs)}g
+                P:
+                {(() => {
+                  const protein = Number(dayPlan.totalNutrition.protein) || 0;
+                  return Math.round(isNaN(protein) ? 0 : protein);
+                })()}
+                g F:
+                {(() => {
+                  const fat = Number(dayPlan.totalNutrition.fat) || 0;
+                  return Math.round(isNaN(fat) ? 0 : fat);
+                })()}
+                g C:
+                {(() => {
+                  const carbs = Number(dayPlan.totalNutrition.carbs) || 0;
+                  return Math.round(isNaN(carbs) ? 0 : carbs);
+                })()}
+                g
               </div>
             )}
           </div>
@@ -560,9 +577,26 @@ function DayCard({
                         </div>
                       )}
                       <div className="text-xs text-muted-foreground mt-1">
-                        {meal.nutrition.calories}kcal | P:
-                        {meal.nutrition.protein}g F:{meal.nutrition.fat}g C:
-                        {meal.nutrition.carbs}g
+                        {(() => {
+                          const calories = Number(meal.nutrition?.calories) || 0;
+                          return isNaN(calories) ? 0 : calories;
+                        })()}
+                        kcal | P:
+                        {(() => {
+                          const protein = Number(meal.nutrition?.protein) || 0;
+                          return isNaN(protein) ? 0 : protein;
+                        })()}
+                        g F:
+                        {(() => {
+                          const fat = Number(meal.nutrition?.fat) || 0;
+                          return isNaN(fat) ? 0 : fat;
+                        })()}
+                        g C:
+                        {(() => {
+                          const carbs = Number(meal.nutrition?.carbs) || 0;
+                          return isNaN(carbs) ? 0 : carbs;
+                        })()}
+                        g
                       </div>
                     </div>
                   </div>

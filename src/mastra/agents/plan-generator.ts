@@ -76,7 +76,7 @@ const DayPlanSchema = z.object({
  * 出力スキーマ
  */
 export const PlanGeneratorOutputSchema = z.object({
-  days: z.array(DayPlanSchema).length(14),
+  days: z.array(DayPlanSchema),
   shoppingList: z.array(
     z.object({
       ingredient: z.string(),
@@ -115,6 +115,8 @@ export const planGeneratorAgent = new Agent({
 【チートデイ設定】
 - weekly: 7日目と14日目
 - biweekly: 14日目のみ
+
+【重要】出力は必ずJSON形式で、nutritionフィールドの各値（calories, protein, fat, carbs）は数値型で出力してください。
 `,
   model: "google/gemini-2.5-flash-lite",
 });
