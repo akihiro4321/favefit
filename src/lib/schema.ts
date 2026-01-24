@@ -76,6 +76,8 @@ export interface MealSlot {
   };
   tags?: string[];
   imageUrl?: string;
+  ingredients?: string[];
+  steps?: string[];
 }
 
 export interface DayPlan {

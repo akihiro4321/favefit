@@ -129,6 +129,34 @@ export const updateMealStatus = async (
 };
 
 /**
+ * 特定の1食の詳細情報を更新（材料・手順の保存用）
+ */
+export const updateMealSlot = async (
+  planId: string,
+  date: string,
+  mealType: "breakfast" | "lunch" | "dinner",
+  updates: Partial<MealSlot>
+): Promise<void> => {
+  try {
+    const planRef = doc(db, "plans", planId);
+    
+    // ネストされたオブジェクトの個別フィールドを更新
+    const firebaseUpdates: Record<string, unknown> = {
+      updatedAt: serverTimestamp(),
+    };
+    
+    Object.entries(updates).forEach(([key, value]) => {
+      firebaseUpdates[`days.${date}.meals.${mealType}.${key}`] = value;
+    });
+
+    await updateDoc(planRef, firebaseUpdates);
+  } catch (error) {
+    console.error("Error updating meal slot:", error);
+    throw error;
+  }
+};
+
+/**
  * 特定の1食を差し替え
  */
 export const swapMeal = async (

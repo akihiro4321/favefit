@@ -167,6 +167,8 @@ ${JSON.stringify(input, null, 2)}`;
           recipeId: string;
           title: string;
           tags?: string[];
+          ingredients?: string[];
+          steps?: string[];
           nutrition: { calories: number; protein: number; fat: number; carbs: number };
         }): MealSlot => ({
           recipeId: meal.recipeId || `recipe-${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -174,6 +176,8 @@ ${JSON.stringify(input, null, 2)}`;
           status: "planned",
           nutrition: meal.nutrition,
           tags: meal.tags || [],
+          ingredients: meal.ingredients || [],
+          steps: meal.steps || [],
         });
 
         const breakfast = convertMeal(day.breakfast);
