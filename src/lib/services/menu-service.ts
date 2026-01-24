@@ -3,10 +3,9 @@
  * メニュー提案に関するビジネスロジック
  */
 
-import { InMemoryRunner } from "@google/adk";
-import { menuAdjusterAgent, MenuAdjusterInput } from "@/lib/agents/menu-adjuster";
+import { mastra } from "@/mastra";
+import { MenuAdjusterInput } from "@/mastra/agents/menu-adjuster";
 import { getOrCreateUser } from "@/lib/user";
-import { withLangfuseTrace, processAdkEventsWithTrace } from "@/lib/langfuse";
 
 export interface SuggestMenuRequest {
   userId: string;
@@ -73,50 +72,31 @@ export async function suggestMenu(
     },
   };
 
-  const runner = new InMemoryRunner({
-    agent: menuAdjusterAgent,
-    appName: "FaveFit",
-  });
-
-  const sessionId = `suggest-${userId}-${Date.now()}`;
-
-  await runner.sessionService.createSession({
-    sessionId,
-    userId,
-    appName: "FaveFit",
-    state: {},
-  });
+  const agent = mastra.getAgent("menuAdjuster");
 
   const messageText = `以下の条件でメニューを3つ提案してください。必ずJSON形式で出力してください。
 
 【条件】
 ${JSON.stringify(input, null, 2)}`;
 
-  const userMessage = {
-    role: "user",
-    parts: [{ text: messageText }],
-  };
+  const result = await agent.generate(messageText);
 
-  const result = await withLangfuseTrace(
-    "suggest-menu",
-    userId,
-    { ingredients, comment },
-    async (trace) => {
-      const events = runner.runAsync({ userId, sessionId, newMessage: userMessage });
-
-      const fullText = await processAdkEventsWithTrace(trace, events, userMessage, menuAdjusterAgent.instruction as string);
-
-      const jsonMatch = fullText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        console.error("Failed to extract JSON:", fullText);
-        throw new Error("AI応答からJSONを抽出できませんでした");
-      }
-
-      return JSON.parse(jsonMatch[0]);
+  // 構造化出力が有効な場合は直接取得、そうでない場合はJSONをパース
+  let parsedResult;
+  if (result.text) {
+    const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error("Failed to extract JSON:", result.text);
+      throw new Error("AI応答からJSONを抽出できませんでした");
     }
-  );
+    parsedResult = JSON.parse(jsonMatch[0]);
+  } else if (result.object) {
+    parsedResult = result.object;
+  } else {
+    throw new Error("AI応答が無効です");
+  }
 
-  const suggestions = (result.suggestions || []).map(
+  const suggestions = (parsedResult.suggestions || []).map(
     (s: {
       recipeId?: string;
       title: string;
@@ -141,6 +121,6 @@ ${JSON.stringify(input, null, 2)}`;
 
   return {
     suggestions,
-    message: result.message || "レシピを提案しました！",
+    message: parsedResult.message || "レシピを提案しました！",
   };
 }

@@ -3,16 +3,14 @@
  * プラン生成・リフレッシュに関するビジネスロジック
  */
 
-import { InMemoryRunner } from "@google/adk";
-import { planGeneratorAgent, PlanGeneratorInput } from "@/lib/agents/plan-generator";
-import { boredomAnalyzerAgent } from "@/lib/agents/boredom-analyzer";
+import { mastra } from "@/mastra";
+import { PlanGeneratorInput } from "@/mastra/agents/plan-generator";
 import { getOrCreateUser, setPlanCreating, setPlanCreated } from "@/lib/user";
 import { createPlan, updatePlanStatus, getActivePlan, updatePlanDays, getPlan, updateMealSlot } from "@/lib/plan";
 import { createShoppingList } from "@/lib/shoppingList";
 import { getFavorites } from "@/lib/recipeHistory";
 import { DayPlan, MealSlot, ShoppingItem } from "@/lib/schema";
-import { withLangfuseTrace, processAdkEventsWithTrace } from "@/lib/langfuse";
-import { recipeCreatorAgent, buildRecipePrompt } from "@/lib/agents/recipe-creator";
+import { buildRecipePrompt } from "@/mastra/agents/recipe-creator";
 import { calculateMacroGoals } from "@/lib/tools/calculateMacroGoals";
 
 interface MealInfo {
@@ -139,178 +137,156 @@ async function generatePlanBackground(
   if (!userDoc) return;
 
   try {
-    await withLangfuseTrace(
-      "generate-plan",
-      userId,
-      {
-        nutrition: userDoc.nutrition,
-        preferences: userDoc.learnedPreferences,
+    const favorites = await getFavorites(userId);
+    const favoriteRecipes = favorites.map((f) => ({
+      id: f.id,
+      title: f.title,
+      tags: f.tags,
+    }));
+
+    const cheapIngredients = ["キャベツ", "もやし", "鶏むね肉", "卵", "豆腐"];
+    const startDate = new Date().toISOString().split("T")[0];
+
+    const existingPlan = await getActivePlan(userId);
+    if (existingPlan) {
+      await updatePlanStatus(existingPlan.id, "archived");
+    }
+
+    // 栄養目標の動的計算
+    let targetCalories: number;
+    let pfc: { protein: number; fat: number; carbs: number };
+
+    // userDoc.nutritionに値が設定されている場合はそれを使用
+    if (
+      userDoc.nutrition?.dailyCalories &&
+      userDoc.nutrition.dailyCalories > 0 &&
+      userDoc.nutrition.pfc?.protein &&
+      userDoc.nutrition.pfc.protein > 0
+    ) {
+      targetCalories = userDoc.nutrition.dailyCalories;
+      pfc = userDoc.nutrition.pfc;
+    } else {
+      // プロファイル情報から動的に計算
+      const profile = userDoc.profile;
+      const hasRequiredProfileData =
+        profile.age &&
+        profile.gender &&
+        (profile.gender === "male" || profile.gender === "female") &&
+        profile.height_cm &&
+        profile.currentWeight &&
+        profile.activity_level &&
+        profile.goal;
+
+      if (hasRequiredProfileData) {
+        const macroGoals = calculateMacroGoals({
+          age: profile.age!,
+          gender: profile.gender as "male" | "female",
+          height_cm: profile.height_cm!,
+          weight_kg: profile.currentWeight,
+          activity_level: profile.activity_level!,
+          goal: profile.goal!,
+        });
+        targetCalories = macroGoals.targetCalories;
+        pfc = macroGoals.pfc;
+      } else {
+        // プロファイル情報が不足している場合はデフォルト値を使用
+        targetCalories = 1800;
+        pfc = { protein: 100, fat: 50, carbs: 200 };
+      }
+    }
+
+    const input: PlanGeneratorInput = {
+      targetCalories,
+      pfc,
+      preferences: {
+        cuisines: userDoc.learnedPreferences.cuisines,
+        flavorProfile: userDoc.learnedPreferences.flavorProfile,
+        dislikedIngredients: userDoc.learnedPreferences.dislikedIngredients,
       },
-      async (trace) => {
-        const favorites = await getFavorites(userId);
-        const favoriteRecipes = favorites.map((f) => ({
-          id: f.id,
-          title: f.title,
-          tags: f.tags,
-        }));
+      favoriteRecipes,
+      cheapIngredients,
+      cheatDayFrequency: userDoc.profile.cheatDayFrequency || "weekly",
+      startDate,
+    };
 
-        const cheapIngredients = ["キャベツ", "もやし", "鶏むね肉", "卵", "豆腐"];
-        const startDate = new Date().toISOString().split("T")[0];
+    const agent = mastra.getAgent("planGenerator");
 
-        const existingPlan = await getActivePlan(userId);
-        if (existingPlan) {
-          await updatePlanStatus(existingPlan.id, "archived");
-        }
-
-        // 栄養目標の動的計算
-        let targetCalories: number;
-        let pfc: { protein: number; fat: number; carbs: number };
-
-        // userDoc.nutritionに値が設定されている場合はそれを使用
-        if (
-          userDoc.nutrition?.dailyCalories &&
-          userDoc.nutrition.dailyCalories > 0 &&
-          userDoc.nutrition.pfc?.protein &&
-          userDoc.nutrition.pfc.protein > 0
-        ) {
-          targetCalories = userDoc.nutrition.dailyCalories;
-          pfc = userDoc.nutrition.pfc;
-        } else {
-          // プロファイル情報から動的に計算
-          const profile = userDoc.profile;
-          const hasRequiredProfileData =
-            profile.age &&
-            profile.gender &&
-            (profile.gender === "male" || profile.gender === "female") &&
-            profile.height_cm &&
-            profile.currentWeight &&
-            profile.activity_level &&
-            profile.goal;
-
-          if (hasRequiredProfileData) {
-            const macroGoals = calculateMacroGoals({
-              age: profile.age!,
-              gender: profile.gender as "male" | "female",
-              height_cm: profile.height_cm!,
-              weight_kg: profile.currentWeight,
-              activity_level: profile.activity_level!,
-              goal: profile.goal!,
-            });
-            targetCalories = macroGoals.targetCalories;
-            pfc = macroGoals.pfc;
-          } else {
-            // プロファイル情報が不足している場合はデフォルト値を使用
-            targetCalories = 1800;
-            pfc = { protein: 100, fat: 50, carbs: 200 };
-          }
-        }
-
-        const input: PlanGeneratorInput = {
-          targetCalories,
-          pfc,
-          preferences: {
-            cuisines: userDoc.learnedPreferences.cuisines,
-            flavorProfile: userDoc.learnedPreferences.flavorProfile,
-            dislikedIngredients: userDoc.learnedPreferences.dislikedIngredients,
-          },
-          favoriteRecipes,
-          cheapIngredients,
-          cheatDayFrequency: userDoc.profile.cheatDayFrequency || "weekly",
-          startDate,
-        };
-
-        const runner = new InMemoryRunner({
-          agent: planGeneratorAgent,
-          appName: "FaveFit",
-        });
-
-        const sessionId = `plan-gen-${userId}-${Date.now()}`;
-
-        await runner.sessionService.createSession({
-          sessionId,
-          userId,
-          appName: "FaveFit",
-          state: {},
-        });
-
-        const feedbackText = userDoc.planRejectionFeedback
-          ? `\n\n【前回のプラン拒否時のフィードバック】
+    const feedbackText = userDoc.planRejectionFeedback
+      ? `\n\n【前回のプラン拒否時のフィードバック】
 ${userDoc.planRejectionFeedback}
 
 このフィードバックを考慮して、より適切なプランを生成してください。`
-          : "";
+      : "";
 
-        const messageText = `以下の情報に基づいて14日間の食事プランと買い物リストを生成してください。必ずJSON形式で出力してください。
+    const messageText = `以下の情報に基づいて14日間の食事プランと買い物リストを生成してください。必ずJSON形式で出力してください。
 
 【ユーザー情報】
 ${JSON.stringify(input, null, 2)}${feedbackText}`;
 
-        const userMessage = {
-          role: "user",
-          parts: [{ text: messageText }],
-        };
+    const result = await agent.generate(messageText);
 
-        const events = runner.runAsync({ userId, sessionId, newMessage: userMessage });
-        const fullText = await processAdkEventsWithTrace(trace, events, userMessage, planGeneratorAgent.instruction as string);
-
-        const jsonMatch = fullText.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
-          console.error("Failed to extract JSON:", fullText);
-          throw new Error("AI応答からJSONを抽出できませんでした");
-        }
-
-        const result = JSON.parse(jsonMatch[0]);
-
-        const days: Record<string, DayPlan> = {};
-
-        for (const day of result.days || []) {
-          const date = day.date;
-
-          const convertMeal = (meal: {
-            recipeId: string;
-            title: string;
-            tags?: string[];
-            ingredients?: string[];
-            steps?: string[];
-            nutrition: { calories: number; protein: number; fat: number; carbs: number };
-          }): MealSlot => ({
-            recipeId:
-              meal.recipeId || `recipe-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-            title: meal.title,
-            status: "planned",
-            nutrition: meal.nutrition,
-            tags: meal.tags || [],
-            ingredients: meal.ingredients || [],
-            steps: meal.steps || [],
-          });
-
-          const breakfast = convertMeal(day.breakfast);
-          const lunch = convertMeal(day.lunch);
-          const dinner = convertMeal(day.dinner);
-
-          const totalNutrition = {
-            calories:
-              breakfast.nutrition.calories + lunch.nutrition.calories + dinner.nutrition.calories,
-            protein:
-              breakfast.nutrition.protein + lunch.nutrition.protein + dinner.nutrition.protein,
-            fat: breakfast.nutrition.fat + lunch.nutrition.fat + dinner.nutrition.fat,
-            carbs: breakfast.nutrition.carbs + lunch.nutrition.carbs + dinner.nutrition.carbs,
-          };
-
-          days[date] = {
-            isCheatDay: day.isCheatDay || false,
-            meals: { breakfast, lunch, dinner },
-            totalNutrition,
-          };
-        }
-
-        // pending状態でプランを作成（承認後にレシピ詳細を生成）
-        const planId = await createPlan(userId, startDate, days, "pending");
-
-        console.log(`Plan created successfully for user ${userId}: planId=${planId} (pending)`);
-        return { planId, daysCount: Object.keys(days).length };
+    // 構造化出力が有効な場合は直接取得、そうでない場合はJSONをパース
+    let parsedResult;
+    if (result.text) {
+      const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        console.error("Failed to extract JSON:", result.text);
+        throw new Error("AI応答からJSONを抽出できませんでした");
       }
-    );
+      parsedResult = JSON.parse(jsonMatch[0]);
+    } else if (result.object) {
+      parsedResult = result.object;
+    } else {
+      throw new Error("AI応答が無効です");
+    }
+
+    const days: Record<string, DayPlan> = {};
+
+    for (const day of parsedResult.days || []) {
+      const date = day.date;
+
+      const convertMeal = (meal: {
+        recipeId: string;
+        title: string;
+        tags?: string[];
+        ingredients?: string[];
+        steps?: string[];
+        nutrition: { calories: number; protein: number; fat: number; carbs: number };
+      }): MealSlot => ({
+        recipeId:
+          meal.recipeId || `recipe-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        title: meal.title,
+        status: "planned",
+        nutrition: meal.nutrition,
+        tags: meal.tags || [],
+        ingredients: meal.ingredients || [],
+        steps: meal.steps || [],
+      });
+
+      const breakfast = convertMeal(day.breakfast);
+      const lunch = convertMeal(day.lunch);
+      const dinner = convertMeal(day.dinner);
+
+      const totalNutrition = {
+        calories:
+          breakfast.nutrition.calories + lunch.nutrition.calories + dinner.nutrition.calories,
+        protein:
+          breakfast.nutrition.protein + lunch.nutrition.protein + dinner.nutrition.protein,
+        fat: breakfast.nutrition.fat + lunch.nutrition.fat + dinner.nutrition.fat,
+        carbs: breakfast.nutrition.carbs + lunch.nutrition.carbs + dinner.nutrition.carbs,
+      };
+
+      days[date] = {
+        isCheatDay: day.isCheatDay || false,
+        meals: { breakfast, lunch, dinner },
+        totalNutrition,
+      };
+    }
+
+    // pending状態でプランを作成（承認後にレシピ詳細を生成）
+    const planId = await createPlan(userId, startDate, days, "pending");
+
+    console.log(`Plan created successfully for user ${userId}: planId=${planId} (pending)`);
 
     // プラン生成完了後、フィードバックをクリア
     if (userDoc.planRejectionFeedback) {
@@ -322,6 +298,9 @@ ${JSON.stringify(input, null, 2)}${feedbackText}`;
         updatedAt: serverTimestamp(),
       });
     }
+  } catch (error) {
+    console.error("Error generating plan:", error);
+    throw error;
   } finally {
     await setPlanCreated(userId);
   }
@@ -361,55 +340,31 @@ export async function refreshPlan(
   let datesToRefresh: string[] = forceDates || [];
 
   if (!forceDates || forceDates.length === 0) {
-    const analyzerRunner = new InMemoryRunner({
-      agent: boredomAnalyzerAgent,
-      appName: "FaveFit",
-    });
+    const analyzerAgent = mastra.getAgent("boredomAnalyzer");
 
-    const analyzerSessionId = `boredom-${userId}-${Date.now()}`;
-
-    await analyzerRunner.sessionService.createSession({
-      sessionId: analyzerSessionId,
-      userId,
-      appName: "FaveFit",
-      state: {},
-    });
-
-    const analyzerMessage = {
-      role: "user",
-      parts: [
-        {
-          text: `以下の食事履歴を分析して、飽き率と改善提案を教えてください。JSON形式で出力してください。
+    const analyzerMessageText = `以下の食事履歴を分析して、飽き率と改善提案を教えてください。JSON形式で出力してください。
 
 【食事履歴】
 ${JSON.stringify(recentMeals, null, 2)}
 
 【ユーザー嗜好】
-${JSON.stringify(userDoc.learnedPreferences, null, 2)}`,
-        },
-      ],
-    };
+${JSON.stringify(userDoc.learnedPreferences, null, 2)}`;
 
-    const analysisResult = await withLangfuseTrace(
-      "boredom-analysis",
-      userId,
-      { recentMealsCount: recentMeals.length },
-      async (trace) => {
-        const analyzerEvents = analyzerRunner.runAsync({
-          userId,
-          sessionId: analyzerSessionId,
-          newMessage: analyzerMessage,
-        });
+    const analyzerResult = await analyzerAgent.generate(analyzerMessageText);
 
-        const analyzerText = await processAdkEventsWithTrace(trace, analyzerEvents, analyzerMessage, boredomAnalyzerAgent.instruction as string);
-
-        const analyzerMatch = analyzerText.match(/\{[\s\S]*\}/);
-        if (!analyzerMatch) {
-          throw new Error("Boredom analysis failed to return JSON");
-        }
-        return JSON.parse(analyzerMatch[0]);
+    // 構造化出力が有効な場合は直接取得、そうでない場合はJSONをパース
+    let analysisResult;
+    if (analyzerResult.text) {
+      const analyzerMatch = analyzerResult.text.match(/\{[\s\S]*\}/);
+      if (!analyzerMatch) {
+        throw new Error("Boredom analysis failed to return JSON");
       }
-    );
+      analysisResult = JSON.parse(analyzerMatch[0]);
+    } else if (analyzerResult.object) {
+      analysisResult = analyzerResult.object;
+    } else {
+      throw new Error("AI応答が無効です");
+    }
 
     if (analysisResult.boredomScore >= 60 || analysisResult.shouldRefresh) {
       datesToRefresh = analysisResult.refreshDates || [];
@@ -471,25 +426,9 @@ export async function refreshPlanWithFeedback(
     throw new Error("アクティブなプランがありません");
   }
 
-  const analyzerRunner = new InMemoryRunner({
-    agent: boredomAnalyzerAgent,
-    appName: "FaveFit",
-  });
+  const analyzerAgent = mastra.getAgent("boredomAnalyzer");
 
-  const analyzerSessionId = `boredom-feedback-${userId}-${Date.now()}`;
-
-  await analyzerRunner.sessionService.createSession({
-    sessionId: analyzerSessionId,
-    userId,
-    appName: "FaveFit",
-    state: {},
-  });
-
-  const analyzerMessage = {
-    role: "user",
-    parts: [
-      {
-        text: `以下のgood/bad選択結果から、ユーザーの現在の気分・好みを解析し、新しい探索プロファイルを提案してください。
+  const analyzerMessageText = `以下のgood/bad選択結果から、ユーザーの現在の気分・好みを解析し、新しい探索プロファイルを提案してください。
 
 【good と選ばれたレシピ】
 ${JSON.stringify(goodRecipes, null, 2)}
@@ -498,34 +437,23 @@ ${JSON.stringify(goodRecipes, null, 2)}
 ${JSON.stringify(badRecipes, null, 2)}
 
 【現在の嗜好プロファイル】
-${JSON.stringify(userDoc.learnedPreferences, null, 2)}`,
-      },
-    ],
-  };
+${JSON.stringify(userDoc.learnedPreferences, null, 2)}`;
 
-  const analysisResult = await withLangfuseTrace(
-    "boredom-feedback-analysis",
-    userId,
-    {
-      goodCount: goodRecipes.length,
-      badCount: badRecipes.length,
-    },
-    async (trace) => {
-      const analyzerEvents = analyzerRunner.runAsync({
-        userId,
-        sessionId: analyzerSessionId,
-        newMessage: analyzerMessage,
-      });
+  const analyzerResult = await analyzerAgent.generate(analyzerMessageText);
 
-      const analyzerText = await processAdkEventsWithTrace(trace, analyzerEvents, analyzerMessage, boredomAnalyzerAgent.instruction as string);
-
-      const analyzerMatch = analyzerText.match(/\{[\s\S]*\}/);
-      if (!analyzerMatch) {
-        throw new Error("Boredom analysis failed to return JSON");
-      }
-      return JSON.parse(analyzerMatch[0]);
+  // 構造化出力が有効な場合は直接取得、そうでない場合はJSONをパース
+  let analysisResult;
+  if (analyzerResult.text) {
+    const analyzerMatch = analyzerResult.text.match(/\{[\s\S]*\}/);
+    if (!analyzerMatch) {
+      throw new Error("Boredom analysis failed to return JSON");
     }
-  );
+    analysisResult = JSON.parse(analyzerMatch[0]);
+  } else if (analyzerResult.object) {
+    analysisResult = analyzerResult.object;
+  } else {
+    throw new Error("AI応答が無効です");
+  }
 
   const today = new Date().toISOString().split("T")[0];
   const futureDates = Object.keys(activePlan.days)
@@ -583,25 +511,9 @@ export async function suggestBoredomRecipes(
     }
   }
 
-  const planRunner = new InMemoryRunner({
-    agent: planGeneratorAgent,
-    appName: "FaveFit",
-  });
+  const planAgent = mastra.getAgent("planGenerator");
 
-  const sessionId = `boredom-suggest-${userId}-${Date.now()}`;
-
-  await planRunner.sessionService.createSession({
-    sessionId,
-    userId,
-    appName: "FaveFit",
-    state: {},
-  });
-
-  const message = {
-    role: "user",
-    parts: [
-      {
-        text: `飽き防止のため、既存のプランとは異なる新ジャンル・新テイストのレシピを5つ提案してください。
+  const messageText = `飽き防止のため、既存のプランとは異なる新ジャンル・新テイストのレシピを5つ提案してください。
 既存のレシピとは全く異なる方向性のものを選んでください。
 
 【栄養目標】
@@ -633,29 +545,25 @@ ${Array.from(existingTitles).slice(0, 20).join(", ")}
       }
     }
   ]
-}`,
-      },
-    ],
-  };
+}`;
 
-  const result = await withLangfuseTrace("boredom-recipe-suggestions", userId, {}, async (trace) => {
-    const planEvents = planRunner.runAsync({
-      userId,
-      sessionId,
-      newMessage: message,
-    });
+  const result = await planAgent.generate(messageText);
 
-    const planText = await processAdkEventsWithTrace(trace, planEvents, message, planGeneratorAgent.instruction as string);
-
-    const planMatch = planText.match(/\{[\s\S]*\}/);
+  // 構造化出力が有効な場合は直接取得、そうでない場合はJSONをパース
+  let parsedResult;
+  if (result.text) {
+    const planMatch = result.text.match(/\{[\s\S]*\}/);
     if (!planMatch) {
       throw new Error("Recipe suggestions failed to return JSON");
     }
+    parsedResult = JSON.parse(planMatch[0]);
+  } else if (result.object) {
+    parsedResult = result.object;
+  } else {
+    throw new Error("AI応答が無効です");
+  }
 
-    return JSON.parse(planMatch[0]);
-  });
-
-  const recipes = (result.recipes || []).slice(0, 5);
+  const recipes = (parsedResult.recipes || []).slice(0, 5);
 
   return { recipes };
 }
@@ -669,25 +577,9 @@ async function generatePlanDays(
   dates: string[],
   existingTitles: string[]
 ): Promise<Record<string, DayPlan>> {
-  const planRunner = new InMemoryRunner({
-    agent: planGeneratorAgent,
-    appName: "FaveFit",
-  });
+  const planAgent = mastra.getAgent("planGenerator");
 
-  const planSessionId = `refresh-${userId}-${Date.now()}`;
-
-  await planRunner.sessionService.createSession({
-    sessionId: planSessionId,
-    userId,
-    appName: "FaveFit",
-    state: {},
-  });
-
-  const planMessage = {
-    role: "user",
-    parts: [
-      {
-        text: `以下の日付の食事プランを新しく生成してください。既存のメニューとは異なるものにしてください。JSON形式で出力してください。
+  const planMessageText = `以下の日付の食事プランを新しく生成してください。既存のメニューとは異なるものにしてください。JSON形式で出力してください。
 
 【対象日】
 ${dates.join(", ")}
@@ -715,34 +607,25 @@ ${existingTitles.join(", ")}
       "dinner": { ... }
     }
   ]
-}`,
-      },
-    ],
-  };
+}`;
 
-  const planResult = await withLangfuseTrace(
-    "refresh-plan-generation",
-    userId,
-    { datesCount: dates.length },
-    async (trace) => {
-      const planEvents = planRunner.runAsync({
-        userId,
-        sessionId: planSessionId,
-        newMessage: planMessage,
-      });
+  const planResult1 = await planAgent.generate(planMessageText);
 
-      const planText = await processAdkEventsWithTrace(trace, planEvents, planMessage, planGeneratorAgent.instruction as string);
-
-      const planMatch = planText.match(/\{[\s\S]*\}/);
-      if (!planMatch) {
-        throw new Error("New plan generation failed to return JSON");
-      }
-
-      return JSON.parse(planMatch[0]);
+  // 構造化出力が有効な場合は直接取得、そうでない場合はJSONをパース
+  let parsedPlanResult1;
+  if (planResult1.text) {
+    const planMatch = planResult1.text.match(/\{[\s\S]*\}/);
+    if (!planMatch) {
+      throw new Error("Plan generation failed to return JSON");
     }
-  );
+    parsedPlanResult1 = JSON.parse(planMatch[0]);
+  } else if (planResult1.object) {
+    parsedPlanResult1 = planResult1.object;
+  } else {
+    throw new Error("AI応答が無効です");
+  }
 
-  return convertPlanResultToDays(planResult);
+  return convertPlanResultToDays(parsedPlanResult1);
 }
 
 /**
@@ -758,25 +641,9 @@ async function generatePlanDaysWithProfile(
     avoidCuisines?: string[];
   }
 ): Promise<Record<string, DayPlan>> {
-  const planRunner = new InMemoryRunner({
-    agent: planGeneratorAgent,
-    appName: "FaveFit",
-  });
+  const planAgent = mastra.getAgent("planGenerator");
 
-  const planSessionId = `refresh-feedback-${userId}-${Date.now()}`;
-
-  await planRunner.sessionService.createSession({
-    sessionId: planSessionId,
-    userId,
-    appName: "FaveFit",
-    state: {},
-  });
-
-  const planMessage = {
-    role: "user",
-    parts: [
-      {
-        text: `以下の日付の食事プランを、新しい探索プロファイルに基づいて生成してください。
+  const planMessageText = `以下の日付の食事プランを、新しい探索プロファイルに基づいて生成してください。
 
 【対象日】
 ${dates.join(", ")}
@@ -808,34 +675,25 @@ ${userDoc.learnedPreferences.dislikedIngredients.join(", ") || "なし"}
       "dinner": { ... }
     }
   ]
-}`,
-      },
-    ],
-  };
+}`;
 
-  const planResult = await withLangfuseTrace(
-    "refresh-plan-with-feedback",
-    userId,
-    { datesCount: dates.length },
-    async (trace) => {
-      const planEvents = planRunner.runAsync({
-        userId,
-        sessionId: planSessionId,
-        newMessage: planMessage,
-      });
+  const planResult2 = await planAgent.generate(planMessageText);
 
-      const planText = await processAdkEventsWithTrace(trace, planEvents, planMessage, planGeneratorAgent.instruction as string);
-
-      const planMatch = planText.match(/\{[\s\S]*\}/);
-      if (!planMatch) {
-        throw new Error("New plan generation failed to return JSON");
-      }
-
-      return JSON.parse(planMatch[0]);
+  // 構造化出力が有効な場合は直接取得、そうでない場合はJSONをパース
+  let parsedPlanResult2;
+  if (planResult2.text) {
+    const planMatch = planResult2.text.match(/\{[\s\S]*\}/);
+    if (!planMatch) {
+      throw new Error("New plan generation failed to return JSON");
     }
-  );
+    parsedPlanResult2 = JSON.parse(planMatch[0]);
+  } else if (planResult2.object) {
+    parsedPlanResult2 = planResult2.object;
+  } else {
+    throw new Error("AI応答が無効です");
+  }
 
-  return convertPlanResultToDays(planResult);
+  return convertPlanResultToDays(parsedPlanResult2);
 }
 
 /**
@@ -932,42 +790,23 @@ async function generateSingleRecipeDetail(
   const userDoc = await getOrCreateUser(userId);
   const prompt = buildRecipePrompt(userDoc, meal.title, meal.nutrition);
 
-  const runner = new InMemoryRunner({
-    agent: recipeCreatorAgent,
-    appName: "FaveFit",
-  });
+  const agent = mastra.getAgent("recipeCreator");
 
-  const sessionId = `recipe-gen-${userId}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const result = await agent.generate(prompt);
 
-  await runner.sessionService.createSession({
-    sessionId,
-    userId,
-    appName: "FaveFit",
-    state: {},
-  });
-
-  const userMessage = {
-    role: "user",
-    parts: [{ text: prompt }],
-  };
-
-  const aiResult = await withLangfuseTrace(
-    "generate-recipe-detail-batch",
-    userId,
-    { recipeTitle: meal.title, date, mealType },
-    async (trace) => {
-      const events = runner.runAsync({ userId, sessionId, newMessage: userMessage });
-
-      const fullText = await processAdkEventsWithTrace(trace, events, userMessage, recipeCreatorAgent.instruction as string);
-
-      const jsonMatch = fullText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error("AI応答からレシピ詳細JSONを抽出できませんでした");
-      }
-
-      return JSON.parse(jsonMatch[0]);
+  // 構造化出力が有効な場合は直接取得、そうでない場合はJSONをパース
+  let aiResult;
+  if (result.text) {
+    const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error("AI応答からレシピ詳細JSONを抽出できませんでした");
     }
-  );
+    aiResult = JSON.parse(jsonMatch[0]);
+  } else if (result.object) {
+    aiResult = result.object;
+  } else {
+    throw new Error("AI応答が無効です");
+  }
 
   const ingredients = aiResult.ingredients.map(
     (i: { name: string; amount: string }) => `${i.name}: ${i.amount}`
@@ -1214,21 +1053,14 @@ async function approvePlanAndGenerateDetails(
   days: Record<string, DayPlan>
 ): Promise<void> {
   try {
-    await withLangfuseTrace(
-      "approve-plan-and-generate-details",
-      userId,
-      { planId, daysCount: Object.keys(days).length },
-      async () => {
-        // レシピ詳細をバッチ処理で生成
-        await generateRecipeDetailsBatch(userId, planId, days);
+    // レシピ詳細をバッチ処理で生成
+    await generateRecipeDetailsBatch(userId, planId, days);
 
-        // 買い物リストを生成
-        await generateShoppingListFromRecipes(planId, days);
+    // 買い物リストを生成
+    await generateShoppingListFromRecipes(planId, days);
 
-        console.log(
-          `Completed recipe detail generation and shopping list for plan ${planId}`
-        );
-      }
+    console.log(
+      `Completed recipe detail generation and shopping list for plan ${planId}`
     );
   } catch (error) {
     console.error("Error in approvePlanAndGenerateDetails:", error);

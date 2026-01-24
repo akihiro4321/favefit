@@ -3,13 +3,11 @@
  * ユーザー関連のビジネスロジック（栄養目標計算、好み学習）
  */
 
-import { InMemoryRunner, stringifyContent } from "@google/adk";
-import { nutritionPlannerAgent } from "@/lib/agents/nutrition-planner";
-import { preferenceLearnerAgent, PreferenceAnalysis } from "@/lib/agents/preference-learner";
+import { mastra } from "@/mastra";
+import { PreferenceAnalysis } from "@/mastra/agents/preference-learner";
 import { updateUserNutrition, updateLearnedPreferences } from "@/lib/user";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
-import { withLangfuseTrace, processAdkEventsWithTrace } from "@/lib/langfuse";
 
 export interface CalculateNutritionRequest {
   userId: string;
@@ -56,55 +54,36 @@ export async function calculateNutrition(
 ): Promise<CalculateNutritionResponse> {
   const { userId, profile } = request;
 
-  const runner = new InMemoryRunner({
-    agent: nutritionPlannerAgent,
-    appName: "FaveFit",
-  });
-
-  const sessionId = `nutrition-${userId}-${Date.now()}`;
-
-  await runner.sessionService.createSession({
-    sessionId,
-    userId,
-    appName: "FaveFit",
-    state: {},
-  });
+  const agent = mastra.getAgent("nutritionPlanner");
 
   const messageText = `以下の身体情報に基づいて栄養素目標を算出してJSONで答えてください:
 ${JSON.stringify(profile)}`;
 
-  const userMessage = {
-    role: "user",
-    parts: [{ text: messageText }],
-  };
+  const result = await agent.generate(messageText);
 
-  const result = await withLangfuseTrace(
-    "calculate-nutrition",
-    userId,
-    profile,
-    async (trace) => {
-      const events = runner.runAsync({ userId, sessionId, newMessage: userMessage });
-
-      const fullText = await processAdkEventsWithTrace(trace, events, userMessage, nutritionPlannerAgent.instruction as string);
-
-      const jsonMatch = fullText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        console.error("Failed to extract JSON:", fullText);
-        throw new Error("AI応答からJSONを抽出できませんでした");
-      }
-
-      return JSON.parse(jsonMatch[0]);
+  // 構造化出力が有効な場合は直接取得、そうでない場合はJSONをパース
+  let nutritionResult;
+  if (result.text) {
+    const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error("Failed to extract JSON:", result.text);
+      throw new Error("AI応答からJSONを抽出できませんでした");
     }
-  );
+    nutritionResult = JSON.parse(jsonMatch[0]);
+  } else if (result.object) {
+    nutritionResult = result.object;
+  } else {
+    throw new Error("AI応答が無効です");
+  }
 
   const nutrition = {
-    dailyCalories: result.daily_calorie_target,
+    dailyCalories: nutritionResult.daily_calorie_target,
     pfc: {
-      protein: result.protein_g,
-      fat: result.fat_g,
-      carbs: result.carbs_g,
+      protein: nutritionResult.protein_g,
+      fat: nutritionResult.fat_g,
+      carbs: nutritionResult.carbs_g,
     },
-    strategySummary: result.strategy_summary,
+    strategySummary: nutritionResult.strategy_summary,
   };
 
   await updateUserNutrition(userId, nutrition);
@@ -129,18 +108,7 @@ export async function learnPreference(
 
   const recipe = recipeSnap.data();
 
-  const runner = new InMemoryRunner({
-    agent: preferenceLearnerAgent,
-    appName: "FaveFit-Learner",
-  });
-
-  const sessionId = `learner-${userId}-${Date.now()}`;
-  await runner.sessionService.createSession({
-    sessionId,
-    userId,
-    appName: "FaveFit-Learner",
-    state: {},
-  });
+  const agent = mastra.getAgent("preferenceLearner");
 
   const messageText = `
 【分析対象データ】
@@ -154,26 +122,19 @@ export async function learnPreference(
 コメント: "${feedback.comment || "なし"}"
 `;
 
-  const userMessage = {
-    role: "user",
-    parts: [{ text: messageText }],
-  };
+  const result = await agent.generate(messageText);
 
-  let fullText = "";
-  const events = runner.runAsync({
-    userId,
-    sessionId,
-    newMessage: userMessage,
-  });
-
-  for await (const event of events) {
-    const content = stringifyContent(event);
-    if (content) fullText += content;
+  // 構造化出力が有効な場合は直接取得、そうでない場合はJSONをパース
+  let analysis: PreferenceAnalysis;
+  if (result.text) {
+    const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+    const jsonString = jsonMatch ? jsonMatch[0] : result.text;
+    analysis = JSON.parse(jsonString);
+  } else if (result.object) {
+    analysis = result.object as PreferenceAnalysis;
+  } else {
+    throw new Error("AI応答が無効です");
   }
-
-  const jsonMatch = fullText.match(/\{[\s\S]*\}/);
-  const jsonString = jsonMatch ? jsonMatch[0] : fullText;
-  const analysis: PreferenceAnalysis = JSON.parse(jsonString);
 
   await updateLearnedPreferences(
     userId,

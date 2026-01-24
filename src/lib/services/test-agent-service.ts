@@ -3,9 +3,8 @@
  * エージェントのテスト実行に関するビジネスロジック
  */
 
-import { InMemoryRunner, stringifyContent } from "@google/adk";
-import { nutritionPlannerAgent } from "@/lib/agents/nutrition-planner";
-import { recipeCreatorAgent, buildRecipePrompt } from "@/lib/agents/recipe-creator";
+import { mastra } from "@/mastra";
+import { buildRecipePrompt } from "@/mastra/agents/recipe-creator";
 import { getOrCreateUser } from "@/lib/user";
 
 export interface TestAgentRequest {
@@ -22,12 +21,9 @@ export async function testAgent(
 ): Promise<unknown> {
   const { agentId, input, userId } = request;
 
-  let agent;
   let messageText = "";
 
   if (agentId === "recipe-creator") {
-    agent = recipeCreatorAgent;
-
     // ユーザーの好みをFirestoreから取得
     let userDoc = null;
     if (userId) {
@@ -59,51 +55,26 @@ export async function testAgent(
     );
   } else {
     // デフォルトは nutrition-planner
-    agent = nutritionPlannerAgent;
     messageText = `以下の身体情報に基づいて栄養素目標を算出してJSONで答えてください:\n${JSON.stringify(input)}`;
   }
 
-  const runner = new InMemoryRunner({
-    agent,
-    appName: "FaveFit-Test",
-  });
+  const agent = mastra.getAgent(agentId === "recipe-creator" ? "recipeCreator" : "nutritionPlanner");
 
-  // ADKのセッション管理用ID
-  const sessionUserId = userId || "test-user";
-  const sessionId = `test-session-${agentId}-${Date.now()}`;
+  const result = await agent.generate(messageText);
 
-  await runner.sessionService.createSession({
-    sessionId,
-    userId: sessionUserId,
-    appName: "FaveFit-Test",
-    state: {},
-  });
-
-  const userMessage = {
-    role: "user",
-    parts: [{ text: messageText }],
-  };
-
-  let fullText = "";
-  const events = runner.runAsync({
-    userId: sessionUserId,
-    sessionId,
-    newMessage: userMessage,
-  });
-
-  for await (const event of events) {
-    const content = stringifyContent(event);
-    if (content) fullText += content;
-  }
-
-  // AIの応答を抽出
-  const jsonMatch = fullText.match(/\{[\s\S]*\}/);
-  const jsonString = jsonMatch ? jsonMatch[0] : fullText;
-
-  try {
-    return JSON.parse(jsonString);
-  } catch {
-    console.error("Failed to parse JSON:", fullText);
-    throw new Error("AI応答のパースに失敗しました");
+  // 構造化出力が有効な場合は直接取得、そうでない場合はJSONをパース
+  if (result.text) {
+    const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+    const jsonString = jsonMatch ? jsonMatch[0] : result.text;
+    try {
+      return JSON.parse(jsonString);
+    } catch {
+      console.error("Failed to parse JSON:", result.text);
+      throw new Error("AI応答のパースに失敗しました");
+    }
+  } else if (result.object) {
+    return result.object;
+  } else {
+    throw new Error("AI応答が無効です");
   }
 }
