@@ -45,52 +45,123 @@ export const PlanGeneratorInputSchema = z.object({
 });
 
 /**
- * 出力スキーマ（1食分）
+ * プラン全体の作成日数（定数）
  */
-const MealSchema = z.object({
-  recipeId: z.string(),
-  title: z.string(),
-  tags: z.array(z.string()),
-  ingredients: z.array(z.string()),
-  steps: z.array(z.string()),
-  nutrition: z.object({
-    calories: z.number(),
-    protein: z.number(),
-    fat: z.number(),
-    carbs: z.number(),
-  }),
-});
+export const DEFAULT_PLAN_DURATION_DAYS = 7;
 
 /**
- * 出力スキーマ（1日分）
- */
-const DayPlanSchema = z.object({
-  date: z.string(),
-  isCheatDay: z.boolean(),
-  breakfast: MealSchema,
-  lunch: MealSchema,
-  dinner: MealSchema,
-});
-
-/**
- * 出力スキーマ（14日間固定）
+ * 出力スキーマ（平坦化済み）
+ * Gemini APIが$refを解釈できないため、すべての構造をインラインで記述
  */
 export const PlanGeneratorOutputSchema = z.object({
-  days: z.array(DayPlanSchema).length(14).describe("14日間のプラン"),
-  shoppingList: z.array(
-    z.object({
-      ingredient: z.string(),
-      amount: z.string(),
-      category: z.string(),
-    })
-  ),
+  days: z
+    .array(
+      z.object({
+        date: z.string().describe("日付 (YYYY-MM-DD)"),
+        isCheatDay: z.boolean().describe("チートデイかどうか"),
+        breakfast: z.object({
+          recipeId: z.string(),
+          title: z.string(),
+          tags: z.array(z.string()),
+          ingredients: z.array(z.string()),
+          steps: z.array(z.string()),
+          nutrition: z.object({
+            calories: z.number(),
+            protein: z.number(),
+            fat: z.number(),
+            carbs: z.number(),
+          }),
+        }),
+        lunch: z.object({
+          recipeId: z.string(),
+          title: z.string(),
+          tags: z.array(z.string()),
+          ingredients: z.array(z.string()),
+          steps: z.array(z.string()),
+          nutrition: z.object({
+            calories: z.number(),
+            protein: z.number(),
+            fat: z.number(),
+            carbs: z.number(),
+          }),
+        }),
+        dinner: z.object({
+          recipeId: z.string(),
+          title: z.string(),
+          tags: z.array(z.string()),
+          ingredients: z.array(z.string()),
+          steps: z.array(z.string()),
+          nutrition: z.object({
+            calories: z.number(),
+            protein: z.number(),
+            fat: z.number(),
+            carbs: z.number(),
+          }),
+        }),
+      })
+    )
+    .length(DEFAULT_PLAN_DURATION_DAYS)
+    .describe(`${DEFAULT_PLAN_DURATION_DAYS}日間のプラン`),
+  shoppingList: z
+    .array(
+      z.object({
+        ingredient: z.string().describe("食材名"),
+        amount: z.string().describe("数量（単位含む）"),
+        category: z.string().describe("カテゴリ（野菜, 肉, 等）"),
+      })
+    )
+    .describe("複数日分の合計数量を算出した買い物リスト"),
 });
 
 /**
- * 部分的なプラン生成用の出力スキーマ（可変長のdays配列）
+ * 部分的なプラン生成用の出力スキーマ（可変長の日付配列用も平坦化）
  */
 export const PartialPlanOutputSchema = z.object({
-  days: z.array(DayPlanSchema).describe("プランの日付配列"),
+  days: z.array(
+    z.object({
+      date: z.string().describe("日付 (YYYY-MM-DD)"),
+      isCheatDay: z.boolean().describe("チートデイかどうか"),
+      breakfast: z.object({
+        recipeId: z.string(),
+        title: z.string(),
+        tags: z.array(z.string()),
+        ingredients: z.array(z.string()),
+        steps: z.array(z.string()),
+        nutrition: z.object({
+          calories: z.number(),
+          protein: z.number(),
+          fat: z.number(),
+          carbs: z.number(),
+        }),
+      }),
+      lunch: z.object({
+        recipeId: z.string(),
+        title: z.string(),
+        tags: z.array(z.string()),
+        ingredients: z.array(z.string()),
+        steps: z.array(z.string()),
+        nutrition: z.object({
+          calories: z.number(),
+          protein: z.number(),
+          fat: z.number(),
+          carbs: z.number(),
+        }),
+      }),
+      dinner: z.object({
+        recipeId: z.string(),
+        title: z.string(),
+        tags: z.array(z.string()),
+        ingredients: z.array(z.string()),
+        steps: z.array(z.string()),
+        nutrition: z.object({
+          calories: z.number(),
+          protein: z.number(),
+          fat: z.number(),
+          carbs: z.number(),
+        }),
+      }),
+    })
+  ),
 });
 
 export type PlanGeneratorInput = z.infer<typeof PlanGeneratorInputSchema>;
@@ -104,26 +175,27 @@ export const planGeneratorAgent = new Agent({
   name: "Plan Generator",
   instructions: `
 あなたはダイエット成功をサポートする献立プランナーです。
-14日間（42食）の食事プランと、必要な買い物リストを生成してください。
+以下のガイドラインに従って、最適な食事プランと買い物リストを生成してください。
 
 【レシピ構成比率】
 - 定番（お気に入り・類似レシピ）: 40%
 - 発見（新ジャンル・トレンド）: 40%
 - 低コスト（安価な旬食材活用）: 20%
 
-【ルール】
-1. 栄養目標に収まるよう各食事を設計
-2. 食材の使い回しで無駄を減らす
-3. チートデイは好きなものを楽しめる日（栄養制限緩和）
-4. dislikedIngredients は絶対に使わない
-5. 同じレシピが連続しないよう変化をつける
-6. 買い物リストはカテゴリ別（野菜, 肉, 魚, 調味料等）で整理
+【極重要：栄養計算ルール】
+1. 1日の合計摂取カロリーは必ず targetCalories（許容誤差±1%）に一致させてください。
+2. 3食のカロリー配分目安：朝20%、昼40%、夜40% としてください。
+3. カロリー計算は「タンパク質: 4kcal/g, 脂質: 9kcal/g, 炭水化物: 4kcal/g」の定数を使用し、各食事の合計が1日の目標PFCバランスに収まるように厳密に設計してください。
+4. 出力前に、各食事の(P*4 + F*9 + C*4)の合計が targetCalories と一致するか、セルフチェックを必ず行ってください。
 
-【チートデイ設定】
-- weekly: 7日目と14日目
-- biweekly: 14日目のみ
+【その他のルール】
+1. dislikedIngredients（苦手な食材）は絶対に使用しないでください。
+2. 買い物リストは「複数の日の食材を合算」して、「食材: 合計数量」の形式で1件にまとめてください。（例：鶏むね肉 1.5kg）
+3. カテゴリ別（野菜, 肉, 魚, 調味料等）に整理してください。
+4. 食材の使い回しを意識し、無駄のないプランにしてください。
+5. チートデイは栄養計算の枠外とし、ユーザーが楽しめるメニューを提案してください。
 
-【重要】出力は必ずJSON形式で、nutritionフィールドの各値（calories, protein, fat, carbs）は数値型で出力してください。
+※説明や挨拶は一切不要です。JSONデータのみを出力してください。
 `,
   model: "google/gemini-2.5-flash-lite",
 });

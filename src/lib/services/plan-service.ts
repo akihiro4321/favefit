@@ -4,7 +4,7 @@
  */
 
 import { mastra } from "@/mastra";
-import { PlanGeneratorInput, PlanGeneratorOutputSchema, PartialPlanOutputSchema } from "@/mastra/agents/plan-generator";
+import { PlanGeneratorInput, PlanGeneratorOutputSchema, PartialPlanOutputSchema, DEFAULT_PLAN_DURATION_DAYS } from "@/mastra/agents/plan-generator";
 import { getOrCreateUser, setPlanCreating, setPlanCreated } from "@/lib/db/firestore/userRepository";
 import { createPlan, updatePlanStatus, getActivePlan, updatePlanDays, getPlan, updateMealSlot } from "@/lib/plan";
 import { createShoppingList } from "@/lib/shoppingList";
@@ -95,7 +95,7 @@ export interface SuggestBoredomRecipesResponse {
 }
 
 /**
- * 14日間プランを生成（非同期）
+ * プランを生成（非同期）
  */
 export async function generatePlan(
   request: GeneratePlanRequest
@@ -115,10 +115,21 @@ export async function generatePlan(
   }
 
   await setPlanCreating(userId);
+  console.log(`[generatePlan] Started plan generation for user ${userId}`);
 
   generatePlanBackground(userId, userDoc).catch((error) => {
-    console.error("Background plan generation failed:", error);
-    setPlanCreated(userId).catch(console.error);
+    console.error(`[generatePlan] Background plan generation failed for user ${userId}:`, error);
+    if (error instanceof Error) {
+      console.error(`[generatePlan] Error details:`, {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+      });
+    }
+    // エラーが発生した場合でも、ステータスをクリア
+    setPlanCreated(userId).catch((statusError) => {
+      console.error(`[generatePlan] Failed to clear plan creation status after error:`, statusError);
+    });
   });
 
   return {
@@ -231,7 +242,7 @@ ${userDoc.planRejectionFeedback}
 このフィードバックを考慮して、より適切なプランを生成してください。`
       : "";
 
-    const messageText = `以下の情報に基づいて14日間の食事プランと買い物リストを生成してください。
+    const messageText = `以下の情報に基づいて${DEFAULT_PLAN_DURATION_DAYS}日間の食事プランと買い物リストを生成してください。
 
 【ユーザー情報】
 ${JSON.stringify(input, null, 2)}${feedbackText}`;
@@ -268,10 +279,10 @@ ${JSON.stringify(input, null, 2)}${feedbackText}`;
       throw new Error("AI応答にdays配列が含まれていません");
     }
 
-    // 14日間のプランであることを検証（構造化出力で保証されるが、フォールバックとして残す）
-    if (parsedResult.days.length !== 14) {
-      console.error(`プランは14日間である必要がありますが、${parsedResult.days.length}日間でした。`, parsedResult);
-      throw new Error(`プラン生成エラー: 14日間のプランが必要ですが、${parsedResult.days.length}日間のプランが返されました。`);
+    // 指定日数分のプランであることを検証（構造化出力で保証されるが、フォールバックとして残す）
+    if (parsedResult.days.length !== DEFAULT_PLAN_DURATION_DAYS) {
+      console.error(`プランは${DEFAULT_PLAN_DURATION_DAYS}日間である必要がありますが、${parsedResult.days.length}日間でした。`, parsedResult);
+      throw new Error(`プラン生成エラー: ${DEFAULT_PLAN_DURATION_DAYS}日間のプランが必要ですが、${parsedResult.days.length}日間のプランが返されました。`);
     }
 
     const days: Record<string, DayPlan> = {};
@@ -282,9 +293,9 @@ ${JSON.stringify(input, null, 2)}${feedbackText}`;
       const convertMeal = (meal: {
         recipeId: string;
         title: string;
-        tags?: string[];
-        ingredients?: string[];
-        steps?: string[];
+        tags: string[];
+        ingredients: string[];
+        steps: string[];
         nutrition: { calories: number; protein: number; fat: number; carbs: number };
       }): MealSlot => {
         // nutritionの各フィールドを検証・変換（防御的プログラミング）
@@ -339,28 +350,60 @@ ${JSON.stringify(input, null, 2)}${feedbackText}`;
     }
 
     // pending状態でプランを作成（承認後にレシピ詳細を生成）
-    const planId = await createPlan(userId, startDate, days, "pending");
+    console.log(`[Plan Generation] Attempting to create plan for user ${userId} with ${Object.keys(days).length} days`);
+    let planId: string;
+    try {
+      planId = await createPlan(userId, startDate, days, "pending");
+      console.log(`[Plan Generation] Successfully created plan ${planId} for user ${userId}`);
+    } catch (createError) {
+      console.error(`[Plan Generation] Failed to create plan in Firestore for user ${userId}:`, createError);
+      if (createError instanceof Error) {
+        console.error(`[Plan Generation] Create plan error details:`, {
+          message: createError.message,
+          stack: createError.stack,
+          name: createError.name,
+        });
+      }
+      // createPlanのエラーを再スローして、上位のcatchブロックで処理
+      throw new Error(`Firebaseへのプラン作成に失敗しました: ${createError instanceof Error ? createError.message : String(createError)}`);
+    }
 
     // プラン生成完了後、フィードバックをクリア
     if (userDoc.planRejectionFeedback) {
-      const { db } = await import("@/lib/db/firestore/client");
-      const { doc, updateDoc, serverTimestamp } = await import("firebase/firestore");
-      const userRef = doc(db, "users", userId);
-      await updateDoc(userRef, {
-        planRejectionFeedback: null,
-        updatedAt: serverTimestamp(),
-      });
+      try {
+        const { db } = await import("@/lib/db/firestore/client");
+        const { doc, updateDoc, serverTimestamp } = await import("firebase/firestore");
+        const userRef = doc(db, "users", userId);
+        await updateDoc(userRef, {
+          planRejectionFeedback: null,
+          updatedAt: serverTimestamp(),
+        });
+        console.log(`[Plan Generation] Cleared rejection feedback for user ${userId}`);
+      } catch (feedbackError) {
+        console.error(`[Plan Generation] Failed to clear rejection feedback for user ${userId}:`, feedbackError);
+        // フィードバッククリアの失敗は致命的ではないので、続行
+      }
     }
   } catch (error) {
-    console.error("Error generating plan:", error);
+    console.error(`[Plan Generation] Error generating plan for user ${userId}:`, error);
     // エラーの種類に応じた処理
     if (error instanceof Error) {
-      console.error("Error message:", error.message);
-      console.error("Error stack:", error.stack);
+      console.error(`[Plan Generation] Error details:`, {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+      });
     }
     throw error;
   } finally {
-    await setPlanCreated(userId);
+    // プラン作成状態をクリア（エラーが発生しても実行）
+    try {
+      await setPlanCreated(userId);
+      console.log(`[Plan Generation] Cleared plan creation status for user ${userId}`);
+    } catch (statusError) {
+      console.error(`[Plan Generation] Failed to clear plan creation status for user ${userId}:`, statusError);
+      // ステータスクリアの失敗もログに記録するが、エラーは再スローしない
+    }
   }
 }
 
