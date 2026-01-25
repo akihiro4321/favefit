@@ -42,7 +42,7 @@ const TOTAL_STEPS = 5;
 const ONBOARDING_STEP = {
   PROFILE: 1,        // 基本プロフィール（名前、体重目標など）
   BODY_INFO: 2,      // 身体情報（年齢、身長、活動レベルなど）
-  NUTRITION_REVIEW: 3, // AI計算による栄養目標の確認
+  NUTRITION_REVIEW: 3, // 栄養目標の確認
   PREFERENCES: 4,    // 食の好み設定（アレルギー、好きな食材など）
   PLAN_CREATION: 5,  // プラン作成開始
 } as const;
@@ -211,7 +211,7 @@ export default function OnboardingPage() {
   // --- ステート管理 ---
   const [currentStep, setCurrentStep] = useState<number>(ONBOARDING_STEP.PROFILE); // 現在のステップ
   const [submitting, setSubmitting] = useState(false); // 送信中フラグ
-  // AI計算による栄養目標の結果を保持
+  // 栄養目標の結果を保持
   const [nutritionResult, setNutritionResult] = useState<{
     bmr: number;
     tdee: number;
@@ -279,7 +279,7 @@ export default function OnboardingPage() {
   // --- API呼び出し関数 ---
 
   /**
-   * 入力された身体情報をもとにAIで栄養目標を計算
+   * 入力された身体情報をもとに栄養目標を計算
    * Step 2 → Step 3 への遷移時に呼び出される
    */
   const calculateNutrition = async () => {
@@ -1137,7 +1137,7 @@ export default function OnboardingPage() {
             ) : currentStep === ONBOARDING_STEP.BODY_INFO ? (
               <>
                 <Zap className="w-4 h-4 mr-1" />
-                AIで計算
+                計算開始
               </>
             ) : (
               <>
