@@ -6,7 +6,7 @@
 
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { calculateNutrition, learnPreference } from "@/lib/services/user-service";
+import { calculateNutrition, learnPreference, updateNutritionPreferences } from "@/lib/services/user-service";
 import { HttpError, successResponse } from "@/lib/api-utils";
 
 const CalculateNutritionRequestSchema = z.object({
@@ -29,12 +29,32 @@ const CalculateNutritionRequestSchema = z.object({
       .number({ required_error: "weight_kg は必須です" })
       .min(10, "weight_kg は10以上である必要があります")
       .max(500, "weight_kg は500以下である必要があります"),
-    activity_level: z.enum(["low", "moderate", "high"], {
+    activity_level: z.enum(["sedentary", "light", "moderate", "active", "very_active"], {
       required_error: "activity_level は必須です",
     }),
     goal: z.enum(["lose", "maintain", "gain"], {
       required_error: "goal は必須です",
     }),
+  }),
+  preferences: z
+    .object({
+      lossPaceKgPerMonth: z.number().min(0.1).max(5).optional(),
+      maintenanceAdjustKcalPerDay: z.number().min(-500).max(500).optional(),
+      gainPaceKgPerMonth: z.number().min(0.1).max(5).optional(),
+      gainStrategy: z.enum(["lean", "standard", "aggressive"]).optional(),
+      macroPreset: z.enum(["balanced", "lowfat", "lowcarb", "highprotein"]).optional(),
+    })
+    .optional(),
+});
+
+const UpdateNutritionPreferencesSchema = z.object({
+  userId: z.string().min(1, "userId は必須です"),
+  preferences: z.object({
+    lossPaceKgPerMonth: z.number().min(0.1).max(5).optional(),
+    maintenanceAdjustKcalPerDay: z.number().min(-500).max(500).optional(),
+    gainPaceKgPerMonth: z.number().min(0.1).max(5).optional(),
+    gainStrategy: z.enum(["lean", "standard", "aggressive"]).optional(),
+    macroPreset: z.enum(["balanced", "lowfat", "lowcarb", "highprotein"]).optional(),
   }),
 });
 
@@ -63,6 +83,11 @@ export async function POST(
         const validated = CalculateNutritionRequestSchema.parse(body);
         const result = await calculateNutrition(validated);
         return successResponse(result);
+      }
+      case "update-nutrition-preferences": {
+        const validated = UpdateNutritionPreferencesSchema.parse(body);
+        await updateNutritionPreferences(validated.userId, validated.preferences);
+        return successResponse({ ok: true });
       }
       case "learn-preference": {
         const validated = LearnPreferenceRequestSchema.parse(body);

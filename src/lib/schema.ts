@@ -22,7 +22,7 @@ export interface UserProfile {
   age?: number;
   gender?: "male" | "female" | "other";
   height_cm?: number;
-  activity_level?: "low" | "moderate" | "high";
+  activity_level?: "sedentary" | "light" | "moderate" | "active" | "very_active";
   goal?: "lose" | "maintain" | "gain";
   allergies?: string[];
   favoriteIngredients?: string[];
@@ -38,6 +38,13 @@ export interface UserNutrition {
     carbs: number;
   };
   strategySummary?: string;
+  preferences?: {
+    lossPaceKgPerMonth?: number;
+    maintenanceAdjustKcalPerDay?: number;
+    gainPaceKgPerMonth?: number;
+    gainStrategy?: "lean" | "standard" | "aggressive";
+    macroPreset?: "balanced" | "lowfat" | "lowcarb" | "highprotein";
+  };
 }
 
 export interface LearnedPreferences {

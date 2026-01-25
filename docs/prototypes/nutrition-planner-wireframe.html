@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>栄養プラン（ワイヤー） - kg/月でペース選択</title>
+    <style>
+      :root {
+        --bg: #0b0f19;
+        --panel: #111827;
+        --panel2: #0f172a;
+        --text: #e5e7eb;
+        --muted: #9ca3af;
+        --border: #243044;
+        --accent: #60a5fa;
+        --good: #34d399;
+        --warn: #fbbf24;
+        --bad: #fb7185;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji",
+          "Segoe UI Emoji";
+        background: radial-gradient(1200px 800px at 20% 10%, #12213f 0%, var(--bg) 55%);
+        color: var(--text);
+      }
+      a { color: var(--accent); }
+      .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+      .header { display: flex; gap: 12px; align-items: baseline; justify-content: space-between; }
+      .title { font-size: 18px; font-weight: 700; }
+      .subtitle { font-size: 12px; color: var(--muted); }
+      .grid { display: grid; grid-template-columns: 420px 1fr; gap: 16px; margin-top: 14px; }
+      @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+      .card {
+        border: 1px solid var(--border);
+        background: linear-gradient(180deg, var(--panel) 0%, var(--panel2) 100%);
+        border-radius: 12px;
+        padding: 14px;
+      }
+      .card h2 { font-size: 14px; margin: 0 0 10px; }
+      .section { padding: 10px 0; border-top: 1px dashed rgba(255,255,255,0.08); }
+      .section:first-of-type { border-top: 0; padding-top: 0; }
+      .row { display: grid; grid-template-columns: 140px 1fr; gap: 10px; align-items: center; margin: 8px 0; }
+      .row label { font-size: 12px; color: var(--muted); }
+      input, select {
+        width: 100%;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.12);
+        color: var(--text);
+        border-radius: 10px;
+        padding: 10px 10px;
+        font-size: 14px;
+        outline: none;
+      }
+      input:focus, select:focus { border-color: rgba(96,165,250,0.75); box-shadow: 0 0 0 3px rgba(96,165,250,0.16); }
+      .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+      .chip {
+        border: 1px solid rgba(255,255,255,0.12);
+        background: rgba(255,255,255,0.03);
+        padding: 8px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        cursor: pointer;
+        user-select: none;
+      }
+      .chip[aria-pressed="true"] { border-color: rgba(96,165,250,0.8); background: rgba(96,165,250,0.15); }
+      .hint { font-size: 12px; color: var(--muted); line-height: 1.5; }
+      .results { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      @media (max-width: 740px) { .results { grid-template-columns: 1fr; } }
+      .kpi { border: 1px solid rgba(255,255,255,0.10); border-radius: 12px; padding: 12px; background: rgba(0,0,0,0.10); }
+      .kpi .label { color: var(--muted); font-size: 12px; }
+      .kpi .value { font-size: 22px; font-weight: 800; margin-top: 4px; }
+      .kpi .unit { font-size: 12px; color: var(--muted); margin-left: 6px; font-weight: 600; }
+      .pill {
+        display: inline-flex;
+        gap: 8px;
+        align-items: center;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,0.10);
+        background: rgba(255,255,255,0.03);
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .status { margin-top: 10px; display: grid; gap: 8px; }
+      .callout {
+        border-radius: 12px;
+        padding: 10px 12px;
+        border: 1px solid rgba(255,255,255,0.10);
+        background: rgba(255,255,255,0.03);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      .callout.good { border-color: rgba(52,211,153,0.35); background: rgba(52,211,153,0.08); }
+      .callout.warn { border-color: rgba(251,191,36,0.35); background: rgba(251,191,36,0.08); }
+      .callout.bad  { border-color: rgba(251,113,133,0.35); background: rgba(251,113,133,0.08); }
+      details summary { cursor: pointer; color: var(--text); }
+      details { margin-top: 12px; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+      .small { font-size: 12px; color: var(--muted); }
+      .table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+      .table th, .table td {
+        text-align: left;
+        padding: 8px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+        font-size: 13px;
+      }
+      .table th { color: var(--muted); font-weight: 600; }
+      .footer { margin-top: 14px; color: var(--muted); font-size: 12px; }
+      .btn {
+        width: 100%;
+        border: 1px solid rgba(96,165,250,0.5);
+        background: rgba(96,165,250,0.15);
+        color: var(--text);
+        padding: 12px;
+        border-radius: 12px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .btn:active { transform: translateY(1px); }
+      .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      @media (max-width: 520px) { .two { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div>
+          <div class="title">栄養プラン（ワイヤー）</div>
+          <div class="subtitle">目的 × ペース（kg/月） × 食事方針（PFCプリセット）でパーソナライズ</div>
+        </div>
+        <div class="pill">
+          <span>検証観点:</span>
+          <span class="mono">理解しやすさ / 納得感 / 比較のしやすさ / 入力負荷</span>
+        </div>
+      </div>
+
+      <div class="grid">
+        <!-- Inputs -->
+        <div class="card">
+          <h2>入力</h2>
+
+          <div class="section">
+            <div class="row">
+              <label for="age">年齢</label>
+              <input id="age" type="number" min="10" max="100" value="30" />
+            </div>
+            <div class="row">
+              <label for="gender">性別</label>
+              <select id="gender">
+                <option value="male" selected>男性</option>
+                <option value="female">女性</option>
+              </select>
+            </div>
+            <div class="two">
+              <div class="row" style="grid-template-columns: 1fr;">
+                <label for="height">身長（cm）</label>
+                <input id="height" type="number" min="100" max="250" value="175" />
+              </div>
+              <div class="row" style="grid-template-columns: 1fr;">
+                <label for="weight">体重（kg）</label>
+                <input id="weight" type="number" min="30" max="200" value="80" />
+              </div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="row">
+              <label for="activity">活動レベル</label>
+              <select id="activity">
+                <option value="sedentary">ほぼ運動しない（デスクワーク中心）</option>
+                <option value="light">軽い運動（週1-2回）</option>
+                <option value="moderate" selected>中度の運動（週3-5回）</option>
+                <option value="active">激しい運動（週6-7回）</option>
+                <option value="very_active">非常に激しい（肉体労働/1日2回）</option>
+              </select>
+            </div>
+            <div class="row">
+              <label for="training">筋トレ頻度</label>
+              <select id="training">
+                <option value="0">0回/週</option>
+                <option value="1-2">1-2回/週</option>
+                <option value="3-4" selected>3-4回/週</option>
+                <option value="5+">5回以上/週</option>
+              </select>
+            </div>
+            <div class="hint">
+              活動レベルは「日常＋運動」のざっくり分類、筋トレ頻度はP（たんぱく質）推奨の補正に使う想定です。
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="row">
+              <label for="goal">目的</label>
+              <select id="goal">
+                <option value="lose" selected>減量（体脂肪を落とす）</option>
+                <option value="maintain">維持（体重を保つ）</option>
+                <option value="gain">増量（筋力アップ）</option>
+              </select>
+            </div>
+            <!-- Lose: pace in kg/month -->
+            <div class="row" id="rowLoseRate">
+              <label for="rateLose">減量ペース（kg/月）</label>
+              <select id="rateLose">
+                <option value="0.5">0.5 kg/月（ゆるめ）</option>
+                <option value="1" selected>1.0 kg/月（標準）</option>
+                <option value="2">2.0 kg/月（しっかり）</option>
+              </select>
+            </div>
+
+            <!-- Maintain: micro adjustment instead of pace -->
+            <div class="row" id="rowMaintainAdjust" style="display: none;">
+              <label for="maintainAdjust">微調整（kcal/日）</label>
+              <select id="maintainAdjust">
+                <option value="-200">-200（少し絞る）</option>
+                <option value="-100">-100（微減）</option>
+                <option value="0" selected>0（現状維持）</option>
+                <option value="100">+100（微増）</option>
+                <option value="200">+200（少し増やす）</option>
+              </select>
+            </div>
+
+            <!-- Gain: pace + strategy -->
+            <div class="row" id="rowGainRate" style="display: none;">
+              <label for="rateGain">増量ペース（kg/月）</label>
+              <select id="rateGain">
+                <option value="0.25">0.25 kg/月（ゆっくり）</option>
+                <option value="0.5">0.5 kg/月（標準）</option>
+                <option value="1" selected>1.0 kg/月（速め）</option>
+              </select>
+            </div>
+            <div class="row" id="rowGainStrategy" style="display: none;">
+              <label for="gainStrategy">増量方針（やり方）</label>
+              <select id="gainStrategy">
+                <option value="lean" selected>リーン（脂肪増を抑えたい）</option>
+                <option value="standard">標準（バランス）</option>
+                <option value="aggressive">しっかり（体重を増やしたい）</option>
+              </select>
+            </div>
+
+            <div class="hint" id="goalHint">
+              減量ペースは <span class="mono">1kg ≒ 7700kcal</span> として、<span class="mono">7700 × kg/月 ÷ 30</span> を日次の赤字に換算する想定です（プロトタイプ用）。
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="row">
+              <label>食事方針（PFC）</label>
+              <div class="chips" id="macroChips">
+                <button type="button" class="chip" data-profile="balanced" aria-pressed="true">バランス</button>
+                <button type="button" class="chip" data-profile="lowfat" aria-pressed="false">ローファット</button>
+                <button type="button" class="chip" data-profile="lowcarb" aria-pressed="false">ローカーボ</button>
+                <button type="button" class="chip" data-profile="highprotein" aria-pressed="false">高たんぱく</button>
+              </div>
+            </div>
+            <div class="hint" id="macroHint">
+              バランス: F=25% / Pは目的と筋トレ頻度で調整 / Cは残り。
+            </div>
+          </div>
+
+          <div class="section">
+            <button class="btn" type="button" id="recalc">この条件で結果を見る（ワイヤー）</button>
+            <div class="footer">
+              ※これはUX検証用ワイヤーです。医療/栄養指導ではありません。妊娠中・持病・治療中の方は専門家に相談してください。
+            </div>
+          </div>
+        </div>
+
+        <!-- Results -->
+        <div class="card">
+          <h2>結果</h2>
+
+          <div class="results">
+            <div class="kpi">
+              <div class="label">基礎代謝（BMR）</div>
+              <div class="value"><span id="outBmr">-</span><span class="unit">kcal/日</span></div>
+              <div class="small">Mifflin‑St Jeor</div>
+            </div>
+            <div class="kpi">
+              <div class="label">推定消費（TDEE）</div>
+              <div class="value"><span id="outTdee">-</span><span class="unit">kcal/日</span></div>
+              <div class="small">BMR × 活動係数</div>
+            </div>
+            <div class="kpi">
+              <div class="label">摂取カロリー目標</div>
+              <div class="value"><span id="outTarget">-</span><span class="unit">kcal/日</span></div>
+              <div class="small" id="outTargetNote">目的に応じて「赤字/黒字/微調整」を反映</div>
+            </div>
+            <div class="kpi">
+              <div class="label" id="outAdjLabel">ペース（目安）</div>
+              <div class="value"><span id="outAdj">-</span><span class="unit" id="outAdjUnit">kg/月</span></div>
+              <div class="small" id="outAdjNote">※推定（体水分・活動変化でブレます）</div>
+            </div>
+          </div>
+
+          <div class="status" id="statusArea"></div>
+
+          <h2 style="margin-top: 14px;">PFC（1日あたり）</h2>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>栄養素</th>
+                <th>g/日</th>
+                <th>kcal/日</th>
+                <th>比率</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>たんぱく質（P）</td>
+                <td class="mono" id="p_g">-</td>
+                <td class="mono" id="p_kcal">-</td>
+                <td class="mono" id="p_pct">-</td>
+              </tr>
+              <tr>
+                <td>脂質（F）</td>
+                <td class="mono" id="f_g">-</td>
+                <td class="mono" id="f_kcal">-</td>
+                <td class="mono" id="f_pct">-</td>
+              </tr>
+              <tr>
+                <td>炭水化物（C）</td>
+                <td class="mono" id="c_g">-</td>
+                <td class="mono" id="c_kcal">-</td>
+                <td class="mono" id="c_pct">-</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <details>
+            <summary>なぜこの数値？（計算の根拠を表示）</summary>
+            <div class="callout" style="margin-top: 10px;">
+              <div class="small">
+                <div><b>1)</b> BMR: Mifflin‑St Jeor（性別・年齢・身長・体重）</div>
+                <div><b>2)</b> TDEE: BMR × 活動係数（1.2 / 1.375 / 1.55 / 1.725 / 1.9）</div>
+                <div><b>3)</b> 目的別の調整: 減量/増量は <span class="mono">7700 × kg/月 ÷ 30</span>、維持は <span class="mono">±kcal/日</span> の微調整</div>
+                <div><b>4)</b> PFC: Pは <span class="mono">g/kg</span>、Fは <span class="mono">%（プリセット）</span>、Cは残り</div>
+              </div>
+              <div style="margin-top: 10px;" class="mono" id="breakdown">-</div>
+            </div>
+          </details>
+
+          <div class="footer">
+            目的・ペース・方針を切り替えて「差分が直感的か」「納得感があるか」を確認するワイヤーです。
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // --- Wireframe-only calculator (for UX prototyping) ---
+      const ACTIVITY = {
+        sedentary: 1.2,
+        light: 1.375,
+        moderate: 1.55,
+        active: 1.725,
+        very_active: 1.9,
+      };
+
+      // Macro preset rules (prototype)
+      const MACRO_PRESETS = {
+        balanced: { fatPct: 0.25, label: "バランス: F=25% / Pは目的と筋トレ頻度で調整 / Cは残り。" },
+        lowfat: { fatPct: 0.20, label: "ローファット: F=20% / 炭水化物を増やしやすい（運動向き）。" },
+        lowcarb: { fatPct: 0.35, label: "ローカーボ: F=35% / 空腹対策に寄せる（脂質を増やす）。" },
+        highprotein: { fatPct: 0.25, proteinBoost: 0.2, label: "高たんぱく: Pを+0.2g/kg上乗せ（仮） / F=25% / Cは残り。" },
+      };
+
+      function mifflinStJeorBmr({ age, gender, height, weight }) {
+        const base = 10 * weight + 6.25 * height - 5 * age;
+        return gender === "male" ? base + 5 : base - 161;
+      }
+
+      // Protein g/kg rule (prototype)
+      function proteinPerKg({ goal, training, macroProfile, gainStrategy }) {
+        // baseline by goal
+        let g = goal === "lose" ? 2.0 : goal === "gain" ? 1.8 : 1.6;
+        // gain strategy adjustment (prototype): strategy affects macros, not surplus
+        if (goal === "gain") {
+          if (gainStrategy === "lean") g += 0.2;
+          if (gainStrategy === "aggressive") g -= 0.1;
+        }
+        // training adjustment
+        if (training === "1-2") g += 0.1;
+        if (training === "3-4") g += 0.2;
+        if (training === "5+") g += 0.3;
+        // macro profile adjustment
+        const preset = MACRO_PRESETS[macroProfile];
+        if (preset?.proteinBoost) g += preset.proteinBoost;
+        return g;
+      }
+
+      function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
+
+      function show(el, visible) {
+        if (!el) return;
+        el.style.display = visible ? "" : "none";
+      }
+
+      function syncGoalUI() {
+        const goal = document.getElementById("goal").value;
+        const rowLoseRate = document.getElementById("rowLoseRate");
+        const rowMaintainAdjust = document.getElementById("rowMaintainAdjust");
+        const rowGainRate = document.getElementById("rowGainRate");
+        const rowGainStrategy = document.getElementById("rowGainStrategy");
+        const goalHint = document.getElementById("goalHint");
+
+        show(rowLoseRate, goal === "lose");
+        show(rowMaintainAdjust, goal === "maintain");
+        show(rowGainRate, goal === "gain");
+        show(rowGainStrategy, goal === "gain");
+
+        if (goal === "lose") {
+          goalHint.innerHTML =
+            '減量ペースは <span class="mono">1kg ≒ 7700kcal</span> として、<span class="mono">7700 × kg/月 ÷ 30</span> を日次の赤字に換算する想定です（プロトタイプ用）。';
+        } else if (goal === "maintain") {
+          goalHint.innerHTML =
+            '維持は基本「0（現状維持）」で開始し、体重推移を見て <span class="mono">±100〜200kcal/日</span> で微調整する想定です（プロトタイプ用）。';
+        } else {
+          goalHint.innerHTML =
+            '増量は <span class="mono">kg/月</span>（体重増の速さ）で黒字を作ります。方針（リーン/標準/しっかり）は「食事の組み立て方（高たんぱく寄り等）」の選択で、<b>ペースとは別軸</b>として扱います（プロトタイプ用）。';
+        }
+      }
+
+      function calc() {
+        const age = Number(document.getElementById("age").value || 0);
+        const gender = document.getElementById("gender").value;
+        const height = Number(document.getElementById("height").value || 0);
+        const weight = Number(document.getElementById("weight").value || 0);
+        const activityLevel = document.getElementById("activity").value;
+        const training = document.getElementById("training").value;
+        const goal = document.getElementById("goal").value;
+        const rateLoseKgMonth = Number(document.getElementById("rateLose")?.value || 0);
+        const rateGainKgMonth = Number(document.getElementById("rateGain")?.value || 0);
+        const maintainAdjustKcalDay = Number(document.getElementById("maintainAdjust")?.value || 0);
+        const gainStrategy = document.getElementById("gainStrategy")?.value || "lean";
+        const macroProfile = currentMacroProfile;
+
+        const bmr = mifflinStJeorBmr({ age, gender, height, weight });
+        const multiplier = ACTIVITY[activityLevel] ?? 1.2;
+        const tdee = bmr * multiplier;
+
+        // kg/month → kcal/day (prototype conversion)
+        // 1kg ≒ 7700 kcal, /30 days for simplicity
+        const loseKcalPerDay = (7700 * rateLoseKgMonth) / 30;
+        const gainBaseKcalPerDay = (7700 * rateGainKgMonth) / 30;
+
+        let target = tdee;
+        if (goal === "lose") target = tdee - loseKcalPerDay;
+        if (goal === "gain") target = tdee + gainBaseKcalPerDay;
+        if (goal === "maintain") target = tdee + maintainAdjustKcalDay;
+
+        // sanity clamps for demo
+        target = Math.round(clamp(target, 1200, 4500));
+        const outBmr = Math.round(bmr);
+        const outTdee = Math.round(tdee);
+
+        // PFC
+        const pGkg = proteinPerKg({ goal, training, macroProfile, gainStrategy });
+        const proteinG = Math.round(weight * pGkg);
+        const proteinKcal = proteinG * 4;
+
+        const preset = MACRO_PRESETS[macroProfile] ?? MACRO_PRESETS.balanced;
+        const fatKcal = Math.round(target * preset.fatPct);
+        const fatG = Math.round(fatKcal / 9);
+
+        const carbsKcal = Math.max(0, target - proteinKcal - fatKcal);
+        const carbsG = Math.round(carbsKcal / 4);
+
+        // output KPIs
+        document.getElementById("outBmr").textContent = outBmr.toLocaleString();
+        document.getElementById("outTdee").textContent = outTdee.toLocaleString();
+        document.getElementById("outTarget").textContent = target.toLocaleString();
+        // goal-specific "pace/adjustment" display
+        const outAdjLabel = document.getElementById("outAdjLabel");
+        const outAdj = document.getElementById("outAdj");
+        const outAdjUnit = document.getElementById("outAdjUnit");
+        const outAdjNote = document.getElementById("outAdjNote");
+        const outTargetNote = document.getElementById("outTargetNote");
+
+        if (goal === "lose") {
+          outAdjLabel.textContent = "減量ペース（目安）";
+          outAdj.textContent = rateLoseKgMonth.toFixed(1);
+          outAdjUnit.textContent = "kg/月";
+          outAdjNote.textContent = "※推定（体水分・活動変化でブレます）";
+          outTargetNote.textContent = "減量: ペース（kg/月）を日次赤字に換算";
+        } else if (goal === "gain") {
+          outAdjLabel.textContent = "増量ペース（目安）";
+          outAdj.textContent = rateGainKgMonth.toFixed(2).replace(/\.?0+$/, "");
+          outAdjUnit.textContent = "kg/月";
+          outAdjNote.textContent =
+            gainStrategy === "aggressive"
+              ? "方針: しっかり（食事を増やして体重を増やしたい）"
+              : gainStrategy === "standard"
+                ? "方針: 標準（バランス）"
+                : "方針: リーン（高たんぱく寄りで脂肪増を抑える）";
+          outTargetNote.textContent = "増量: ペース（kg/月）で黒字を作る（方針は食事の組み立て方）";
+        } else {
+          outAdjLabel.textContent = "微調整（目安）";
+          outAdj.textContent = maintainAdjustKcalDay >= 0 ? `+${maintainAdjustKcalDay}` : `${maintainAdjustKcalDay}`;
+          outAdjUnit.textContent = "kcal/日";
+          outAdjNote.textContent = "維持は体重推移を見て±100〜200kcalで微調整";
+          outTargetNote.textContent = "維持: 摂取=消費をベースに微調整";
+        }
+
+        // output PFC table
+        const totalKcal = proteinKcal + fatKcal + carbsKcal;
+        const pct = (k) => (totalKcal ? Math.round((k / totalKcal) * 100) : 0) + "%";
+        document.getElementById("p_g").textContent = proteinG.toString();
+        document.getElementById("p_kcal").textContent = proteinKcal.toString();
+        document.getElementById("p_pct").textContent = pct(proteinKcal);
+        document.getElementById("f_g").textContent = fatG.toString();
+        document.getElementById("f_kcal").textContent = fatKcal.toString();
+        document.getElementById("f_pct").textContent = pct(fatKcal);
+        document.getElementById("c_g").textContent = carbsG.toString();
+        document.getElementById("c_kcal").textContent = carbsKcal.toString();
+        document.getElementById("c_pct").textContent = pct(carbsKcal);
+
+        // callouts
+        const status = document.getElementById("statusArea");
+        status.innerHTML = "";
+        const delta = target - outTdee; // negative = deficit
+
+        const add = (kind, text) => {
+          const div = document.createElement("div");
+          div.className = "callout " + kind;
+          div.textContent = text;
+          status.appendChild(div);
+        };
+
+        if (goal === "maintain") {
+          add("good", `維持: 摂取=消費をベースに、微調整 ${maintainAdjustKcalDay >= 0 ? `+${maintainAdjustKcalDay}` : `${maintainAdjustKcalDay}`}kcal/日。2週間の推移で再調整する想定です。`);
+        } else if (goal === "lose") {
+          add("good", `減量ペース: 約${rateLoseKgMonth.toFixed(1)}kg/月（目安）。日次赤字は約 ${Math.round(-delta)}kcal。`);
+          if (target < outBmr) {
+            add("warn", "注意: 摂取カロリーがBMRを下回っています。ペースを緩める/活動を見直す余地があるか検討してください。");
+          }
+          if (Math.round(-delta) > 800) {
+            add("warn", "注意: 赤字が大きめです。空腹やパフォーマンス低下が出る可能性があります。");
+          }
+        } else if (goal === "gain") {
+          add("good", `増量ペース: 約${rateGainKgMonth.toFixed(2).replace(/\.?0+$/, "")}kg/月（目安）。日次黒字は約 ${Math.round(delta)}kcal。`);
+          if (Math.round(delta) > 600) {
+            add("warn", "注意: 黒字が大きめです。脂肪増が増える可能性があります。");
+          }
+        }
+
+        // breakdown text
+        const sign = delta === 0 ? "±0" : delta > 0 ? `+${Math.round(delta)}` : `${Math.round(delta)}`;
+        const breakdown = [
+          `BMR = ${outBmr} kcal/日（Mifflin‑St Jeor）`,
+          `TDEE = BMR × ${multiplier} = ${outTdee} kcal/日`,
+          goal === "maintain"
+            ? `目標摂取 = TDEE ${sign} kcal/日（微調整: ${maintainAdjustKcalDay >= 0 ? `+${maintainAdjustKcalDay}` : `${maintainAdjustKcalDay}`}）`
+            : goal === "lose"
+              ? `目標摂取 = TDEE ${sign} kcal/日（kg/月→kcal/日換算: ${Math.round(loseKcalPerDay)}）`
+              : `目標摂取 = TDEE ${sign} kcal/日（kg/月→kcal/日換算: ${Math.round(gainBaseKcalPerDay)}）`,
+          `P = ${pGkg.toFixed(1)} g/kg × ${weight}kg = ${proteinG}g（${proteinKcal}kcal）`,
+          `F = ${Math.round(preset.fatPct * 100)}% → ${fatG}g（${fatKcal}kcal）`,
+          `C = 残り → ${carbsG}g（${carbsKcal}kcal）`,
+        ];
+        document.getElementById("breakdown").textContent = breakdown.join("\n");
+      }
+
+      // chip controls
+      let currentMacroProfile = "balanced";
+      const chips = Array.from(document.querySelectorAll("#macroChips .chip"));
+      const macroHint = document.getElementById("macroHint");
+      function setMacroProfile(p) {
+        currentMacroProfile = p;
+        chips.forEach((c) => c.setAttribute("aria-pressed", c.dataset.profile === p ? "true" : "false"));
+        macroHint.textContent = (MACRO_PRESETS[p] ?? MACRO_PRESETS.balanced).label;
+        calc();
+      }
+      chips.forEach((c) => c.addEventListener("click", () => setMacroProfile(c.dataset.profile)));
+
+      // auto recalculation
+      ["age","gender","height","weight","activity","training","rateLose","maintainAdjust","rateGain","gainStrategy"].forEach((id) => {
+        document.getElementById(id).addEventListener("change", calc);
+        document.getElementById(id).addEventListener("input", calc);
+      });
+      document.getElementById("recalc").addEventListener("click", calc);
+
+      // initial render
+      document.getElementById("goal").addEventListener("change", () => {
+        syncGoalUI();
+        calc();
+      });
+      syncGoalUI();
+      setMacroProfile("balanced");
+    </script>
+  </body>
+</html>
