@@ -4,14 +4,14 @@
  */
 
 import { mastra } from "@/mastra";
-import { PlanGeneratorInput, PlanGeneratorOutputSchema } from "@/mastra/agents/plan-generator";
+import { PlanGeneratorInput, PlanGeneratorOutputSchema, PartialPlanOutputSchema } from "@/mastra/agents/plan-generator";
 import { getOrCreateUser, setPlanCreating, setPlanCreated } from "@/lib/user";
 import { createPlan, updatePlanStatus, getActivePlan, updatePlanDays, getPlan, updateMealSlot } from "@/lib/plan";
 import { createShoppingList } from "@/lib/shoppingList";
 import { getFavorites } from "@/lib/recipeHistory";
 import { DayPlan, MealSlot, ShoppingItem } from "@/lib/schema";
 import { buildRecipePrompt } from "@/mastra/agents/recipe-creator";
-import { calculateMacroGoals } from "@/lib/tools/calculateMacroGoals";
+import { calculateMacroGoals, calculatePersonalizedMacroGoals } from "@/lib/tools/calculateMacroGoals";
 
 interface MealInfo {
   date: string;
@@ -156,28 +156,41 @@ async function generatePlanBackground(
     let targetCalories: number;
     let pfc: { protein: number; fat: number; carbs: number };
 
-    // userDoc.nutritionに値が設定されている場合はそれを使用
-    if (
-      userDoc.nutrition?.dailyCalories &&
-      userDoc.nutrition.dailyCalories > 0 &&
-      userDoc.nutrition.pfc?.protein &&
-      userDoc.nutrition.pfc.protein > 0
-    ) {
-      targetCalories = userDoc.nutrition.dailyCalories;
-      pfc = userDoc.nutrition.pfc;
-    } else {
-      // プロファイル情報から動的に計算
-      const profile = userDoc.profile;
-      const hasRequiredProfileData =
-        profile.age &&
-        profile.gender &&
-        (profile.gender === "male" || profile.gender === "female") &&
-        profile.height_cm &&
-        profile.currentWeight &&
-        profile.activity_level &&
-        profile.goal;
+    const profile = userDoc.profile;
+    const hasRequiredProfileData =
+      profile.age &&
+      profile.gender &&
+      (profile.gender === "male" || profile.gender === "female") &&
+      profile.height_cm &&
+      profile.currentWeight &&
+      profile.activity_level &&
+      profile.goal;
 
-      if (hasRequiredProfileData) {
+    if (hasRequiredProfileData) {
+      // preferences がある場合は決定論の計算を優先
+      if (userDoc.nutrition?.preferences) {
+        const macroGoals = calculatePersonalizedMacroGoals({
+          age: profile.age!,
+          gender: profile.gender as "male" | "female",
+          height_cm: profile.height_cm!,
+          weight_kg: profile.currentWeight,
+          activity_level: profile.activity_level!,
+          goal: profile.goal!,
+          preferences: userDoc.nutrition.preferences,
+        });
+        targetCalories = macroGoals.targetCalories;
+        pfc = macroGoals.pfc;
+      } else if (
+        userDoc.nutrition?.dailyCalories &&
+        userDoc.nutrition.dailyCalories > 0 &&
+        userDoc.nutrition.pfc?.protein &&
+        userDoc.nutrition.pfc.protein > 0
+      ) {
+        // 既存のnutritionデータを使用
+        targetCalories = userDoc.nutrition.dailyCalories;
+        pfc = userDoc.nutrition.pfc;
+      } else {
+        // プロファイル情報から動的に計算（従来ロジック）
         const macroGoals = calculateMacroGoals({
           age: profile.age!,
           gender: profile.gender as "male" | "female",
@@ -188,11 +201,11 @@ async function generatePlanBackground(
         });
         targetCalories = macroGoals.targetCalories;
         pfc = macroGoals.pfc;
-      } else {
-        // プロファイル情報が不足している場合はデフォルト値を使用
-        targetCalories = 1800;
-        pfc = { protein: 100, fat: 50, carbs: 200 };
       }
+    } else {
+      // プロファイル情報が不足している場合はデフォルト値を使用
+      targetCalories = 1800;
+      pfc = { protein: 100, fat: 50, carbs: 200 };
     }
 
     const input: PlanGeneratorInput = {
@@ -238,13 +251,15 @@ ${JSON.stringify(input, null, 2)}${feedbackText}`;
       parsedResult = result.object;
     } else if (result.text) {
       // フォールバック: テキストからJSONを抽出
+      console.warn(`[Plan Generation] Structured output not available, falling back to text parsing`);
       const jsonMatch = result.text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        console.error("Failed to extract JSON:", result.text);
+        console.error("[Plan Generation] Failed to extract JSON from text:", result.text.substring(0, 500));
         throw new Error("AI応答からJSONを抽出できませんでした");
       }
       parsedResult = JSON.parse(jsonMatch[0]);
     } else {
+      console.error("[Plan Generation] No object or text in response");
       throw new Error("AI応答が無効です");
     }
 
@@ -253,9 +268,10 @@ ${JSON.stringify(input, null, 2)}${feedbackText}`;
       throw new Error("AI応答にdays配列が含まれていません");
     }
 
-    // 14日間のプランであることを検証
+    // 14日間のプランであることを検証（構造化出力で保証されるが、フォールバックとして残す）
     if (parsedResult.days.length !== 14) {
-      throw new Error(`プランは14日間である必要がありますが、${parsedResult.days.length}日間でした`);
+      console.error(`プランは14日間である必要がありますが、${parsedResult.days.length}日間でした。`, parsedResult);
+      throw new Error(`プラン生成エラー: 14日間のプランが必要ですが、${parsedResult.days.length}日間のプランが返されました。`);
     }
 
     const days: Record<string, DayPlan> = {};
@@ -325,8 +341,6 @@ ${JSON.stringify(input, null, 2)}${feedbackText}`;
     // pending状態でプランを作成（承認後にレシピ詳細を生成）
     const planId = await createPlan(userId, startDate, days, "pending");
 
-    console.log(`Plan created successfully for user ${userId}: planId=${planId} (pending)`);
-
     // プラン生成完了後、フィードバックをクリア
     if (userDoc.planRejectionFeedback) {
       const { db } = await import("@/lib/firebase");
@@ -339,6 +353,11 @@ ${JSON.stringify(input, null, 2)}${feedbackText}`;
     }
   } catch (error) {
     console.error("Error generating plan:", error);
+    // エラーの種類に応じた処理
+    if (error instanceof Error) {
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+    }
     throw error;
   } finally {
     await setPlanCreated(userId);
@@ -635,10 +654,10 @@ ${userDoc.learnedPreferences.dislikedIngredients.join(", ") || "なし"}
 【既存のメニュー（これらとは異なるものを提案）】
 ${existingTitles.join(", ")}`;
 
-  // 構造化出力を使用してスキーマに準拠したデータを取得
+  // 構造化出力を使用してスキーマに準拠したデータを取得（可変長の日付配列用）
   const planResult1 = await planAgent.generate(planMessageText, {
     structuredOutput: {
-      schema: PlanGeneratorOutputSchema,
+      schema: PartialPlanOutputSchema,
       jsonPromptInjection: true,
     },
   });
@@ -697,10 +716,10 @@ ${explorationProfile?.avoidCuisines?.join(", ") || "なし"}
 【避けるべき食材】
 ${userDoc.learnedPreferences.dislikedIngredients.join(", ") || "なし"}`;
 
-  // 構造化出力を使用してスキーマに準拠したデータを取得
+  // 構造化出力を使用してスキーマに準拠したデータを取得（可変長の日付配列用）
   const planResult2 = await planAgent.generate(planMessageText, {
     structuredOutput: {
-      schema: PlanGeneratorOutputSchema,
+      schema: PartialPlanOutputSchema,
       jsonPromptInjection: true,
     },
   });
@@ -898,14 +917,11 @@ async function generateRecipeDetailsBatch(
   }
 
   if (recipeQueue.length === 0) {
-    console.log("All recipes already have details, skipping generation");
     return;
   }
 
   const BATCH_SIZE = 5;
   const CONCURRENT_LIMIT = 3;
-
-  console.log(`Generating recipe details for ${recipeQueue.length} meals in batches of ${BATCH_SIZE}`);
 
   for (let i = 0; i < recipeQueue.length; i += BATCH_SIZE) {
     const batch = recipeQueue.slice(i, i + BATCH_SIZE);
@@ -926,8 +942,6 @@ async function generateRecipeDetailsBatch(
       await new Promise((resolve) => setTimeout(resolve, 1000)); // 1秒待機
     }
   }
-
-  console.log(`Completed generating recipe details for ${recipeQueue.length} meals`);
 }
 
 /**
@@ -998,7 +1012,6 @@ async function generateShoppingListFromRecipes(
   });
 
   await createShoppingList(planId, shoppingItems);
-  console.log(`Created shopping list with ${shoppingItems.length} items`);
 }
 
 /**
@@ -1108,10 +1121,6 @@ async function approvePlanAndGenerateDetails(
 
     // 買い物リストを生成
     await generateShoppingListFromRecipes(planId, days);
-
-    console.log(
-      `Completed recipe detail generation and shopping list for plan ${planId}`
-    );
   } catch (error) {
     console.error("Error in approvePlanAndGenerateDetails:", error);
     throw error;

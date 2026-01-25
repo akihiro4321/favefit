@@ -170,6 +170,7 @@ export default function ProfilePage() {
               <ProfileForm 
                 userId={user.uid}
                 profile={profile.profile} 
+                nutritionPreferences={profile.nutrition?.preferences}
                 onUpdate={async () => {
                   await refreshProfile();
                   setIsEditing(false);

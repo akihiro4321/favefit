@@ -13,14 +13,22 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Zap, Loader2, CheckCircle2 } from "lucide-react";
+import { NutritionPreferencesForm } from "@/components/nutrition-preferences-form";
 
 interface ProfileFormProps {
   userId: string;
   profile: UserProfile;
+  nutritionPreferences?: {
+    lossPaceKgPerMonth?: number;
+    maintenanceAdjustKcalPerDay?: number;
+    gainPaceKgPerMonth?: number;
+    gainStrategy?: "lean" | "standard" | "aggressive";
+    macroPreset?: "balanced" | "lowfat" | "lowcarb" | "highprotein";
+  };
   onUpdate: () => void;
 }
 
-export function ProfileForm({ userId, profile, onUpdate }: ProfileFormProps) {
+export function ProfileForm({ userId, profile, nutritionPreferences, onUpdate }: ProfileFormProps) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [formData, setFormData] = useState({
@@ -31,6 +39,11 @@ export function ProfileForm({ userId, profile, onUpdate }: ProfileFormProps) {
     targetWeight: profile.targetWeight || 60,
     activity_level: profile.activity_level || "moderate",
     goal: profile.goal || "lose",
+    lossPaceKgPerMonth: nutritionPreferences?.lossPaceKgPerMonth ?? 1,
+    maintenanceAdjustKcalPerDay: nutritionPreferences?.maintenanceAdjustKcalPerDay ?? 0,
+    gainPaceKgPerMonth: nutritionPreferences?.gainPaceKgPerMonth ?? 0.5,
+    gainStrategy: nutritionPreferences?.gainStrategy || "lean",
+    macroPreset: nutritionPreferences?.macroPreset || "balanced",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -39,7 +52,7 @@ export function ProfileForm({ userId, profile, onUpdate }: ProfileFormProps) {
     setSuccess(false);
 
     try {
-      // 1. AIエージェントを呼び出して栄養目標を計算（Firestoreへの保存も行う）
+      // 1. 栄養目標を計算（Firestoreへの保存も行う）
       const response = await fetch("/api/user/calculate-nutrition", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -52,6 +65,13 @@ export function ProfileForm({ userId, profile, onUpdate }: ProfileFormProps) {
             weight_kg: formData.currentWeight,
             activity_level: formData.activity_level,
             goal: formData.goal,
+          },
+          preferences: {
+            lossPaceKgPerMonth: formData.lossPaceKgPerMonth,
+            maintenanceAdjustKcalPerDay: formData.maintenanceAdjustKcalPerDay,
+            gainPaceKgPerMonth: formData.gainPaceKgPerMonth,
+            gainStrategy: formData.gainStrategy,
+            macroPreset: formData.macroPreset,
           },
         }),
       });
@@ -83,9 +103,7 @@ export function ProfileForm({ userId, profile, onUpdate }: ProfileFormProps) {
     <Card>
       <CardHeader>
         <CardTitle className="text-lg">身体情報とダイエット目標</CardTitle>
-        <CardDescription>
-          AIがあなたに最適な栄養プランを算出します。
-        </CardDescription>
+        <CardDescription>入力内容に基づいて栄養プランを算出します。</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -181,13 +199,15 @@ export function ProfileForm({ userId, profile, onUpdate }: ProfileFormProps) {
               onChange={(e) =>
                 setFormData({
                   ...formData,
-                  activity_level: e.target.value as "low" | "moderate" | "high",
+                  activity_level: e.target.value as "sedentary" | "light" | "moderate" | "active" | "very_active",
                 })
               }
             >
-              <option value="low">ほとんど動かない</option>
-              <option value="moderate">週2-3回の運動</option>
-              <option value="high">激しい運動 / 毎日運動</option>
+              <option value="sedentary">ほぼ運動しない</option>
+              <option value="light">軽い運動 週に1-2回運動</option>
+              <option value="moderate">中度の運動 週に3-5回運動</option>
+              <option value="active">激しい運動やスポーツ 週に6-7回運動</option>
+              <option value="very_active">非常に激しい運動・肉体労働 1日に2回運動</option>
             </select>
           </div>
 
@@ -210,11 +230,17 @@ export function ProfileForm({ userId, profile, onUpdate }: ProfileFormProps) {
             </select>
           </div>
 
+          <NutritionPreferencesForm
+            goal={formData.goal}
+            formData={formData}
+            onFormChange={(updates) => setFormData({ ...formData, ...updates })}
+          />
+
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                AIが計算中...
+                計算中...
               </>
             ) : success ? (
               <>
@@ -224,7 +250,7 @@ export function ProfileForm({ userId, profile, onUpdate }: ProfileFormProps) {
             ) : (
               <>
                 <Zap className="mr-2 h-4 w-4 fill-current" />
-                AIプランを算出
+                栄養プランを算出
               </>
             )}
           </Button>

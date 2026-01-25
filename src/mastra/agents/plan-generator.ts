@@ -73,10 +73,10 @@ const DayPlanSchema = z.object({
 });
 
 /**
- * 出力スキーマ
+ * 出力スキーマ（14日間固定）
  */
 export const PlanGeneratorOutputSchema = z.object({
-  days: z.array(DayPlanSchema),
+  days: z.array(DayPlanSchema).length(14).describe("14日間のプラン"),
   shoppingList: z.array(
     z.object({
       ingredient: z.string(),
@@ -84,6 +84,13 @@ export const PlanGeneratorOutputSchema = z.object({
       category: z.string(),
     })
   ),
+});
+
+/**
+ * 部分的なプラン生成用の出力スキーマ（可変長のdays配列）
+ */
+export const PartialPlanOutputSchema = z.object({
+  days: z.array(DayPlanSchema).describe("プランの日付配列"),
 });
 
 export type PlanGeneratorInput = z.infer<typeof PlanGeneratorInputSchema>;

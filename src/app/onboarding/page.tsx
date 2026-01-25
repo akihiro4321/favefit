@@ -26,6 +26,7 @@ import { updateUserProfile, completeOnboarding } from "@/lib/user";
 import { db } from "@/lib/firebase";
 import { doc, updateDoc, serverTimestamp, Timestamp } from "firebase/firestore";
 import { PlanCreatingScreen } from "@/components/plan-creating-screen";
+import { NutritionPreferencesForm } from "@/components/nutrition-preferences-form";
 
 const TOTAL_STEPS = 5;
 
@@ -59,8 +60,13 @@ export default function OnboardingPage() {
     age: 30,
     gender: "male" as "male" | "female" | "other",
     height_cm: 170,
-    activity_level: "moderate" as "low" | "moderate" | "high",
+    activity_level: "moderate" as "sedentary" | "light" | "moderate" | "active" | "very_active",
     goal: "lose" as "lose" | "maintain" | "gain",
+    lossPaceKgPerMonth: 1,
+    maintenanceAdjustKcalPerDay: 0,
+    gainPaceKgPerMonth: 0.5,
+    gainStrategy: "lean" as "lean" | "standard" | "aggressive",
+    macroPreset: "balanced" as "balanced" | "lowfat" | "lowcarb" | "highprotein",
     // Step 4: 好み
     allergies: [] as string[],
     favoriteIngredients: [] as string[],
@@ -120,6 +126,11 @@ export default function OnboardingPage() {
         height_cm: profile.profile.height_cm || 170,
         activity_level: profile.profile.activity_level || "moderate",
         goal: profile.profile.goal || "lose",
+        lossPaceKgPerMonth: profile.nutrition?.preferences?.lossPaceKgPerMonth ?? 1,
+        maintenanceAdjustKcalPerDay: profile.nutrition?.preferences?.maintenanceAdjustKcalPerDay ?? 0,
+        gainPaceKgPerMonth: profile.nutrition?.preferences?.gainPaceKgPerMonth ?? 0.5,
+        gainStrategy: profile.nutrition?.preferences?.gainStrategy || "lean",
+        macroPreset: profile.nutrition?.preferences?.macroPreset || "balanced",
         allergies: profile.profile.allergies || [],
         favoriteIngredients: profile.profile.favoriteIngredients || [],
         preferredCuisines: Object.keys(profile.learnedPreferences?.cuisines || {}).map((c) => {
@@ -164,7 +175,7 @@ export default function OnboardingPage() {
 
   const handleNext = async () => {
     if (currentStep === 2) {
-      // Step 2 完了時: AI で栄養計算
+      // Step 2 完了時: 栄養計算
       setSubmitting(true);
       try {
         const response = await fetch("/api/user/calculate-nutrition", {
@@ -179,6 +190,13 @@ export default function OnboardingPage() {
               weight_kg: formData.currentWeight,
               activity_level: formData.activity_level,
               goal: formData.goal,
+            },
+            preferences: {
+              lossPaceKgPerMonth: formData.lossPaceKgPerMonth,
+              maintenanceAdjustKcalPerDay: formData.maintenanceAdjustKcalPerDay,
+              gainPaceKgPerMonth: formData.gainPaceKgPerMonth,
+              gainStrategy: formData.gainStrategy,
+              macroPreset: formData.macroPreset,
             },
           }),
         });
@@ -518,11 +536,13 @@ export default function OnboardingPage() {
               <select
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 value={formData.activity_level}
-                onChange={(e) => setFormData({ ...formData, activity_level: e.target.value as "low" | "moderate" | "high" })}
+                onChange={(e) => setFormData({ ...formData, activity_level: e.target.value as "sedentary" | "light" | "moderate" | "active" | "very_active" })}
               >
-                <option value="low">ほとんど動かない</option>
-                <option value="moderate">週2-3回の運動</option>
-                <option value="high">激しい運動 / 毎日</option>
+                <option value="sedentary">ほぼ運動しない</option>
+                <option value="light">軽い運動 週に1-2回運動</option>
+                <option value="moderate">中度の運動 週に3-5回運動</option>
+                <option value="active">激しい運動やスポーツ 週に6-7回運動</option>
+                <option value="very_active">非常に激しい運動・肉体労働 1日に2回運動</option>
               </select>
             </div>
 
@@ -538,6 +558,13 @@ export default function OnboardingPage() {
                 <option value="gain">筋肉をつけたい（増量）</option>
               </select>
             </div>
+
+            <NutritionPreferencesForm
+              goal={formData.goal}
+              formData={formData}
+              onFormChange={(updates) => setFormData({ ...formData, ...updates })}
+              selectClassName="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            />
           </CardContent>
         </Card>
       )}
@@ -551,7 +578,7 @@ export default function OnboardingPage() {
               <CardTitle>あなたの栄養目標</CardTitle>
             </div>
             <CardDescription>
-              AIがあなたに最適なプランを算出しました
+              入力内容に基づいて栄養目標を算出しました
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
