@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/components/auth-provider";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,7 +33,7 @@ interface SuggestedRecipe {
   };
 }
 
-export default function FridgePage() {
+function FridgePageContent() {
   const { user, profile, loading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -298,5 +298,19 @@ export default function FridgePage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function FridgePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      }
+    >
+      <FridgePageContent />
+    </Suspense>
   );
 }
