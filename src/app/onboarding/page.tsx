@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * オンボーディングページ
+ * 新規ユーザーが初回ログイン時にプロフィール・栄養目標・食の好みを設定するウィザード形式の画面
+ * 5ステップで構成: プロフィール → 身体情報 → 栄養目標確認 → 好み設定 → プラン作成
+ */
+
 import { useAuth } from "@/components/auth-provider";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -30,43 +36,55 @@ import { PlanCreatingScreen } from "@/components/plan-creating-screen";
 import { NutritionPreferencesForm } from "@/components/nutrition-preferences-form";
 import type { CalculateNutritionRequest } from "@/lib/schemas/user";
 
+// オンボーディングの総ステップ数
 const TOTAL_STEPS = 5;
+
+// 各ステップを識別するための定数オブジェクト
 const ONBOARDING_STEP = {
-  PROFILE: 1,
-  BODY_INFO: 2,
-  NUTRITION_REVIEW: 3,
-  PREFERENCES: 4,
-  PLAN_CREATION: 5,
+  PROFILE: 1,        // 基本プロフィール（名前、体重目標など）
+  BODY_INFO: 2,      // 身体情報（年齢、身長、活動レベルなど）
+  NUTRITION_REVIEW: 3, // AI計算による栄養目標の確認
+  PREFERENCES: 4,    // 食の好み設定（アレルギー、好きな食材など）
+  PLAN_CREATION: 5,  // プラン作成開始
 } as const;
+
+// セレクトボックス共通のTailwindクラス
 const SELECT_CLASS_NAME = "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm";
 
+/**
+ * オンボーディングで収集するフォームデータの型定義
+ * 各ステップで入力される情報をまとめて管理
+ */
 type OnboardingFormData = {
   // Step 1: 基本プロフィール
-  displayName: string;
-  currentWeight: number;
-  targetWeight: number;
-  deadline: string; // YYYY-MM-DD形式
-  cheatDayFrequency: "weekly" | "biweekly";
-  // Step 2: 身体情報
+  displayName: string;       // ニックネーム
+  currentWeight: number;     // 現在の体重 (kg)
+  targetWeight: number;      // 目標体重 (kg)
+  deadline: string;          // 目標達成期限 (YYYY-MM-DD形式)
+  cheatDayFrequency: "weekly" | "biweekly"; // チートデイの頻度
+
+  // Step 2: 身体情報（栄養計算に使用）
   age: number;
   gender: "male" | "female" | "other";
   height_cm: number;
   activity_level: "sedentary" | "light" | "moderate" | "active" | "very_active";
-  goal: "lose" | "maintain" | "gain";
-  lossPaceKgPerMonth: number;
-  maintenanceAdjustKcalPerDay: number;
-  gainPaceKgPerMonth: number;
-  gainStrategy: "lean" | "standard" | "aggressive";
-  macroPreset: "balanced" | "lowfat" | "lowcarb" | "highprotein";
-  // Step 4: 好み
-  allergies: string[];
-  favoriteIngredients: string[];
-  preferredCuisines: string[];
-  flavorProfile: "light" | "medium" | "rich";
-  cookingSkillLevel: "beginner" | "intermediate" | "advanced";
-  availableTime: "short" | "medium" | "long";
+  goal: "lose" | "maintain" | "gain"; // 減量・維持・増量
+  lossPaceKgPerMonth: number;          // 月あたりの減量ペース
+  maintenanceAdjustKcalPerDay: number; // 維持時のカロリー調整
+  gainPaceKgPerMonth: number;          // 月あたりの増量ペース
+  gainStrategy: "lean" | "standard" | "aggressive"; // 増量戦略
+  macroPreset: "balanced" | "lowfat" | "lowcarb" | "highprotein"; // マクロ栄養素のプリセット
+
+  // Step 4: 食の好み
+  allergies: string[];            // アレルギー・苦手な食材
+  favoriteIngredients: string[];  // 好きな食材
+  preferredCuisines: string[];    // 好きな料理ジャンル
+  flavorProfile: "light" | "medium" | "rich"; // 味付けの好み（さっぱり〜こってり）
+  cookingSkillLevel: "beginner" | "intermediate" | "advanced"; // 料理スキル
+  availableTime: "short" | "medium" | "long"; // 調理時間の目安
 };
 
+// フォームデータの初期値（日本人の平均的な値をデフォルトに設定）
 const DEFAULT_FORM_DATA: OnboardingFormData = {
   displayName: "",
   currentWeight: 65,
@@ -91,11 +109,21 @@ const DEFAULT_FORM_DATA: OnboardingFormData = {
   availableTime: "medium",
 };
 
+// =============================================================================
+// ヘルパー関数
+// =============================================================================
+
+/**
+ * FirestoreのTimestampをinput[type="date"]用の文字列に変換
+ */
 const getDeadlineInput = (deadline?: { toDate: () => Date } | null) => {
   if (!deadline) return "";
   return deadline.toDate().toISOString().split("T")[0];
 };
 
+/**
+ * 性別を男女のみに限定（栄養計算APIの制約のため）
+ */
 const getBinaryGender = (gender: OnboardingFormData["gender"]) => {
   if (gender === "other") {
     throw new Error("gender must be male or female");
@@ -103,12 +131,18 @@ const getBinaryGender = (gender: OnboardingFormData["gender"]) => {
   return gender;
 };
 
+/**
+ * ユーザーの学習済み好みから料理ジャンルを抽出
+ */
 const getPreferredCuisines = (learnedPreferences?: LearnedPreferences) => {
   return Object.keys(learnedPreferences?.cuisines || {}).map((cuisine) => {
     return cuisine.charAt(0).toUpperCase() + cuisine.slice(1);
   });
 };
 
+/**
+ * ユーザーの学習済み好みから味付けの好みを判定
+ */
 const getFlavorProfile = (learnedPreferences?: LearnedPreferences) => {
   const flavors = Object.keys(learnedPreferences?.flavorProfile || {});
   if (flavors.includes("light")) return "light";
@@ -116,6 +150,10 @@ const getFlavorProfile = (learnedPreferences?: LearnedPreferences) => {
   return "medium";
 };
 
+/**
+ * 既存のユーザープロフィールからフォームの初期値を構築
+ * 再オンボーディング時に以前の設定を引き継ぐために使用
+ */
 const buildProfileOverrides = (profile?: Partial<UserDocument> | null): Partial<OnboardingFormData> => {
   if (!profile?.profile) return {};
   const base: Partial<UserProfile> = profile.profile;
@@ -146,12 +184,18 @@ const buildProfileOverrides = (profile?: Partial<UserDocument> | null): Partial<
   };
 };
 
+// =============================================================================
+// メインコンポーネント
+// =============================================================================
+
 export default function OnboardingPage() {
   const { user, profile, loading, refreshProfile } = useAuth();
   const router = useRouter();
 
-  const [currentStep, setCurrentStep] = useState<number>(ONBOARDING_STEP.PROFILE);
-  const [submitting, setSubmitting] = useState(false);
+  // --- ステート管理 ---
+  const [currentStep, setCurrentStep] = useState<number>(ONBOARDING_STEP.PROFILE); // 現在のステップ
+  const [submitting, setSubmitting] = useState(false); // 送信中フラグ
+  // AI計算による栄養目標の結果を保持
   const [nutritionResult, setNutritionResult] = useState<{
     dailyCalories: number;
     pfc: { protein: number; fat: number; carbs: number };
@@ -167,10 +211,13 @@ export default function OnboardingPage() {
   // フォームデータ（既存プロフィールから初期化）
   const [formData, setFormData] = useState<OnboardingFormData>(DEFAULT_FORM_DATA);
 
-  const [allergyInput, setAllergyInput] = useState("");
-  const [favoriteInput, setFavoriteInput] = useState("");
+  // タグ入力用の一時的な入力値
+  const [allergyInput, setAllergyInput] = useState("");   // アレルギー入力欄
+  const [favoriteInput, setFavoriteInput] = useState(""); // 好きな食材入力欄
 
-  // プロフィールから初期値を設定
+  // --- 副作用（useEffect） ---
+
+  // プロフィールから初期値を設定（既存ユーザーの再オンボーディング対応）
   useEffect(() => {
     if (profile?.profile) {
       const overrides = buildProfileOverrides(profile);
@@ -187,13 +234,15 @@ export default function OnboardingPage() {
     }
   }, [profile]);
 
+  // 未ログインユーザーはトップページへリダイレクト
   useEffect(() => {
     if (!loading && !user) {
       router.push("/");
     }
   }, [user, loading, router]);
 
-  // プラン作成中の場合は定期的にステータスをチェック
+  // プラン作成中の場合は5秒ごとにステータスをポーリング
+  // 完了したら自動的に画面が更新される
   useEffect(() => {
     if (isPlanCreating) {
       const interval = setInterval(() => {
@@ -203,6 +252,12 @@ export default function OnboardingPage() {
     }
   }, [isPlanCreating, refreshProfile]);
 
+  // --- API呼び出し関数 ---
+
+  /**
+   * 入力された身体情報をもとにAIで栄養目標を計算
+   * Step 2 → Step 3 への遷移時に呼び出される
+   */
   const calculateNutrition = async () => {
     const payload = {
       userId: user!.uid,
@@ -236,6 +291,10 @@ export default function OnboardingPage() {
     setCurrentStep(ONBOARDING_STEP.NUTRITION_REVIEW);
   };
 
+  /**
+   * プロフィールと食の好みをFirestoreに保存
+   * Step 4 → Step 5 への遷移時に呼び出される
+   */
   const saveProfileAndPreferences = async () => {
     const deadlineDate = formData.deadline
       ? new Date(formData.deadline + "T00:00:00")
@@ -287,6 +346,12 @@ export default function OnboardingPage() {
     setCurrentStep(ONBOARDING_STEP.PLAN_CREATION);
   };
 
+  // --- イベントハンドラー ---
+
+  /**
+   * 「次へ」ボタン押下時の処理
+   * ステップに応じてAPI呼び出しや画面遷移を行う
+   */
   const handleNext = async () => {
     if (currentStep === ONBOARDING_STEP.BODY_INFO) {
       setSubmitting(true);
@@ -317,11 +382,16 @@ export default function OnboardingPage() {
     setCurrentStep((s) => Math.min(s + 1, TOTAL_STEPS));
   };
 
+  /** 「戻る」ボタン押下時の処理 */
   const handleBack = () => {
     setCurrentStep((s) => Math.max(s - 1, 1));
   };
 
-  // プラン作成を開始
+  /**
+   * プラン作成を開始
+   * 1. オンボーディング完了フラグを立てる
+   * 2. バックグラウンドでプラン生成APIを呼び出す
+   */
   const handleCreatePlan = async () => {
     setSubmitting(true);
     try {
@@ -348,11 +418,12 @@ export default function OnboardingPage() {
     }
   };
 
-  // 設定をスキップして直接プラン作成へ
+  /** プロフィール設定済みユーザーが設定をスキップしてプラン作成へ進む */
   const handleSkipToCreatePlan = () => {
     setCurrentStep(ONBOARDING_STEP.PLAN_CREATION);
   };
 
+  /** アレルギー・苦手な食材をリストに追加 */
   const addAllergy = () => {
     if (allergyInput.trim() && !formData.allergies.includes(allergyInput.trim())) {
       setFormData({
@@ -363,6 +434,7 @@ export default function OnboardingPage() {
     }
   };
 
+  /** 好きな食材をリストに追加 */
   const addFavorite = () => {
     if (favoriteInput.trim() && !formData.favoriteIngredients.includes(favoriteInput.trim())) {
       setFormData({
@@ -373,6 +445,9 @@ export default function OnboardingPage() {
     }
   };
 
+  // --- レンダリング ---
+
+  // ローディング中はスピナーを表示
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4">
@@ -381,9 +456,10 @@ export default function OnboardingPage() {
     );
   }
 
+  // 未ログイン時は何も表示しない（リダイレクト処理中）
   if (!user) return null;
 
-  // プラン作成中画面
+  // プラン作成中は専用の待機画面を表示
   if (isPlanCreating) {
     return (
       <PlanCreatingScreen
@@ -393,8 +469,10 @@ export default function OnboardingPage() {
     );
   }
 
+  // プログレスバー用のパーセンテージを計算
   const progress = (currentStep / TOTAL_STEPS) * 100;
 
+  // --- メイン画面のレンダリング ---
   return (
     <div className="container max-w-lg mx-auto py-8 px-4 min-h-screen flex flex-col">
       {/* プログレスバー */}
@@ -734,6 +812,7 @@ export default function OnboardingPage() {
               </div>
             </div>
 
+            {/* 料理ジャンルの複数選択（タップでトグル） */}
             <div className="space-y-2">
               <Label>好きなジャンル（複数選択可）</Label>
               <div className="flex flex-wrap gap-2">
@@ -765,6 +844,7 @@ export default function OnboardingPage() {
               </div>
             </div>
 
+            {/* 味付けの好み（3段階で選択） */}
             <div className="space-y-4">
               <Label>味付けの好み</Label>
               <div className="space-y-2">
