@@ -8,6 +8,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { calculateNutrition, learnPreference, updateNutritionPreferences } from "@/lib/services/user-service";
 import { HttpError, successResponse } from "@/lib/api-utils";
+import { NutritionPreferencesSchema } from "@/lib/tools/calculateMacroGoals";
 
 const CalculateNutritionRequestSchema = z.object({
   userId: z.string().min(1, "userId は必須です"),
@@ -36,26 +37,12 @@ const CalculateNutritionRequestSchema = z.object({
       required_error: "goal は必須です",
     }),
   }),
-  preferences: z
-    .object({
-      lossPaceKgPerMonth: z.number().min(0.1).max(5).optional(),
-      maintenanceAdjustKcalPerDay: z.number().min(-500).max(500).optional(),
-      gainPaceKgPerMonth: z.number().min(0.1).max(5).optional(),
-      gainStrategy: z.enum(["lean", "standard", "aggressive"]).optional(),
-      macroPreset: z.enum(["balanced", "lowfat", "lowcarb", "highprotein"]).optional(),
-    })
-    .optional(),
+  preferences: NutritionPreferencesSchema.optional(),
 });
 
 const UpdateNutritionPreferencesSchema = z.object({
   userId: z.string().min(1, "userId は必須です"),
-  preferences: z.object({
-    lossPaceKgPerMonth: z.number().min(0.1).max(5).optional(),
-    maintenanceAdjustKcalPerDay: z.number().min(-500).max(500).optional(),
-    gainPaceKgPerMonth: z.number().min(0.1).max(5).optional(),
-    gainStrategy: z.enum(["lean", "standard", "aggressive"]).optional(),
-    macroPreset: z.enum(["balanced", "lowfat", "lowcarb", "highprotein"]).optional(),
-  }),
+  preferences: NutritionPreferencesSchema,
 });
 
 const LearnPreferenceRequestSchema = z.object({

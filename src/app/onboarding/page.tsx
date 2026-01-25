@@ -26,6 +26,7 @@ import { updateUserProfile, completeOnboarding } from "@/lib/user";
 import { db } from "@/lib/firebase";
 import { doc, updateDoc, serverTimestamp, Timestamp } from "firebase/firestore";
 import { PlanCreatingScreen } from "@/components/plan-creating-screen";
+import { NutritionPreferencesForm } from "@/components/nutrition-preferences-form";
 
 const TOTAL_STEPS = 5;
 
@@ -558,89 +559,12 @@ export default function OnboardingPage() {
               </select>
             </div>
 
-            {formData.goal === "lose" && (
-              <div className="space-y-2">
-                <Label>減量ペース（kg/月）</Label>
-                <select
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  value={formData.lossPaceKgPerMonth}
-                  onChange={(e) => setFormData({ ...formData, lossPaceKgPerMonth: Number(e.target.value) })}
-                >
-                  <option value={0.5}>0.5 kg/月（ゆるめ）</option>
-                  <option value={1}>1.0 kg/月（標準）</option>
-                  <option value={2}>2.0 kg/月（しっかり）</option>
-                </select>
-              </div>
-            )}
-
-            {formData.goal === "maintain" && (
-              <div className="space-y-2">
-                <Label>微調整（kcal/日）</Label>
-                <select
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  value={formData.maintenanceAdjustKcalPerDay}
-                  onChange={(e) =>
-                    setFormData({ ...formData, maintenanceAdjustKcalPerDay: Number(e.target.value) })
-                  }
-                >
-                  <option value={-200}>-200（少し絞る）</option>
-                  <option value={-100}>-100（微減）</option>
-                  <option value={0}>0（現状維持）</option>
-                  <option value={100}>+100（微増）</option>
-                  <option value={200}>+200（少し増やす）</option>
-                </select>
-              </div>
-            )}
-
-            {formData.goal === "gain" && (
-              <>
-                <div className="space-y-2">
-                  <Label>増量ペース（kg/月）</Label>
-                  <select
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    value={formData.gainPaceKgPerMonth}
-                    onChange={(e) => setFormData({ ...formData, gainPaceKgPerMonth: Number(e.target.value) })}
-                  >
-                    <option value={0.25}>0.25 kg/月（ゆっくり）</option>
-                    <option value={0.5}>0.5 kg/月（標準）</option>
-                    <option value={1}>1.0 kg/月（速め）</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label>増量方針（やり方）</Label>
-                  <select
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    value={formData.gainStrategy}
-                    onChange={(e) =>
-                      setFormData({ ...formData, gainStrategy: e.target.value as "lean" | "standard" | "aggressive" })
-                    }
-                  >
-                    <option value="lean">リーン（脂肪増を抑えたい）</option>
-                    <option value="standard">標準（バランス）</option>
-                    <option value="aggressive">しっかり（体重を増やしたい）</option>
-                  </select>
-                </div>
-              </>
-            )}
-
-            <div className="space-y-2">
-              <Label>食事方針（PFC）</Label>
-              <select
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={formData.macroPreset}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    macroPreset: e.target.value as "balanced" | "lowfat" | "lowcarb" | "highprotein",
-                  })
-                }
-              >
-                <option value="balanced">バランス</option>
-                <option value="lowfat">ローファット</option>
-                <option value="lowcarb">ローカーボ</option>
-                <option value="highprotein">高たんぱく</option>
-              </select>
-            </div>
+            <NutritionPreferencesForm
+              goal={formData.goal}
+              formData={formData}
+              onFormChange={(updates) => setFormData({ ...formData, ...updates })}
+              selectClassName="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            />
           </CardContent>
         </Card>
       )}

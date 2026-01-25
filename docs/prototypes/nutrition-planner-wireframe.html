@@ -350,6 +350,9 @@
 
     <script>
       // --- Wireframe-only calculator (for UX prototyping) ---
+      const KCAL_PER_KG = 7700;
+      const DAYS_PER_MONTH = 30;
+
       const ACTIVITY = {
         sedentary: 1.2,
         light: 1.375,
@@ -442,8 +445,8 @@
 
         // kg/month → kcal/day (prototype conversion)
         // 1kg ≒ 7700 kcal, /30 days for simplicity
-        const loseKcalPerDay = (7700 * rateLoseKgMonth) / 30;
-        const gainBaseKcalPerDay = (7700 * rateGainKgMonth) / 30;
+        const loseKcalPerDay = (KCAL_PER_KG * rateLoseKgMonth) / DAYS_PER_MONTH;
+        const gainBaseKcalPerDay = (KCAL_PER_KG * rateGainKgMonth) / DAYS_PER_MONTH;
 
         let target = tdee;
         if (goal === "lose") target = tdee - loseKcalPerDay;
