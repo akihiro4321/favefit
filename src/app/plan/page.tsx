@@ -75,7 +75,7 @@ export default function PlanPage() {
   // ユーザーの目標カロリーを取得（プラン概要表示用）
   useEffect(() => {
     if (user) {
-      import("@/lib/user").then(({ getOrCreateUser }) => {
+      import("@/lib/db/firestore/userRepository").then(({ getOrCreateUser }) => {
         getOrCreateUser(user.uid).then((userDoc) => {
           if (userDoc) {
             setTargetCalories(userDoc.nutrition.dailyCalories);

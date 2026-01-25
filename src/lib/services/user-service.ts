@@ -5,8 +5,8 @@
 
 import { mastra } from "@/mastra";
 import { PreferenceAnalysis } from "@/mastra/agents/preference-learner";
-import { updateLearnedPreferences, updateUserNutrition, updateUserNutritionPreferences } from "@/lib/user";
-import { db } from "@/lib/firebase";
+import { updateLearnedPreferences, updateUserNutrition, updateUserNutritionPreferences } from "@/lib/db/firestore/userRepository";
+import { db } from "@/lib/db/firestore/client";
 import { doc, getDoc } from "firebase/firestore";
 import { calculatePersonalizedMacroGoals } from "@/lib/tools/calculateMacroGoals";
 import type {

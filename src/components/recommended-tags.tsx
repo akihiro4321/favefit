@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/components/auth-provider';
-import { getOrCreateUser } from '@/lib/user';
+import { getOrCreateUser } from '@/lib/db/firestore/userRepository';
 import { Badge } from '@/components/ui/badge';
 import { Sparkles } from 'lucide-react';
 

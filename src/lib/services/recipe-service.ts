@@ -5,7 +5,7 @@
 
 import { mastra } from "@/mastra";
 import { buildRecipePrompt } from "@/mastra/agents/recipe-creator";
-import { getOrCreateUser } from "@/lib/user";
+import { getOrCreateUser } from "@/lib/db/firestore/userRepository";
 import { getPlan, updateMealSlot, swapMeal } from "@/lib/plan";
 import { MealSlot } from "@/lib/schema";
 import { addToHistory } from "@/lib/recipeHistory";

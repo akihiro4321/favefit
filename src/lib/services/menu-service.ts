@@ -5,7 +5,7 @@
 
 import { mastra } from "@/mastra";
 import { MenuAdjusterInput } from "@/mastra/agents/menu-adjuster";
-import { getOrCreateUser } from "@/lib/user";
+import { getOrCreateUser } from "@/lib/db/firestore/userRepository";
 
 export interface SuggestMenuRequest {
   userId: string;

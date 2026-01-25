@@ -3,7 +3,7 @@
  * 物価データの更新・取得に関するビジネスロジック
  */
 
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/db/firestore/client";
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { MarketPriceDocument, MarketPriceEntry } from "@/lib/schema";
 

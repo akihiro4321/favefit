@@ -3,7 +3,7 @@
  * プランに連動した買い物リスト管理
  */
 
-import { db } from "./firebase";
+import { db } from "@/lib/db/firestore/client";
 import {
   doc,
   getDoc,

@@ -2,8 +2,8 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { signInAnonymously, onAuthStateChanged, User, signInWithPopup, linkWithPopup } from 'firebase/auth';
-import { auth, googleProvider } from '@/lib/firebase';
-import { getOrCreateUser, UserDocument } from '@/lib/user';
+import { auth, googleProvider } from '@/lib/db/firestore/client';
+import { getOrCreateUser, UserDocument } from '@/lib/db/firestore/userRepository';
 
 export interface AuthContextType {
   user: User | null;

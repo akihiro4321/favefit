@@ -5,7 +5,7 @@
 
 import { mastra } from "@/mastra";
 import { PlanGeneratorInput, PlanGeneratorOutputSchema, PartialPlanOutputSchema } from "@/mastra/agents/plan-generator";
-import { getOrCreateUser, setPlanCreating, setPlanCreated } from "@/lib/user";
+import { getOrCreateUser, setPlanCreating, setPlanCreated } from "@/lib/db/firestore/userRepository";
 import { createPlan, updatePlanStatus, getActivePlan, updatePlanDays, getPlan, updateMealSlot } from "@/lib/plan";
 import { createShoppingList } from "@/lib/shoppingList";
 import { getFavorites } from "@/lib/recipeHistory";
@@ -343,7 +343,7 @@ ${JSON.stringify(input, null, 2)}${feedbackText}`;
 
     // プラン生成完了後、フィードバックをクリア
     if (userDoc.planRejectionFeedback) {
-      const { db } = await import("@/lib/firebase");
+      const { db } = await import("@/lib/db/firestore/client");
       const { doc, updateDoc, serverTimestamp } = await import("firebase/firestore");
       const userRef = doc(db, "users", userId);
       await updateDoc(userRef, {
@@ -1154,7 +1154,7 @@ export async function rejectPlan(
 
   // フィードバックがある場合はユーザードキュメントに保存
   if (feedback && feedback.trim()) {
-    const { db } = await import("@/lib/firebase");
+    const { db } = await import("@/lib/db/firestore/client");
     const { doc, updateDoc, serverTimestamp } = await import("firebase/firestore");
     const userRef = doc(db, "users", userId);
     await updateDoc(userRef, {

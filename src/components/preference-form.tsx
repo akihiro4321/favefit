@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { UserProfile, updateUserProfile } from "@/lib/user";
+import { UserProfile, updateUserProfile } from "@/lib/db/firestore/userRepository";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

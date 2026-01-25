@@ -3,7 +3,7 @@
  * 14日間プランの作成・取得・更新
  */
 
-import { db } from "./firebase";
+import { db } from "@/lib/db/firestore/client";
 import {
   collection,
   doc,

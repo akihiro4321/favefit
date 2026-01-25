@@ -5,7 +5,7 @@
 
 import { Agent } from "@mastra/core/agent";
 import { z } from "zod";
-import { UserDocument } from "@/lib/user";
+import { UserDocument } from "@/lib/db/firestore/userRepository";
 
 /**
  * レシピ生成エージェントの出力スキーマ
