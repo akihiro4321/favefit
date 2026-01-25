@@ -22,15 +22,22 @@ import {
   Settings,
   CalendarDays,
 } from "lucide-react";
-import { updateUserProfile, completeOnboarding } from "@/lib/user";
+import { updateUserProfile, completeOnboarding } from "@/lib/db/firestore/userRepository";
 import type { LearnedPreferences, UserDocument, UserProfile } from "@/lib/schema";
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/db/firestore/client";
 import { doc, updateDoc, serverTimestamp, Timestamp } from "firebase/firestore";
 import { PlanCreatingScreen } from "@/components/plan-creating-screen";
 import { NutritionPreferencesForm } from "@/components/nutrition-preferences-form";
 import type { CalculateNutritionRequest } from "@/lib/schemas/user";
 
 const TOTAL_STEPS = 5;
+const ONBOARDING_STEP = {
+  PROFILE: 1,
+  BODY_INFO: 2,
+  NUTRITION_REVIEW: 3,
+  PREFERENCES: 4,
+  PLAN_CREATION: 5,
+} as const;
 const SELECT_CLASS_NAME = "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm";
 
 type OnboardingFormData = {
@@ -143,7 +150,7 @@ export default function OnboardingPage() {
   const { user, profile, loading, refreshProfile } = useAuth();
   const router = useRouter();
 
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState<number>(ONBOARDING_STEP.PROFILE);
   const [submitting, setSubmitting] = useState(false);
   const [nutritionResult, setNutritionResult] = useState<{
     dailyCalories: number;
@@ -226,7 +233,7 @@ export default function OnboardingPage() {
     if (result.error) throw new Error(result.error);
 
     setNutritionResult(result.nutrition);
-    setCurrentStep(3);
+    setCurrentStep(ONBOARDING_STEP.NUTRITION_REVIEW);
   };
 
   const saveProfileAndPreferences = async () => {
@@ -277,11 +284,11 @@ export default function OnboardingPage() {
       });
     }
 
-    setCurrentStep(5);
+    setCurrentStep(ONBOARDING_STEP.PLAN_CREATION);
   };
 
   const handleNext = async () => {
-    if (currentStep === 2) {
+    if (currentStep === ONBOARDING_STEP.BODY_INFO) {
       setSubmitting(true);
       try {
         await calculateNutrition();
@@ -294,7 +301,7 @@ export default function OnboardingPage() {
       return;
     }
 
-    if (currentStep === 4) {
+    if (currentStep === ONBOARDING_STEP.PREFERENCES) {
       setSubmitting(true);
       try {
         await saveProfileAndPreferences();
@@ -343,7 +350,7 @@ export default function OnboardingPage() {
 
   // 設定をスキップして直接プラン作成へ
   const handleSkipToCreatePlan = () => {
-    setCurrentStep(5);
+    setCurrentStep(ONBOARDING_STEP.PLAN_CREATION);
   };
 
   const addAllergy = () => {
@@ -400,7 +407,7 @@ export default function OnboardingPage() {
       </div>
 
       {/* Step 1: 基本プロフィール */}
-      {currentStep === 1 && (
+      {currentStep === ONBOARDING_STEP.PROFILE && (
         <Card className="animate-slide-up flex-1">
           <CardHeader>
             <div className="flex items-center gap-2 mb-2">
@@ -435,7 +442,7 @@ export default function OnboardingPage() {
                   <Button
                     variant="outline"
                     className="flex-1"
-                    onClick={() => setCurrentStep(1)}
+                    onClick={() => setCurrentStep(ONBOARDING_STEP.PROFILE)}
                   >
                     <Settings className="w-4 h-4 mr-1" />
                     設定を見直す
@@ -517,7 +524,7 @@ export default function OnboardingPage() {
       )}
 
       {/* Step 2: 身体情報 */}
-      {currentStep === 2 && (
+      {currentStep === ONBOARDING_STEP.BODY_INFO && (
         <Card className="animate-slide-up flex-1">
           <CardHeader>
             <div className="flex items-center gap-2 mb-2">
@@ -603,7 +610,7 @@ export default function OnboardingPage() {
       )}
 
       {/* Step 3: 栄養目標確認 */}
-      {currentStep === 3 && nutritionResult && (
+      {currentStep === ONBOARDING_STEP.NUTRITION_REVIEW && nutritionResult && (
         <Card className="animate-pop-in flex-1">
           <CardHeader>
             <div className="flex items-center gap-2 mb-2">
@@ -651,7 +658,7 @@ export default function OnboardingPage() {
       )}
 
       {/* Step 4: 好み設定 */}
-      {currentStep === 4 && (
+      {currentStep === ONBOARDING_STEP.PREFERENCES && (
         <Card className="animate-slide-up flex-1">
           <CardHeader>
             <div className="flex items-center gap-2 mb-2">
@@ -824,7 +831,7 @@ export default function OnboardingPage() {
       )}
 
       {/* Step 5: プラン作成 */}
-      {currentStep === 5 && (
+      {currentStep === ONBOARDING_STEP.PLAN_CREATION && (
         <Card className="animate-pop-in flex-1 flex flex-col justify-center">
           <CardContent className="text-center py-12 space-y-6">
             <div className="w-20 h-20 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
@@ -866,9 +873,9 @@ export default function OnboardingPage() {
       )}
 
       {/* ナビゲーションボタン */}
-      {currentStep < 5 && (
+      {currentStep < ONBOARDING_STEP.PLAN_CREATION && (
         <div className="flex gap-4 mt-8">
-          {currentStep > 1 && (
+          {currentStep > ONBOARDING_STEP.PROFILE && (
             <Button
               variant="outline"
               className="flex-1"
@@ -886,7 +893,7 @@ export default function OnboardingPage() {
           >
             {submitting ? (
               <Loader2 className="w-4 h-4 animate-spin" />
-            ) : currentStep === 2 ? (
+            ) : currentStep === ONBOARDING_STEP.BODY_INFO ? (
               <>
                 <Zap className="w-4 h-4 mr-1" />
                 AIで計算
