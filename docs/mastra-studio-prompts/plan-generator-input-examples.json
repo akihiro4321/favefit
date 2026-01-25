@@ -1,0 +1,158 @@
+{
+  "examples": [
+    {
+      "name": "基本的なプラン生成",
+      "description": "標準的なユーザープロファイルでのプラン生成",
+      "input": {
+        "targetCalories": 1800,
+        "pfc": {
+          "protein": 100,
+          "fat": 50,
+          "carbs": 200
+        },
+        "preferences": {
+          "cuisines": {
+            "japanese": 30,
+            "korean": 15,
+            "italian": 10
+          },
+          "flavorProfile": {
+            "light": 20,
+            "umami": 15,
+            "spicy": 5
+          },
+          "dislikedIngredients": ["にんじん", "セロリ"]
+        },
+        "favoriteRecipes": [
+          {
+            "id": "recipe-1",
+            "title": "鶏むね肉の照り焼き",
+            "tags": ["和食", "高タンパク", "低脂質"]
+          },
+          {
+            "id": "recipe-2",
+            "title": "サラダチキンサンド",
+            "tags": ["洋食", "高タンパク", "簡単"]
+          }
+        ],
+        "cheapIngredients": ["キャベツ", "もやし", "鶏むね肉", "卵", "豆腐"],
+        "cheatDayFrequency": "weekly",
+        "startDate": "2026-01-26"
+      },
+      "prompt": "以下の情報に基づいて14日間の食事プランと買い物リストを生成してください。\n\n【ユーザー情報】\n{JSON_INPUT}"
+    },
+    {
+      "name": "最小限の入力データ",
+      "description": "preferencesやfavoriteRecipesがない場合のテスト",
+      "input": {
+        "targetCalories": 2000,
+        "pfc": {
+          "protein": 120,
+          "fat": 60,
+          "carbs": 220
+        },
+        "cheatDayFrequency": "biweekly",
+        "startDate": "2026-01-26"
+      },
+      "prompt": "以下の情報に基づいて14日間の食事プランと買い物リストを生成してください。\n\n【ユーザー情報】\n{JSON_INPUT}"
+    },
+    {
+      "name": "高タンパク質・低カロリー設定",
+      "description": "ダイエット向けの厳しい栄養制約",
+      "input": {
+        "targetCalories": 1500,
+        "pfc": {
+          "protein": 150,
+          "fat": 40,
+          "carbs": 120
+        },
+        "preferences": {
+          "cuisines": {
+            "japanese": 25,
+            "western": 20
+          },
+          "flavorProfile": {
+            "light": 25,
+            "umami": 20
+          },
+          "dislikedIngredients": []
+        },
+        "favoriteRecipes": [
+          {
+            "id": "recipe-1",
+            "title": "サラダチキン",
+            "tags": ["高タンパク", "低カロリー", "簡単"]
+          }
+        ],
+        "cheapIngredients": ["鶏むね肉", "卵", "豆腐", "もやし"],
+        "cheatDayFrequency": "biweekly",
+        "startDate": "2026-01-26"
+      },
+      "prompt": "以下の情報に基づいて14日間の食事プランと買い物リストを生成してください。\n\n【ユーザー情報】\n{JSON_INPUT}"
+    },
+    {
+      "name": "フィードバック付きプラン生成",
+      "description": "前回のプラン拒否フィードバックを考慮した生成",
+      "input": {
+        "targetCalories": 1800,
+        "pfc": {
+          "protein": 100,
+          "fat": 50,
+          "carbs": 200
+        },
+        "preferences": {
+          "cuisines": {
+            "japanese": 30,
+            "korean": 15
+          },
+          "flavorProfile": {
+            "light": 20
+          },
+          "dislikedIngredients": ["にんじん"]
+        },
+        "favoriteRecipes": [
+          {
+            "id": "recipe-1",
+            "title": "鶏むね肉の照り焼き",
+            "tags": ["和食", "高タンパク"]
+          }
+        ],
+        "cheapIngredients": ["キャベツ", "もやし", "鶏むね肉"],
+        "cheatDayFrequency": "weekly",
+        "startDate": "2026-01-26"
+      },
+      "feedback": "前回のプランは同じようなメニューが多く、飽きてしまいました。もっとバリエーション豊富なメニューを希望します。また、調理時間が短いレシピを優先してください。",
+      "prompt": "以下の情報に基づいて14日間の食事プランと買い物リストを生成してください。\n\n【ユーザー情報】\n{JSON_INPUT}\n\n【前回のプラン拒否時のフィードバック】\n{FEEDBACK}\n\nこのフィードバックを考慮して、より適切なプランを生成してください。"
+    },
+    {
+      "name": "エッジケース - 厳しい制約",
+      "description": "非常に厳しい栄養制約と多数の避けるべき食材",
+      "input": {
+        "targetCalories": 1200,
+        "pfc": {
+          "protein": 80,
+          "fat": 30,
+          "carbs": 100
+        },
+        "preferences": {
+          "cuisines": {
+            "japanese": 50
+          },
+          "flavorProfile": {
+            "light": 30
+          },
+          "dislikedIngredients": ["にんじん", "セロリ", "ピーマン", "トマト", "ナス"]
+        },
+        "favoriteRecipes": [],
+        "cheapIngredients": ["もやし", "豆腐"],
+        "cheatDayFrequency": "weekly",
+        "startDate": "2026-01-26"
+      },
+      "prompt": "以下の情報に基づいて14日間の食事プランと買い物リストを生成してください。\n\n【ユーザー情報】\n{JSON_INPUT}"
+    }
+  ],
+  "usage": {
+    "description": "Mastra Studioで使用する際は、promptフィールドの{JSON_INPUT}を実際のinputオブジェクトのJSON文字列に置き換えてください。",
+    "example": "promptフィールドの{JSON_INPUT}を JSON.stringify(input, null, 2) の結果で置き換える"
+  }
+}

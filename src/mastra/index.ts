@@ -12,6 +12,7 @@ import { recipeCreatorAgent } from "./agents/recipe-creator";
 import { menuAdjusterAgent } from "./agents/menu-adjuster";
 import { preferenceLearnerAgent } from "./agents/preference-learner";
 import { boredomAnalyzerAgent } from "./agents/boredom-analyzer";
+import { testPlanGeneratorWorkflow } from "./workflows/test-plan-generator";
 
 /**
  * Mastraインスタンス
@@ -24,6 +25,9 @@ export const mastra = new Mastra({
     menuAdjuster: menuAdjusterAgent,
     preferenceLearner: preferenceLearnerAgent,
     boredomAnalyzer: boredomAnalyzerAgent,
+  },
+  workflows: {
+    testPlanGenerator: testPlanGeneratorWorkflow,
   },
   observability: new Observability({
     configs: {
