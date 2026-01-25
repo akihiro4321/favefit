@@ -13,7 +13,7 @@ AIエージェントベースの食事プランアプリケーション。Mastra
 ## 技術スタック
 
 - **フレームワーク**: Next.js 16.1.3
-- **UI**: React 19.2.3, Tailwind CSS 4, Radix UI
+- **UI**: React 19.2.3, Tailwind CSS 3.4, Radix UI
 - **AI/エージェント**: Mastra v1.0 (@mastra/core)
 - **データベース**: Firebase Firestore
 - **認証**: Firebase Authentication
