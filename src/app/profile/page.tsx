@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { ProfileForm } from '@/components/profile-form';
 import { PreferenceForm } from '@/components/preference-form';
 import Link from 'next/link';
+import { ArrowRight, Sparkles } from 'lucide-react';
 
 export default function ProfilePage() {
   const { user, profile, loading, linkGoogleAccount, signInWithGoogle, refreshProfile } = useAuth();
@@ -119,6 +120,31 @@ export default function ProfilePage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* オンボーディング未完了の場合のバナー */}
+      {profile && !profile.onboardingCompleted && (
+        <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/30">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-primary/20 rounded-full">
+                <Sparkles className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1 space-y-2">
+                <h3 className="font-semibold text-sm">初期設定を完了しましょう</h3>
+                <p className="text-xs text-muted-foreground">
+                  あなたに最適な食事プランを作成するために、身体情報や食の好みを設定してください。
+                </p>
+                <Button asChild size="sm" className="mt-2">
+                  <Link href="/onboarding">
+                    オンボーディングを開始
+                    <ArrowRight className="w-4 h-4 ml-1" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {profile && (
         <div className="space-y-6">

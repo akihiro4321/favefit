@@ -25,7 +25,6 @@ import {
   UtensilsCrossed,
   CheckCircle2,
   Sparkles,
-  Settings,
   CalendarDays,
 } from "lucide-react";
 import { updateUserProfile, completeOnboarding } from "@/lib/db/firestore/userRepository";
@@ -114,11 +113,28 @@ const DEFAULT_FORM_DATA: OnboardingFormData = {
 // =============================================================================
 
 /**
- * FirestoreのTimestampをinput[type="date"]用の文字列に変換
+ * 様々な形式のdeadlineをinput[type="date"]用の文字列に変換
+ * Firestore Timestamp, Date, 文字列に対応
  */
-const getDeadlineInput = (deadline?: { toDate: () => Date } | null) => {
+const getDeadlineInput = (deadline?: unknown): string => {
   if (!deadline) return "";
-  return deadline.toDate().toISOString().split("T")[0];
+
+  // Firestore Timestamp（toDateメソッドを持つオブジェクト）
+  if (typeof deadline === "object" && deadline !== null && "toDate" in deadline && typeof (deadline as { toDate: () => Date }).toDate === "function") {
+    return (deadline as { toDate: () => Date }).toDate().toISOString().split("T")[0];
+  }
+
+  // Date オブジェクト
+  if (deadline instanceof Date) {
+    return deadline.toISOString().split("T")[0];
+  }
+
+  // 文字列（すでにYYYY-MM-DD形式など）
+  if (typeof deadline === "string") {
+    return deadline.split("T")[0];
+  }
+
+  return "";
 };
 
 /**
@@ -202,9 +218,6 @@ export default function OnboardingPage() {
     strategySummary?: string;
   } | null>(null);
 
-  // プロフィールが設定済みかどうか
-  const isProfileConfigured = profile?.profile?.age && profile?.profile?.height_cm && profile?.nutrition?.dailyCalories;
-  
   // プラン作成中かどうか
   const isPlanCreating = profile?.planCreationStatus === "creating";
 
@@ -240,6 +253,13 @@ export default function OnboardingPage() {
       router.push("/");
     }
   }, [user, loading, router]);
+
+  // オンボーディング完了済みユーザーは/homeへリダイレクト
+  useEffect(() => {
+    if (!loading && profile?.onboardingCompleted) {
+      router.push("/home");
+    }
+  }, [loading, profile?.onboardingCompleted, router]);
 
   // プラン作成中の場合は5秒ごとにステータスをポーリング
   // 完了したら自動的に画面が更新される
@@ -418,11 +438,6 @@ export default function OnboardingPage() {
     }
   };
 
-  /** プロフィール設定済みユーザーが設定をスキップしてプラン作成へ進む */
-  const handleSkipToCreatePlan = () => {
-    setCurrentStep(ONBOARDING_STEP.PLAN_CREATION);
-  };
-
   /** アレルギー・苦手な食材をリストに追加 */
   const addAllergy = () => {
     if (allergyInput.trim() && !formData.allergies.includes(allergyInput.trim())) {
@@ -497,38 +512,6 @@ export default function OnboardingPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* プロフィール設定済みの場合のスキップオプション */}
-            {isProfileConfigured && (
-              <div className="p-4 bg-muted/50 rounded-xl space-y-3">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <CheckCircle2 className="w-4 h-4 text-primary" />
-                  プロフィールは設定済みです
-                </div>
-                <div className="text-sm space-y-1">
-                  <p>現在: {profile?.profile?.currentWeight}kg → 目標: {profile?.profile?.targetWeight}kg</p>
-                  <p>カロリー目標: {profile?.nutrition?.dailyCalories} kcal</p>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="default"
-                    className="flex-1"
-                    onClick={handleSkipToCreatePlan}
-                  >
-                    <CalendarDays className="w-4 h-4 mr-1" />
-                    プラン作成へ進む
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => setCurrentStep(ONBOARDING_STEP.PROFILE)}
-                  >
-                    <Settings className="w-4 h-4 mr-1" />
-                    設定を見直す
-                  </Button>
-                </div>
-              </div>
-            )}
-
             <div className="space-y-2">
               <Label htmlFor="name">ニックネーム</Label>
               <Input
