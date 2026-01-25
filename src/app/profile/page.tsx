@@ -132,7 +132,7 @@ export default function ProfilePage() {
               <div className="flex-1 space-y-2">
                 <h3 className="font-semibold text-sm">初期設定を完了しましょう</h3>
                 <p className="text-xs text-muted-foreground">
-                  あなたに最適な食事プランを作成するために、身体情報や食の好みを設定してください。
+                  あなたに最適な食事プランを作成するために、身体情報・ダイエット目標・食の好みを設定してください。
                 </p>
                 <Button asChild size="sm" className="mt-2">
                   <Link href="/onboarding">
@@ -146,7 +146,8 @@ export default function ProfilePage() {
         </Card>
       )}
 
-      {profile && (
+      {/* オンボーディング完了済みの場合のみ表示 */}
+      {profile && profile.onboardingCompleted && (
         <div className="space-y-6">
           {/* 目標が表示可能で、かつ編集モードでない場合に表示 */}
           {profile.nutrition?.dailyCalories && !isEditing ? (
@@ -212,9 +213,10 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {profile && (
-        <PreferenceForm 
-          userId={user.uid} 
+      {/* オンボーディング完了済みの場合のみ表示 */}
+      {profile && profile.onboardingCompleted && (
+        <PreferenceForm
+          userId={user.uid}
           profile={profile.profile}
           onUpdate={refreshProfile}
         />
