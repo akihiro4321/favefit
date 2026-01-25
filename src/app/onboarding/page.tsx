@@ -493,633 +493,619 @@ export default function OnboardingPage() {
 
   // --- メイン画面のレンダリング ---
   return (
-    <div className="container max-w-lg mx-auto py-8 px-4 min-h-screen flex flex-col">
-      {/* プログレスバー */}
-      <div className="mb-8 space-y-2">
-        <div className="flex justify-between text-sm text-muted-foreground">
+    <div className="container max-w-lg mx-auto py-4 px-4 h-[100dvh] flex flex-col overflow-hidden">
+      {/* プログレスバー（固定） */}
+      <div className="flex-none mb-6 space-y-2 text-foreground">
+        <div className="flex justify-between text-sm text-muted-foreground font-medium">
           <span>ステップ {currentStep} / {TOTAL_STEPS}</span>
           <span>{Math.round(progress)}%</span>
         </div>
-        <Progress value={progress} className="h-2" />
+        <Progress value={progress} className="h-2 bg-muted/50" />
       </div>
 
-      {/* Step 1: 基本プロフィール */}
-      {currentStep === ONBOARDING_STEP.PROFILE && (
-        <Card className="animate-slide-up flex-1">
-          <CardHeader>
-            <div className="flex items-center gap-2 mb-2">
-              <User className="w-5 h-5 text-primary" />
-              <CardTitle>基本情報</CardTitle>
-            </div>
-            <CardDescription>
-              あなたの名前とダイエット目標を教えてください
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="name">ニックネーム</Label>
-              <Input
-                id="name"
-                placeholder="例: たろう"
-                value={formData.displayName}
-                onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
+      {/* コンテンツ入力領域（スクロール可能） */}
+      <div className="flex-1 min-h-0 overflow-y-auto pb-4 px-0.5">
+        {/* Step 1: 基本プロフィール */}
+        {currentStep === ONBOARDING_STEP.PROFILE && (
+          <Card className="animate-slide-up shadow-sm border-2">
+            <CardHeader>
+              <div className="flex items-center gap-2 mb-2">
+                <User className="w-5 h-5 text-primary" />
+                <CardTitle>基本情報</CardTitle>
+              </div>
+              <CardDescription>
+                あなたの名前とダイエット目標を教えてください
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="currentWeight">現在の体重 (kg)</Label>
+                <Label htmlFor="name">ニックネーム</Label>
                 <Input
-                  id="currentWeight"
-                  type="number"
-                  step="0.1"
-                  value={formData.currentWeight}
-                  onChange={(e) => setFormData({ ...formData, currentWeight: Number(e.target.value) })}
+                  id="name"
+                  placeholder="例: たろう"
+                  value={formData.displayName}
+                  onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
                 />
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="currentWeight">現在の体重 (kg)</Label>
+                  <Input
+                    id="currentWeight"
+                    type="number"
+                    step="0.1"
+                    value={formData.currentWeight}
+                    onChange={(e) => setFormData({ ...formData, currentWeight: Number(e.target.value) })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="targetWeight">目標体重 (kg)</Label>
+                  <Input
+                    id="targetWeight"
+                    type="number"
+                    step="0.1"
+                    value={formData.targetWeight}
+                    onChange={(e) => setFormData({ ...formData, targetWeight: Number(e.target.value) })}
+                  />
+                </div>
+              </div>
+
               <div className="space-y-2">
-                <Label htmlFor="targetWeight">目標体重 (kg)</Label>
+                <Label htmlFor="deadline">目標達成期限</Label>
                 <Input
-                  id="targetWeight"
-                  type="number"
-                  step="0.1"
-                  value={formData.targetWeight}
-                  onChange={(e) => setFormData({ ...formData, targetWeight: Number(e.target.value) })}
+                  id="deadline"
+                  type="date"
+                  value={formData.deadline}
+                  onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                  min={new Date().toISOString().split("T")[0]}
                 />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="deadline">目標達成期限</Label>
-              <Input
-                id="deadline"
-                type="date"
-                value={formData.deadline}
-                onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                min={new Date().toISOString().split("T")[0]}
-              />
-              <p className="text-xs text-muted-foreground">
-                目標体重を達成したい日を選択してください
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label>チートデイ頻度</Label>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={formData.cheatDayFrequency === "weekly" ? "default" : "outline"}
-                  className="flex-1"
-                  onClick={() => setFormData({ ...formData, cheatDayFrequency: "weekly" })}
-                >
-                  週1回
-                </Button>
-                <Button
-                  type="button"
-                  variant={formData.cheatDayFrequency === "biweekly" ? "default" : "outline"}
-                  className="flex-1"
-                  onClick={() => setFormData({ ...formData, cheatDayFrequency: "biweekly" })}
-                >
-                  2週に1回
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Step 2: 身体情報 */}
-      {currentStep === ONBOARDING_STEP.BODY_INFO && (
-        <Card className="animate-slide-up flex-1">
-          <CardHeader>
-            <div className="flex items-center gap-2 mb-2">
-              <Activity className="w-5 h-5 text-primary" />
-              <CardTitle>身体情報</CardTitle>
-            </div>
-            <CardDescription>
-              最適な栄養プランを計算するための情報です
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="age">年齢</Label>
-                <Input
-                  id="age"
-                  type="number"
-                  value={formData.age}
-                  onChange={(e) => setFormData({ ...formData, age: Number(e.target.value) })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="gender">性別</Label>
-                <select
-                  id="gender"
-                  className={SELECT_CLASS_NAME}
-                  value={formData.gender}
-                  onChange={(e) => setFormData({ ...formData, gender: e.target.value as "male" | "female" | "other" })}
-                >
-                  <option value="male">男性</option>
-                  <option value="female">女性</option>
-                  <option value="other">その他</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="height">身長 (cm)</Label>
-              <Input
-                id="height"
-                type="number"
-                value={formData.height_cm}
-                onChange={(e) => setFormData({ ...formData, height_cm: Number(e.target.value) })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>活動レベル</Label>
-              <select
-                className={SELECT_CLASS_NAME}
-                value={formData.activity_level}
-                onChange={(e) => setFormData({ ...formData, activity_level: e.target.value as "sedentary" | "light" | "moderate" | "active" | "very_active" })}
-              >
-                <option value="sedentary">ほぼ運動しない</option>
-                <option value="light">軽い運動 週に1-2回運動</option>
-                <option value="moderate">中度の運動 週に3-5回運動</option>
-                <option value="active">激しい運動やスポーツ 週に6-7回運動</option>
-                <option value="very_active">非常に激しい運動・肉体労働 1日に2回運動</option>
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>目標</Label>
-              <select
-                className={SELECT_CLASS_NAME}
-                value={formData.goal}
-                onChange={(e) => setFormData({ ...formData, goal: e.target.value as "lose" | "maintain" | "gain" })}
-              >
-                <option value="lose">痩せたい（減量）</option>
-                <option value="maintain">維持したい</option>
-                <option value="gain">筋肉をつけたい（増量）</option>
-              </select>
-            </div>
-
-            <NutritionPreferencesForm
-              goal={formData.goal}
-              formData={formData}
-              onFormChange={(updates) => setFormData({ ...formData, ...updates })}
-              selectClassName={SELECT_CLASS_NAME}
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Step 3: 栄養目標確認 */}
-      {currentStep === ONBOARDING_STEP.NUTRITION_REVIEW && nutritionResult && (() => {
-        // PFCのカロリー計算
-        const proteinKcal = nutritionResult.pfc.protein * 4;
-        const fatKcal = nutritionResult.pfc.fat * 9;
-        const carbsKcal = nutritionResult.pfc.carbs * 4;
-        const totalKcal = proteinKcal + fatKcal + carbsKcal;
-        const pct = (kcal: number) => totalKcal ? Math.round((kcal / totalKcal) * 100) : 0;
-
-        // ペース情報の計算
-        const delta = nutritionResult.dailyCalories - (nutritionResult.tdee || 0);
-
-        // カラーパレット
-        const COLORS = {
-          primary: "#FF8C00",   // Protein (Orange)
-          secondary: "#FFD700", // Fat (Yellow)
-          tertiary: "#4CAF50",  // Carbs (Green)
-        };
-        
-        // アクセシビリティ用テキストカラー（背景白に対して十分なコントラストを確保）
-        const TEXT_COLORS = {
-          primary: "text-orange-700",
-          secondary: "text-yellow-700",
-          tertiary: "text-green-700",
-        };
-
-        // ドーナツチャート計算用
-        const radius = 40;
-        const circumference = 2 * Math.PI * radius;
-        const pPct = pct(proteinKcal);
-        const fPct = pct(fatKcal);
-        const cPct = pct(carbsKcal);
-
-        // 各セグメントの長さ（stroke-dasharray用）
-        // dash gap (gap is full circumference to avoid repetition)
-        const pDash = `${(circumference * pPct) / 100} ${circumference}`;
-        const fDash = `${(circumference * fPct) / 100} ${circumference}`;
-        const cDash = `${(circumference * cPct) / 100} ${circumference}`;
-
-        // 各セグメントの開始位置（stroke-dashoffset用）
-        // 12時の位置(0deg)から時計回り
-        // Protein: 0
-        // Fat: Proteinの終わりから
-        // Carbs: Fatの終わりから
-        const pOffset = 0;
-        const fOffset = -((circumference * pPct) / 100);
-        const cOffset = -((circumference * (pPct + fPct)) / 100);
-
-        return (
-          <Card className="animate-pop-in flex-1 overflow-auto bg-white/50 backdrop-blur-sm">
-            <CardContent className="space-y-8 pt-8 pb-6">
-              
-              {/* 1. Main Goal: 摂取カロリー目標 */}
-              <div className="text-center space-y-2">
-                <p className="text-xs font-semibold text-muted-foreground tracking-wider uppercase">
-                  Daily Target
+                <p className="text-xs text-muted-foreground">
+                  目標体重を達成したい日を選択してください
                 </p>
-                <div className="flex items-baseline justify-center gap-1.5">
-                  <span className="text-5xl font-extrabold tracking-tight" style={{ color: COLORS.primary }}>
-                    {nutritionResult.dailyCalories.toLocaleString()}
-                  </span>
-                  <span className="text-lg font-medium text-muted-foreground">kcal</span>
-                </div>
-                
-                <div className="inline-flex items-center px-3 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-100 text-xs font-medium mt-2">
-                  {formData.goal === "lose" && (
-                    <>
-                      <span className="mr-1.5">📉</span>
-                      減量: {Math.abs(Math.round(delta))}kcal 削減 / 日
-                    </>
-                  )}
-                  {formData.goal === "gain" && (
-                    <>
-                      <span className="mr-1.5">📈</span>
-                      増量: {Math.abs(Math.round(delta))}kcal 上乗せ / 日
-                    </>
-                  )}
-                  {formData.goal === "maintain" && (
-                    <>
-                      <span className="mr-1.5">⚖️</span>
-                      維持: バランス重視
-                    </>
-                  )}
-                </div>
               </div>
 
-              {/* 2. Visualization: PFC Balance Donut Chart */}
-              <div className="bg-white rounded-2xl border shadow-sm p-6">
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-8">
-                  {/* SVG Chart */}
-                  <div className="relative w-32 h-32 flex-shrink-0">
-                    <svg viewBox="0 0 100 100" className="transform -rotate-90 w-full h-full">
-                      {/* Background Circle */}
-                      <circle cx="50" cy="50" r={radius} stroke="#eee" strokeWidth="12" fill="transparent" />
-                      
-                      {/* Protein Segment */}
-                      <circle
-                        cx="50" cy="50" r={radius}
-                        stroke={COLORS.primary} strokeWidth="12" fill="transparent"
-                        strokeDasharray={pDash}
-                        strokeDashoffset={pOffset}
-                        strokeLinecap="butt"
-                        className="transition-all duration-1000 ease-out"
-                      />
-                      {/* Fat Segment */}
-                      <circle
-                        cx="50" cy="50" r={radius}
-                        stroke={COLORS.secondary} strokeWidth="12" fill="transparent"
-                        strokeDasharray={fDash}
-                        strokeDashoffset={fOffset}
-                        strokeLinecap="butt"
-                        className="transition-all duration-1000 ease-out"
-                      />
-                      {/* Carbs Segment */}
-                      <circle
-                        cx="50" cy="50" r={radius}
-                        stroke={COLORS.tertiary} strokeWidth="12" fill="transparent"
-                        strokeDasharray={cDash}
-                        strokeDashoffset={cOffset}
-                        strokeLinecap="butt"
-                        className="transition-all duration-1000 ease-out"
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-xs text-foreground pointer-events-none">
-                      <span className="font-bold">PFC</span>
-                      <span className="font-bold">Balance</span>
-                    </div>
-                  </div>
-
-                  {/* Legend / Details */}
-                  <div className="flex-1 w-full space-y-3">
-                    {/* Protein */}
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.primary }} />
-                        <span className={`font-bold ${TEXT_COLORS.primary}`}>Protein</span>
-                      </div>
-                      <div className="flex items-baseline gap-2">
-                        <span className="font-bold">{nutritionResult.pfc.protein}g</span>
-                        <span className="text-xs text-muted-foreground w-8 text-right">{pct(proteinKcal)}%</span>
-                      </div>
-                    </div>
-                    {/* Fat */}
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.secondary }} />
-                        <span className={`font-bold ${TEXT_COLORS.secondary}`}>Fat</span>
-                      </div>
-                      <div className="flex items-baseline gap-2">
-                        <span className="font-bold">{nutritionResult.pfc.fat}g</span>
-                        <span className="text-xs text-muted-foreground w-8 text-right">{pct(fatKcal)}%</span>
-                      </div>
-                    </div>
-                    {/* Carbs */}
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.tertiary }} />
-                        <span className={`font-bold ${TEXT_COLORS.tertiary}`}>Carbs</span>
-                      </div>
-                      <div className="flex items-baseline gap-2">
-                        <span className="font-bold">{nutritionResult.pfc.carbs}g</span>
-                        <span className="text-xs text-muted-foreground w-8 text-right">{pct(carbsKcal)}%</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 3. Stats Grid: BMR, TDEE, Diff */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="p-3 bg-muted/30 rounded-xl border text-center space-y-1">
-                  <p className="text-[10px] text-muted-foreground uppercase">BMR</p>
-                  <p className="font-bold text-lg leading-none">{nutritionResult.bmr?.toLocaleString()}</p>
-                  <p className="text-[10px] text-muted-foreground">基礎代謝</p>
-                </div>
-                <div className="p-3 bg-muted/30 rounded-xl border text-center space-y-1">
-                  <p className="text-[10px] text-muted-foreground uppercase">TDEE</p>
-                  <p className="font-bold text-lg leading-none">{nutritionResult.tdee?.toLocaleString()}</p>
-                  <p className="text-[10px] text-muted-foreground">活動代謝</p>
-                </div>
-                <div className={`p-3 rounded-xl border text-center space-y-1 ${
-                  delta !== 0 ? "bg-orange-50/50 border-orange-100" : "bg-muted/30"
-                }`}>
-                  <p className="text-[10px] text-muted-foreground uppercase">Diff</p>
-                  <p className="font-bold text-lg leading-none text-orange-600">
-                    {delta > 0 ? "+" : ""}{Math.round(delta)}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {delta > 0 ? "上乗せ" : delta < 0 ? "削減" : "維持"}
-                  </p>
-                </div>
-              </div>
-
-              {/* 4. Advice / Hints (Accordion-like or simple box) */}
-              <div className="text-xs text-muted-foreground bg-muted/30 p-4 rounded-xl space-y-2">
-                 <div className="flex gap-2 items-start">
-                    <Sparkles className="w-4 h-4 text-orange-500 flex-shrink-0 mt-0.5" />
-                    <div>
-                      {formData.goal === "lose" && "無理のないペース設定です。空腹を感じにくい高タンパク質な食事を心がけましょう。"}
-                      {formData.goal === "gain" && "筋肉合成に必要なカロリー余剰を確保しています。トレーニング強度に合わせて調整可能です。"}
-                      {formData.goal === "maintain" && "現在の体重を維持するための設定です。日々の活動量に応じて微調整しましょう。"}
-                      {nutritionResult.strategySummary && <span className="block mt-1 pt-1 border-t border-muted-foreground/20">{nutritionResult.strategySummary}</span>}
-                    </div>
-                 </div>
-                 
-                 <details className="pt-2">
-                    <summary className="cursor-pointer hover:text-foreground transition-colors flex items-center gap-1 font-medium">
-                      計算の詳細を見る
-                    </summary>
-                    <div className="mt-2 pl-4 border-l-2 border-muted space-y-1">
-                      <p>1. BMR (Mifflin-St Jeor): {nutritionResult.bmr?.toLocaleString()} kcal</p>
-                      <p>2. TDEE (x 活動係数): {nutritionResult.tdee?.toLocaleString()} kcal</p>
-                      <p>3. 目標ペース調整: {delta > 0 ? "+" : ""}{Math.round(delta)} kcal</p>
-                    </div>
-                 </details>
-              </div>
-
-            </CardContent>
-          </Card>
-        );
-      })()}
-
-      {/* Step 4: 好み設定 */}
-      {currentStep === ONBOARDING_STEP.PREFERENCES && (
-        <Card className="animate-slide-up flex-1">
-          <CardHeader>
-            <div className="flex items-center gap-2 mb-2">
-              <UtensilsCrossed className="w-5 h-5 text-primary" />
-              <CardTitle>食の好み</CardTitle>
-            </div>
-            <CardDescription>
-              よりパーソナライズされた提案のために教えてください
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label>アレルギー・苦手な食材</Label>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="例: えび"
-                  value={allergyInput}
-                  onChange={(e) => setAllergyInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addAllergy())}
-                />
-                <Button type="button" variant="outline" onClick={addAllergy}>
-                  追加
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {formData.allergies.map((item) => (
-                  <Badge
-                    key={item}
-                    variant="secondary"
-                    className="cursor-pointer"
-                    onClick={() =>
-                      setFormData({
-                        ...formData,
-                        allergies: formData.allergies.filter((a) => a !== item),
-                      })
-                    }
-                  >
-                    {item} ×
-                  </Badge>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>好きな食材</Label>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="例: 鶏肉"
-                  value={favoriteInput}
-                  onChange={(e) => setFavoriteInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addFavorite())}
-                />
-                <Button type="button" variant="outline" onClick={addFavorite}>
-                  追加
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {formData.favoriteIngredients.map((item) => (
-                  <Badge
-                    key={item}
-                    variant="default"
-                    className="cursor-pointer"
-                    onClick={() =>
-                      setFormData({
-                        ...formData,
-                        favoriteIngredients: formData.favoriteIngredients.filter((f) => f !== item),
-                      })
-                    }
-                  >
-                    {item} ×
-                  </Badge>
-                ))}
-              </div>
-            </div>
-
-            {/* 料理ジャンルの複数選択（タップでトグル） */}
-            <div className="space-y-2">
-              <Label>好きなジャンル（複数選択可）</Label>
-              <div className="flex flex-wrap gap-2">
-                {(["和食", "洋食", "中華", "イタリアン", "エスニック", "その他"] as const).map((cuisine) => {
-                  const isSelected = formData.preferredCuisines.includes(cuisine);
-                  return (
-                    <Badge
-                      key={cuisine}
-                      variant={isSelected ? "default" : "outline"}
-                      className="cursor-pointer"
-                      onClick={() => {
-                        if (isSelected) {
-                          setFormData({
-                            ...formData,
-                            preferredCuisines: formData.preferredCuisines.filter((c) => c !== cuisine),
-                          });
-                        } else {
-                          setFormData({
-                            ...formData,
-                            preferredCuisines: [...formData.preferredCuisines, cuisine],
-                          });
-                        }
-                      }}
-                    >
-                      {cuisine}
-                    </Badge>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 味付けの好み（3段階で選択） */}
-            <div className="space-y-4">
-              <Label>味付けの好み</Label>
               <div className="space-y-2">
-                <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>さっぱり</span>
-                  <span>こってり</span>
-                </div>
+                <Label>チートデイ頻度</Label>
                 <div className="flex gap-2">
                   <Button
                     type="button"
-                    variant={formData.flavorProfile === "light" ? "default" : "outline"}
+                    variant={formData.cheatDayFrequency === "weekly" ? "default" : "outline"}
                     className="flex-1"
-                    onClick={() => setFormData({ ...formData, flavorProfile: "light" })}
+                    onClick={() => setFormData({ ...formData, cheatDayFrequency: "weekly" })}
                   >
-                    さっぱり
+                    週1回
                   </Button>
                   <Button
                     type="button"
-                    variant={formData.flavorProfile === "medium" ? "default" : "outline"}
+                    variant={formData.cheatDayFrequency === "biweekly" ? "default" : "outline"}
                     className="flex-1"
-                    onClick={() => setFormData({ ...formData, flavorProfile: "medium" })}
+                    onClick={() => setFormData({ ...formData, cheatDayFrequency: "biweekly" })}
                   >
-                    普通
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={formData.flavorProfile === "rich" ? "default" : "outline"}
-                    className="flex-1"
-                    onClick={() => setFormData({ ...formData, flavorProfile: "rich" })}
-                  >
-                    こってり
+                    2週に1回
                   </Button>
                 </div>
               </div>
-            </div>
+            </CardContent>
+          </Card>
+        )}
 
-            <div className="space-y-2">
-              <Label>料理スキル</Label>
-              <select
-                className={SELECT_CLASS_NAME}
-                value={formData.cookingSkillLevel}
-                onChange={(e) => setFormData({ ...formData, cookingSkillLevel: e.target.value as "beginner" | "intermediate" | "advanced" })}
+        {/* Step 2: 身体情報 */}
+        {currentStep === ONBOARDING_STEP.BODY_INFO && (
+          <Card className="animate-slide-up shadow-sm border-2">
+            <CardHeader>
+              <div className="flex items-center gap-2 mb-2">
+                <Activity className="w-5 h-5 text-primary" />
+                <CardTitle>身体情報</CardTitle>
+              </div>
+              <CardDescription>
+                最適な栄養プランを計算するための情報です
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 text-foreground">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="age">年齢</Label>
+                  <Input
+                    id="age"
+                    type="number"
+                    value={formData.age}
+                    onChange={(e) => setFormData({ ...formData, age: Number(e.target.value) })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="gender">性別</Label>
+                  <select
+                    id="gender"
+                    className={SELECT_CLASS_NAME}
+                    value={formData.gender}
+                    onChange={(e) => setFormData({ ...formData, gender: e.target.value as "male" | "female" | "other" })}
+                  >
+                    <option value="male">男性</option>
+                    <option value="female">女性</option>
+                    <option value="other">その他</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="height">身長 (cm)</Label>
+                <Input
+                  id="height"
+                  type="number"
+                  value={formData.height_cm}
+                  onChange={(e) => setFormData({ ...formData, height_cm: Number(e.target.value) })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>活動レベル</Label>
+                <select
+                  className={SELECT_CLASS_NAME}
+                  value={formData.activity_level}
+                  onChange={(e) => setFormData({ ...formData, activity_level: e.target.value as "sedentary" | "light" | "moderate" | "active" | "very_active" })}
+                >
+                  <option value="sedentary">ほぼ運動しない</option>
+                  <option value="light">軽い運動 週に1-2回運動</option>
+                  <option value="moderate">中度の運動 週に3-5回運動</option>
+                  <option value="active">激しい運動やスポーツ 週に6-7回運動</option>
+                  <option value="very_active">非常に激しい運動・肉体労働 1日に2回運動</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>目標</Label>
+                <select
+                  className={SELECT_CLASS_NAME}
+                  value={formData.goal}
+                  onChange={(e) => setFormData({ ...formData, goal: e.target.value as "lose" | "maintain" | "gain" })}
+                >
+                  <option value="lose">痩せたい（減量）</option>
+                  <option value="maintain">維持したい</option>
+                  <option value="gain">筋肉をつけたい（増量）</option>
+                </select>
+              </div>
+
+              <NutritionPreferencesForm
+                goal={formData.goal}
+                formData={formData}
+                onFormChange={(updates) => setFormData({ ...formData, ...updates })}
+                selectClassName={SELECT_CLASS_NAME}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Step 3: 栄養目標確認 */}
+        {currentStep === ONBOARDING_STEP.NUTRITION_REVIEW && nutritionResult && (() => {
+          // PFCのカロリー計算
+          const proteinKcal = nutritionResult.pfc.protein * 4;
+          const fatKcal = nutritionResult.pfc.fat * 9;
+          const carbsKcal = nutritionResult.pfc.carbs * 4;
+          const totalKcal = proteinKcal + fatKcal + carbsKcal;
+          const pct = (kcal: number) => totalKcal ? Math.round((kcal / totalKcal) * 100) : 0;
+
+          // ペース情報の計算
+          const delta = nutritionResult.dailyCalories - (nutritionResult.tdee || 0);
+
+          // カラーパレット
+          const COLORS = {
+            primary: "#FF8C00",   // Protein (Orange)
+            secondary: "#FFD700", // Fat (Yellow)
+            tertiary: "#4CAF50",  // Carbs (Green)
+          };
+          
+          // アクセシビリティ用テキストカラー（背景白に対して十分なコントラストを確保）
+          const TEXT_COLORS = {
+            primary: "text-orange-700",
+            secondary: "text-yellow-700",
+            tertiary: "text-green-700",
+          };
+
+          // ドーナツチャート計算用
+          const radius = 40;
+          const circumference = 2 * Math.PI * radius;
+          const pPct = pct(proteinKcal);
+          const fPct = pct(fatKcal);
+          const cPct = pct(carbsKcal);
+
+          // 各セグメントの長さ（stroke-dasharray用）
+          const pDash = `${(circumference * pPct) / 100} ${circumference}`;
+          const fDash = `${(circumference * fPct) / 100} ${circumference}`;
+          const cDash = `${(circumference * cPct) / 100} ${circumference}`;
+
+          const pOffset = 0;
+          const fOffset = -((circumference * pPct) / 100);
+          const cOffset = -((circumference * (pPct + fPct)) / 100);
+
+          return (
+            <Card className="animate-pop-in shadow-sm border-2 overflow-hidden bg-white/50 backdrop-blur-sm">
+              <CardContent className="space-y-8 pt-8 pb-6">
+                
+                {/* 1. Main Goal: 摂取カロリー目標 */}
+                <div className="text-center space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground tracking-wider uppercase">
+                    Daily Target
+                  </p>
+                  <div className="flex items-baseline justify-center gap-1.5">
+                    <span className="text-5xl font-extrabold tracking-tight" style={{ color: COLORS.primary }}>
+                      {nutritionResult.dailyCalories.toLocaleString()}
+                    </span>
+                    <span className="text-lg font-medium text-muted-foreground">kcal</span>
+                  </div>
+                  
+                  <div className="inline-flex items-center px-3 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-100 text-xs font-medium mt-2">
+                    {formData.goal === "lose" && (
+                      <>
+                        <span className="mr-1.5">📉</span>
+                        減量: {Math.abs(Math.round(delta))}kcal 削減 / 日
+                      </>
+                    )}
+                    {formData.goal === "gain" && (
+                      <>
+                        <span className="mr-1.5">📈</span>
+                        増量: {Math.abs(Math.round(delta))}kcal 上乗せ / 日
+                      </>
+                    )}
+                    {formData.goal === "maintain" && (
+                      <>
+                        <span className="mr-1.5">⚖️</span>
+                        維持: バランス重視
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Visualization: PFC Balance Donut Chart */}
+                <div className="bg-white rounded-2xl border shadow-sm p-6">
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-8">
+                    {/* SVG Chart */}
+                    <div className="relative w-32 h-32 flex-shrink-0">
+                      <svg viewBox="0 0 100 100" className="transform -rotate-90 w-full h-full">
+                        <circle cx="50" cy="50" r={radius} stroke="#eee" strokeWidth="12" fill="transparent" />
+                        <circle
+                          cx="50" cy="50" r={radius}
+                          stroke={COLORS.primary} strokeWidth="12" fill="transparent"
+                          strokeDasharray={pDash}
+                          strokeDashoffset={pOffset}
+                          strokeLinecap="butt"
+                          className="transition-all duration-1000 ease-out"
+                        />
+                        <circle
+                          cx="50" cy="50" r={radius}
+                          stroke={COLORS.secondary} strokeWidth="12" fill="transparent"
+                          strokeDasharray={fDash}
+                          strokeDashoffset={fOffset}
+                          strokeLinecap="butt"
+                          className="transition-all duration-1000 ease-out"
+                        />
+                        <circle
+                          cx="50" cy="50" r={radius}
+                          stroke={COLORS.tertiary} strokeWidth="12" fill="transparent"
+                          strokeDasharray={cDash}
+                          strokeDashoffset={cOffset}
+                          strokeLinecap="butt"
+                          className="transition-all duration-1000 ease-out"
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-xs text-foreground pointer-events-none">
+                        <span className="font-bold">PFC</span>
+                        <span className="font-bold">Balance</span>
+                      </div>
+                    </div>
+
+                    {/* Legend / Details */}
+                    <div className="flex-1 w-full space-y-3">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.primary }} />
+                          <span className={`font-bold ${TEXT_COLORS.primary}`}>Protein</span>
+                        </div>
+                        <div className="flex items-baseline gap-2">
+                          <span className="font-bold">{nutritionResult.pfc.protein}g</span>
+                          <span className="text-xs text-muted-foreground w-8 text-right">{pct(proteinKcal)}%</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.secondary }} />
+                          <span className={`font-bold ${TEXT_COLORS.secondary}`}>Fat</span>
+                        </div>
+                        <div className="flex items-baseline gap-2">
+                          <span className="font-bold">{nutritionResult.pfc.fat}g</span>
+                          <span className="text-xs text-muted-foreground w-8 text-right">{pct(fatKcal)}%</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.tertiary }} />
+                          <span className={`font-bold ${TEXT_COLORS.tertiary}`}>Carbs</span>
+                        </div>
+                        <div className="flex items-baseline gap-2">
+                          <span className="font-bold">{nutritionResult.pfc.carbs}g</span>
+                          <span className="text-xs text-muted-foreground w-8 text-right">{pct(carbsKcal)}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Stats Grid: BMR, TDEE, Diff */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="p-3 bg-muted/30 rounded-xl border text-center space-y-1">
+                    <p className="text-[10px] text-muted-foreground uppercase">BMR</p>
+                    <p className="font-bold text-lg leading-none">{nutritionResult.bmr?.toLocaleString()}</p>
+                    <p className="text-[10px] text-muted-foreground">基礎代謝</p>
+                  </div>
+                  <div className="p-3 bg-muted/30 rounded-xl border text-center space-y-1">
+                    <p className="text-[10px] text-muted-foreground uppercase">TDEE</p>
+                    <p className="font-bold text-lg leading-none">{nutritionResult.tdee?.toLocaleString()}</p>
+                    <p className="text-[10px] text-muted-foreground">活動代謝</p>
+                  </div>
+                  <div className={`p-3 rounded-xl border text-center space-y-1 ${
+                    delta !== 0 ? "bg-orange-50/50 border-orange-100" : "bg-muted/30"
+                  }`}>
+                    <p className="text-[10px] text-muted-foreground uppercase">Diff</p>
+                    <p className="font-bold text-lg leading-none text-orange-600">
+                      {delta > 0 ? "+" : ""}{Math.round(delta)}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {delta > 0 ? "上乗せ" : delta < 0 ? "削減" : "維持"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* 4. Advice / Hints */}
+                <div className="text-xs text-muted-foreground bg-muted/30 p-4 rounded-xl space-y-2">
+                   <div className="flex gap-2 items-start">
+                      <Sparkles className="w-4 h-4 text-orange-500 flex-shrink-0 mt-0.5" />
+                      <div>
+                        {formData.goal === "lose" && "無理のないペース設定です。空腹を感じにくい高タンパク質な食事を心がけましょう。"}
+                        {formData.goal === "gain" && "筋肉合成に必要なカロリー余剰を確保しています。トレーニング強度に合わせて調整可能です。"}
+                        {formData.goal === "maintain" && "現在の体重を維持するための設定です。日々の活動量に応じて微調整しましょう。"}
+                        {nutritionResult.strategySummary && <span className="block mt-1 pt-1 border-t border-muted-foreground/20">{nutritionResult.strategySummary}</span>}
+                      </div>
+                   </div>
+                   
+                   <details className="pt-2">
+                      <summary className="cursor-pointer hover:text-foreground transition-colors flex items-center gap-1 font-medium">
+                        計算の詳細を見る
+                      </summary>
+                      <div className="mt-2 pl-4 border-l-2 border-muted space-y-1">
+                        <p>1. BMR (Mifflin-St Jeor): {nutritionResult.bmr?.toLocaleString()} kcal</p>
+                        <p>2. TDEE (x 活動係数): {nutritionResult.tdee?.toLocaleString()} kcal</p>
+                        <p>3. 目標ペース調整: {delta > 0 ? "+" : ""}{Math.round(delta)} kcal</p>
+                      </div>
+                   </details>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
+
+        {/* Step 4: 好み設定 */}
+        {currentStep === ONBOARDING_STEP.PREFERENCES && (
+          <Card className="animate-slide-up shadow-sm border-2">
+            <CardHeader>
+              <div className="flex items-center gap-2 mb-2">
+                <UtensilsCrossed className="w-5 h-5 text-primary" />
+                <CardTitle>食の好み</CardTitle>
+              </div>
+              <CardDescription>
+                よりパーソナライズされた提案のために教えてください
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 text-foreground">
+              <div className="space-y-2">
+                <Label>アレルギー・苦手な食材</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="例: えび"
+                    value={allergyInput}
+                    onChange={(e) => setAllergyInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addAllergy())}
+                  />
+                  <Button type="button" variant="outline" onClick={addAllergy}>
+                    追加
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {formData.allergies.map((item) => (
+                    <Badge
+                      key={item}
+                      variant="secondary"
+                      className="cursor-pointer"
+                      onClick={() =>
+                        setFormData({
+                          ...formData,
+                          allergies: formData.allergies.filter((a) => a !== item),
+                        })
+                      }
+                    >
+                      {item} ×
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>好きな食材</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="例: 鶏肉"
+                    value={favoriteInput}
+                    onChange={(e) => setFavoriteInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addFavorite())}
+                  />
+                  <Button type="button" variant="outline" onClick={addFavorite}>
+                    追加
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {formData.favoriteIngredients.map((item) => (
+                    <Badge
+                      key={item}
+                      variant="default"
+                      className="cursor-pointer"
+                      onClick={() =>
+                        setFormData({
+                          ...formData,
+                          favoriteIngredients: formData.favoriteIngredients.filter((f) => f !== item),
+                        })
+                      }
+                    >
+                      {item} ×
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>好きなジャンル（複数選択可）</Label>
+                <div className="flex flex-wrap gap-2">
+                  {(["和食", "洋食", "中華", "イタリアン", "エスニック", "その他"] as const).map((cuisine) => {
+                    const isSelected = formData.preferredCuisines.includes(cuisine);
+                    return (
+                      <Badge
+                        key={cuisine}
+                        variant={isSelected ? "default" : "outline"}
+                        className="cursor-pointer"
+                        onClick={() => {
+                          if (isSelected) {
+                            setFormData({
+                              ...formData,
+                              preferredCuisines: formData.preferredCuisines.filter((c) => c !== cuisine),
+                            });
+                          } else {
+                            setFormData({
+                              ...formData,
+                              preferredCuisines: [...formData.preferredCuisines, cuisine],
+                            });
+                          }
+                        }}
+                      >
+                        {cuisine}
+                      </Badge>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <Label>味付けの好み</Label>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm text-muted-foreground px-1">
+                    <span>さっぱり</span>
+                    <span>こってり</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant={formData.flavorProfile === "light" ? "default" : "outline"}
+                      className="flex-1 text-xs px-1"
+                      onClick={() => setFormData({ ...formData, flavorProfile: "light" })}
+                    >
+                      さっぱり
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={formData.flavorProfile === "medium" ? "default" : "outline"}
+                      className="flex-1 text-xs px-1"
+                      onClick={() => setFormData({ ...formData, flavorProfile: "medium" })}
+                    >
+                      普通
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={formData.flavorProfile === "rich" ? "default" : "outline"}
+                      className="flex-1 text-xs px-1"
+                      onClick={() => setFormData({ ...formData, flavorProfile: "rich" })}
+                    >
+                      こってり
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>料理スキル</Label>
+                <select
+                  className={SELECT_CLASS_NAME}
+                  value={formData.cookingSkillLevel}
+                  onChange={(e) => setFormData({ ...formData, cookingSkillLevel: e.target.value as "beginner" | "intermediate" | "advanced" })}
+                >
+                  <option value="beginner">初心者（簡単なものが良い）</option>
+                  <option value="intermediate">普通（基本的な調理OK）</option>
+                  <option value="advanced">上級者（手の込んだ料理もOK）</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>調理時間の目安</Label>
+                <select
+                  className={SELECT_CLASS_NAME}
+                  value={formData.availableTime}
+                  onChange={(e) => setFormData({ ...formData, availableTime: e.target.value as "short" | "medium" | "long" })}
+                >
+                  <option value="short">短め（15分以内）</option>
+                  <option value="medium">普通（30分程度）</option>
+                  <option value="long">長めでもOK（1時間以上）</option>
+                </select>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Step 5: プラン作成 */}
+        {currentStep === ONBOARDING_STEP.PLAN_CREATION && (
+          <Card className="animate-pop-in h-96 flex flex-col justify-center border-2 border-primary/20 bg-primary/5">
+            <CardContent className="text-center py-12 space-y-6 text-foreground">
+              <div className="w-20 h-20 mx-auto bg-primary/20 rounded-full flex items-center justify-center">
+                <CheckCircle2 className="w-10 h-10 text-primary" />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-2xl font-bold">準備完了！</h2>
+                <p className="text-muted-foreground">
+                  さっそく14日間の食事プランを作成しましょう
+                </p>
+              </div>
+              <div className="p-4 bg-white/50 rounded-xl border-dashed border-2">
+                <p className="text-sm text-muted-foreground">
+                  プラン作成には1〜2分かかります。
+                  <br />
+                  作成中にページを閉じても問題ありません。
+                </p>
+              </div>
+              <Button
+                size="lg"
+                className="rounded-full px-8 shadow-lg hover:shadow-xl transition-all"
+                onClick={handleCreatePlan}
+                disabled={submitting}
               >
-                <option value="beginner">初心者（簡単なものが良い）</option>
-                <option value="intermediate">普通（基本的な調理OK）</option>
-                <option value="advanced">上級者（手の込んだ料理もOK）</option>
-              </select>
-            </div>
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    開始中...
+                  </>
+                ) : (
+                  <>
+                    <CalendarDays className="w-4 h-4 mr-2" />
+                    プランを作成する
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
-            <div className="space-y-2">
-              <Label>調理時間の目安</Label>
-              <select
-                className={SELECT_CLASS_NAME}
-                value={formData.availableTime}
-                onChange={(e) => setFormData({ ...formData, availableTime: e.target.value as "short" | "medium" | "long" })}
-              >
-                <option value="short">短め（15分以内）</option>
-                <option value="medium">普通（30分程度）</option>
-                <option value="long">長めでもOK（1時間以上）</option>
-              </select>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Step 5: プラン作成 */}
-      {currentStep === ONBOARDING_STEP.PLAN_CREATION && (
-        <Card className="animate-pop-in flex-1 flex flex-col justify-center">
-          <CardContent className="text-center py-12 space-y-6">
-            <div className="w-20 h-20 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
-              <CheckCircle2 className="w-10 h-10 text-primary" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-2xl font-bold">準備完了！</h2>
-              <p className="text-muted-foreground">
-                さっそく14日間の食事プランを作成しましょう
-              </p>
-            </div>
-            <div className="p-4 bg-muted/50 rounded-xl">
-              <p className="text-sm text-muted-foreground">
-                プラン作成には1〜2分かかります。
-                <br />
-                作成中にページを閉じても問題ありません。
-              </p>
-            </div>
-            <Button
-              size="lg"
-              className="rounded-full px-8"
-              onClick={handleCreatePlan}
-              disabled={submitting}
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  開始中...
-                </>
-              ) : (
-                <>
-                  <CalendarDays className="w-4 h-4 mr-2" />
-                  プランを作成する
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ナビゲーションボタン */}
+      {/* ナビゲーションボタン（固定） */}
       {currentStep < ONBOARDING_STEP.PLAN_CREATION && (
-        <div className="flex gap-4 mt-8">
+        <div className="flex-none pt-4 pb-2 border-t bg-background/80 backdrop-blur-sm flex gap-4 mt-auto">
           {currentStep > ONBOARDING_STEP.PROFILE && (
             <Button
               variant="outline"
-              className="flex-1"
+              className="flex-1 rounded-full border-2 font-bold"
               onClick={handleBack}
               disabled={submitting}
             >
@@ -1128,7 +1114,7 @@ export default function OnboardingPage() {
             </Button>
           )}
           <Button
-            className="flex-1"
+            className="flex-1 rounded-full font-bold shadow-md hover:shadow-lg transition-all"
             onClick={handleNext}
             disabled={submitting}
           >

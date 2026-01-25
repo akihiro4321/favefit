@@ -514,11 +514,7 @@ function DayCard({
           </div>
           <div className="text-right">
             <div className="text-sm font-medium">
-              {(() => {
-                const calories = Number(dayPlan.totalNutrition?.calories) || 0;
-                return isNaN(calories) ? 0 : calories;
-              })()}{" "}
-              kcal
+              {(Number(dayPlan.totalNutrition?.calories) || 0).toFixed(1)} kcal
             </div>
             {isPending && dayPlan.totalNutrition && (
               <div className="text-xs text-muted-foreground">
@@ -579,7 +575,7 @@ function DayCard({
                       <div className="text-xs text-muted-foreground mt-1">
                         {(() => {
                           const calories = Number(meal.nutrition?.calories) || 0;
-                          return isNaN(calories) ? 0 : calories;
+                          return isNaN(calories) ? "0.0" : calories.toFixed(1);
                         })()}
                         kcal | P:
                         {(() => {

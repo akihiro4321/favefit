@@ -191,8 +191,8 @@ export default function HomePage() {
           <Flame className="w-4 h-4 text-primary" />
           <span>
             目標: {profile?.nutrition?.dailyCalories || 0} kcal / 残り:{" "}
-            {(profile?.nutrition?.dailyCalories || 0) -
-              (todaysMeals?.totalNutrition?.calories || 0)}{" "}
+            {((profile?.nutrition?.dailyCalories || 0) -
+              (todaysMeals?.totalNutrition?.calories || 0)).toFixed(1)}{" "}
             kcal
           </span>
         </div>
@@ -240,7 +240,7 @@ export default function HomePage() {
                     <div>
                       <p className="font-medium">{meal.title}</p>
                       <p className="text-xs text-muted-foreground">
-                        {meal.nutrition.calories} kcal
+                        {Number(meal.nutrition.calories).toFixed(1)} kcal
                       </p>
                     </div>
                   </div>
