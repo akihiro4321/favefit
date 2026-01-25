@@ -11,7 +11,7 @@ import { createShoppingList } from "@/lib/shoppingList";
 import { getFavorites } from "@/lib/recipeHistory";
 import { DayPlan, MealSlot, ShoppingItem } from "@/lib/schema";
 import { buildRecipePrompt } from "@/mastra/agents/recipe-creator";
-import { calculateMacroGoals, calculatePersonalizedMacroGoals } from "@/lib/tools/calculateMacroGoals";
+import { calculatePersonalizedMacroGoals } from "@/lib/tools/calculateMacroGoals";
 
 interface MealInfo {
   date: string;
@@ -190,8 +190,8 @@ async function generatePlanBackground(
         targetCalories = userDoc.nutrition.dailyCalories;
         pfc = userDoc.nutrition.pfc;
       } else {
-        // プロファイル情報から動的に計算（従来ロジック）
-        const macroGoals = calculateMacroGoals({
+        // プロファイル情報から決定論的に計算（preferencesなし）
+        const macroGoals = calculatePersonalizedMacroGoals({
           age: profile.age!,
           gender: profile.gender as "male" | "female",
           height_cm: profile.height_cm!,

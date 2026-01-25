@@ -104,30 +104,6 @@ const adjustForGoal = (
   }
 };
 
-/**
- * PFC比率計算
- * タンパク質: 体重 × 1.6g (減量時は2.0g)
- * 脂質: 総カロリーの25%
- * 炭水化物: 残り
- */
-const calculatePFC = (
-  targetCalories: number,
-  weight_kg: number,
-  goal: "lose" | "maintain" | "gain"
-): { protein: number; fat: number; carbs: number } => {
-  const proteinMultiplier = goal === "lose" ? 2.0 : 1.6;
-  const protein = Math.round(weight_kg * proteinMultiplier);
-  const proteinCalories = protein * 4;
-
-  const fatCalories = targetCalories * 0.25;
-  const fat = Math.round(fatCalories / 9);
-
-  const carbsCalories = targetCalories - proteinCalories - fatCalories;
-  const carbs = Math.round(carbsCalories / 4);
-
-  return { protein, fat, carbs };
-};
-
 const KCAL_PER_KG = 7700;
 const DAYS_PER_MONTH = 30;
 
@@ -201,27 +177,6 @@ const calculatePersonalizedPFC = (
   const carbs = Math.round(carbsCalories / 4);
 
   return { protein, fat, carbs };
-};
-
-/**
- * メイン計算関数 (Mastra Tool として使用)
- */
-export const calculateMacroGoals = (
-  input: z.infer<typeof CalculateMacroGoalsInputSchema>
-): MacroGoalsResult => {
-  const { age, gender, height_cm, weight_kg, activity_level, goal } = input;
-
-  const bmr = calculateBMR(age, gender, height_cm, weight_kg);
-  const tdee = Math.round(bmr * getActivityMultiplier(activity_level));
-  const targetCalories = adjustForGoal(tdee, goal);
-  const pfc = calculatePFC(targetCalories, weight_kg, goal);
-
-  return {
-    bmr: Math.round(bmr),
-    tdee,
-    targetCalories,
-    pfc,
-  };
 };
 
 export const calculatePersonalizedMacroGoals = (

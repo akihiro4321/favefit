@@ -6,8 +6,8 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import {
-  calculateMacroGoals,
-  CalculateMacroGoalsInputSchema,
+  calculatePersonalizedMacroGoals,
+  CalculatePersonalizedMacroGoalsInputSchema,
 } from "@/lib/tools/calculateMacroGoals";
 
 /**
@@ -31,9 +31,9 @@ export const nutritionCalculatorTool = createTool({
   id: "calculate_nutrition",
   description:
     "ユーザーの身体情報からBMR/TDEE/PFCを計算する。LLMで計算せず、このToolを呼び出すこと。",
-  inputSchema: CalculateMacroGoalsInputSchema,
+  inputSchema: CalculatePersonalizedMacroGoalsInputSchema,
   outputSchema: CalculateMacroGoalsOutputSchema,
-  execute: async (inputData: z.infer<typeof CalculateMacroGoalsInputSchema>) => {
-    return calculateMacroGoals(inputData);
+  execute: async (inputData: z.infer<typeof CalculatePersonalizedMacroGoalsInputSchema>) => {
+    return calculatePersonalizedMacroGoals(inputData);
   },
 });

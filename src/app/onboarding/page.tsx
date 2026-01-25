@@ -23,12 +23,121 @@ import {
   CalendarDays,
 } from "lucide-react";
 import { updateUserProfile, completeOnboarding } from "@/lib/user";
+import type { LearnedPreferences, UserDocument, UserProfile } from "@/lib/schema";
 import { db } from "@/lib/firebase";
 import { doc, updateDoc, serverTimestamp, Timestamp } from "firebase/firestore";
 import { PlanCreatingScreen } from "@/components/plan-creating-screen";
 import { NutritionPreferencesForm } from "@/components/nutrition-preferences-form";
+import type { CalculateNutritionRequest } from "@/lib/schemas/user";
 
 const TOTAL_STEPS = 5;
+const SELECT_CLASS_NAME = "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm";
+
+type OnboardingFormData = {
+  // Step 1: 基本プロフィール
+  displayName: string;
+  currentWeight: number;
+  targetWeight: number;
+  deadline: string; // YYYY-MM-DD形式
+  cheatDayFrequency: "weekly" | "biweekly";
+  // Step 2: 身体情報
+  age: number;
+  gender: "male" | "female" | "other";
+  height_cm: number;
+  activity_level: "sedentary" | "light" | "moderate" | "active" | "very_active";
+  goal: "lose" | "maintain" | "gain";
+  lossPaceKgPerMonth: number;
+  maintenanceAdjustKcalPerDay: number;
+  gainPaceKgPerMonth: number;
+  gainStrategy: "lean" | "standard" | "aggressive";
+  macroPreset: "balanced" | "lowfat" | "lowcarb" | "highprotein";
+  // Step 4: 好み
+  allergies: string[];
+  favoriteIngredients: string[];
+  preferredCuisines: string[];
+  flavorProfile: "light" | "medium" | "rich";
+  cookingSkillLevel: "beginner" | "intermediate" | "advanced";
+  availableTime: "short" | "medium" | "long";
+};
+
+const DEFAULT_FORM_DATA: OnboardingFormData = {
+  displayName: "",
+  currentWeight: 65,
+  targetWeight: 60,
+  deadline: "",
+  cheatDayFrequency: "weekly",
+  age: 30,
+  gender: "male",
+  height_cm: 170,
+  activity_level: "moderate",
+  goal: "lose",
+  lossPaceKgPerMonth: 1,
+  maintenanceAdjustKcalPerDay: 0,
+  gainPaceKgPerMonth: 0.5,
+  gainStrategy: "lean",
+  macroPreset: "balanced",
+  allergies: [],
+  favoriteIngredients: [],
+  preferredCuisines: [],
+  flavorProfile: "medium",
+  cookingSkillLevel: "intermediate",
+  availableTime: "medium",
+};
+
+const getDeadlineInput = (deadline?: { toDate: () => Date } | null) => {
+  if (!deadline) return "";
+  return deadline.toDate().toISOString().split("T")[0];
+};
+
+const getBinaryGender = (gender: OnboardingFormData["gender"]) => {
+  if (gender === "other") {
+    throw new Error("gender must be male or female");
+  }
+  return gender;
+};
+
+const getPreferredCuisines = (learnedPreferences?: LearnedPreferences) => {
+  return Object.keys(learnedPreferences?.cuisines || {}).map((cuisine) => {
+    return cuisine.charAt(0).toUpperCase() + cuisine.slice(1);
+  });
+};
+
+const getFlavorProfile = (learnedPreferences?: LearnedPreferences) => {
+  const flavors = Object.keys(learnedPreferences?.flavorProfile || {});
+  if (flavors.includes("light")) return "light";
+  if (flavors.includes("rich")) return "rich";
+  return "medium";
+};
+
+const buildProfileOverrides = (profile?: Partial<UserDocument> | null): Partial<OnboardingFormData> => {
+  if (!profile?.profile) return {};
+  const base: Partial<UserProfile> = profile.profile;
+  return {
+    displayName: base.displayName || DEFAULT_FORM_DATA.displayName,
+    currentWeight: base.currentWeight || DEFAULT_FORM_DATA.currentWeight,
+    targetWeight: base.targetWeight || DEFAULT_FORM_DATA.targetWeight,
+    deadline: getDeadlineInput(base.deadline ?? null),
+    cheatDayFrequency: base.cheatDayFrequency || DEFAULT_FORM_DATA.cheatDayFrequency,
+    age: base.age || DEFAULT_FORM_DATA.age,
+    gender: base.gender || DEFAULT_FORM_DATA.gender,
+    height_cm: base.height_cm || DEFAULT_FORM_DATA.height_cm,
+    activity_level:
+      base.activity_level || DEFAULT_FORM_DATA.activity_level,
+    goal: base.goal || DEFAULT_FORM_DATA.goal,
+    lossPaceKgPerMonth: profile.nutrition?.preferences?.lossPaceKgPerMonth ?? DEFAULT_FORM_DATA.lossPaceKgPerMonth,
+    maintenanceAdjustKcalPerDay:
+      profile.nutrition?.preferences?.maintenanceAdjustKcalPerDay ?? DEFAULT_FORM_DATA.maintenanceAdjustKcalPerDay,
+    gainPaceKgPerMonth: profile.nutrition?.preferences?.gainPaceKgPerMonth ?? DEFAULT_FORM_DATA.gainPaceKgPerMonth,
+    gainStrategy: profile.nutrition?.preferences?.gainStrategy || DEFAULT_FORM_DATA.gainStrategy,
+    macroPreset: profile.nutrition?.preferences?.macroPreset || DEFAULT_FORM_DATA.macroPreset,
+    allergies: base.allergies || DEFAULT_FORM_DATA.allergies,
+    favoriteIngredients: base.favoriteIngredients || DEFAULT_FORM_DATA.favoriteIngredients,
+    preferredCuisines: getPreferredCuisines(profile.learnedPreferences),
+    flavorProfile: getFlavorProfile(profile.learnedPreferences),
+    cookingSkillLevel: base.cookingSkillLevel || DEFAULT_FORM_DATA.cookingSkillLevel,
+    availableTime: base.availableTime || DEFAULT_FORM_DATA.availableTime,
+  };
+};
 
 export default function OnboardingPage() {
   const { user, profile, loading, refreshProfile } = useAuth();
@@ -49,32 +158,7 @@ export default function OnboardingPage() {
   const isPlanCreating = profile?.planCreationStatus === "creating";
 
   // フォームデータ（既存プロフィールから初期化）
-  const [formData, setFormData] = useState({
-    // Step 1: 基本プロフィール
-    displayName: "",
-    currentWeight: 65,
-    targetWeight: 60,
-    deadline: "", // YYYY-MM-DD形式
-    cheatDayFrequency: "weekly" as "weekly" | "biweekly",
-    // Step 2: 身体情報
-    age: 30,
-    gender: "male" as "male" | "female" | "other",
-    height_cm: 170,
-    activity_level: "moderate" as "sedentary" | "light" | "moderate" | "active" | "very_active",
-    goal: "lose" as "lose" | "maintain" | "gain",
-    lossPaceKgPerMonth: 1,
-    maintenanceAdjustKcalPerDay: 0,
-    gainPaceKgPerMonth: 0.5,
-    gainStrategy: "lean" as "lean" | "standard" | "aggressive",
-    macroPreset: "balanced" as "balanced" | "lowfat" | "lowcarb" | "highprotein",
-    // Step 4: 好み
-    allergies: [] as string[],
-    favoriteIngredients: [] as string[],
-    preferredCuisines: [] as string[],
-    flavorProfile: "medium" as "light" | "medium" | "rich",
-    cookingSkillLevel: "intermediate" as "beginner" | "intermediate" | "advanced",
-    availableTime: "medium" as "short" | "medium" | "long",
-  });
+  const [formData, setFormData] = useState<OnboardingFormData>(DEFAULT_FORM_DATA);
 
   const [allergyInput, setAllergyInput] = useState("");
   const [favoriteInput, setFavoriteInput] = useState("");
@@ -82,69 +166,8 @@ export default function OnboardingPage() {
   // プロフィールから初期値を設定
   useEffect(() => {
     if (profile?.profile) {
-      // deadlineをYYYY-MM-DD形式に変換
-      let deadlineDate: Date | null = null;
-      if (profile.profile.deadline) {
-        // FirestoreのTimestampオブジェクトの場合
-        if (typeof profile.profile.deadline.toDate === "function") {
-          deadlineDate = profile.profile.deadline.toDate();
-        }
-        // 既にDateオブジェクトの場合
-        else if (profile.profile.deadline instanceof Date) {
-          deadlineDate = profile.profile.deadline;
-        }
-        // 数値（タイムスタンプ）の場合
-        else if (typeof profile.profile.deadline === "number") {
-          deadlineDate = new Date(profile.profile.deadline);
-        }
-        // 文字列の場合
-        else if (typeof profile.profile.deadline === "string") {
-          deadlineDate = new Date(profile.profile.deadline);
-        }
-        // secondsとnanosecondsプロパティがある場合（Firestore Timestampのシリアライズ形式）
-        else if (
-          typeof profile.profile.deadline === "object" &&
-          "seconds" in profile.profile.deadline
-        ) {
-          const ts = profile.profile.deadline as { seconds: number; nanoseconds?: number };
-          deadlineDate = new Date(ts.seconds * 1000 + (ts.nanoseconds || 0) / 1000000);
-        }
-      }
-      const deadlineStr = deadlineDate
-        ? deadlineDate.toISOString().split("T")[0]
-        : "";
-
-      setFormData((prev) => ({
-        ...prev,
-        displayName: profile.profile.displayName || "",
-        currentWeight: profile.profile.currentWeight || 65,
-        targetWeight: profile.profile.targetWeight || 60,
-        deadline: deadlineStr,
-        cheatDayFrequency: profile.profile.cheatDayFrequency || "weekly",
-        age: profile.profile.age || 30,
-        gender: profile.profile.gender || "male",
-        height_cm: profile.profile.height_cm || 170,
-        activity_level: profile.profile.activity_level || "moderate",
-        goal: profile.profile.goal || "lose",
-        lossPaceKgPerMonth: profile.nutrition?.preferences?.lossPaceKgPerMonth ?? 1,
-        maintenanceAdjustKcalPerDay: profile.nutrition?.preferences?.maintenanceAdjustKcalPerDay ?? 0,
-        gainPaceKgPerMonth: profile.nutrition?.preferences?.gainPaceKgPerMonth ?? 0.5,
-        gainStrategy: profile.nutrition?.preferences?.gainStrategy || "lean",
-        macroPreset: profile.nutrition?.preferences?.macroPreset || "balanced",
-        allergies: profile.profile.allergies || [],
-        favoriteIngredients: profile.profile.favoriteIngredients || [],
-        preferredCuisines: Object.keys(profile.learnedPreferences?.cuisines || {}).map((c) => {
-          // 小文字を大文字に変換（和食、洋食など）
-          return c.charAt(0).toUpperCase() + c.slice(1);
-        }),
-        flavorProfile: Object.keys(profile.learnedPreferences?.flavorProfile || {}).includes("light")
-          ? "light"
-          : Object.keys(profile.learnedPreferences?.flavorProfile || {}).includes("rich")
-          ? "rich"
-          : "medium",
-        cookingSkillLevel: profile.profile.cookingSkillLevel || "intermediate",
-        availableTime: profile.profile.availableTime || "medium",
-      }));
+      const overrides = buildProfileOverrides(profile);
+      setFormData((prev) => ({ ...prev, ...overrides }));
 
       // 既に栄養情報がある場合はセット
       if (profile.nutrition?.dailyCalories) {
@@ -173,108 +196,118 @@ export default function OnboardingPage() {
     }
   }, [isPlanCreating, refreshProfile]);
 
+  const calculateNutrition = async () => {
+    const payload = {
+      userId: user!.uid,
+      profile: {
+        age: formData.age,
+        gender: getBinaryGender(formData.gender),
+        height_cm: formData.height_cm,
+        weight_kg: formData.currentWeight,
+        activity_level: formData.activity_level,
+        goal: formData.goal,
+      },
+      preferences: {
+        lossPaceKgPerMonth: formData.lossPaceKgPerMonth,
+        maintenanceAdjustKcalPerDay: formData.maintenanceAdjustKcalPerDay,
+        gainPaceKgPerMonth: formData.gainPaceKgPerMonth,
+        gainStrategy: formData.gainStrategy,
+        macroPreset: formData.macroPreset,
+      },
+    } satisfies CalculateNutritionRequest;
+
+    const response = await fetch("/api/user/calculate-nutrition", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const result = await response.json();
+    if (result.error) throw new Error(result.error);
+
+    setNutritionResult(result.nutrition);
+    setCurrentStep(3);
+  };
+
+  const saveProfileAndPreferences = async () => {
+    const deadlineDate = formData.deadline
+      ? new Date(formData.deadline + "T00:00:00")
+      : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+    const deadlineTimestamp = Timestamp.fromDate(deadlineDate);
+
+    await updateUserProfile(user!.uid, {
+      displayName: formData.displayName || "ユーザー",
+      currentWeight: formData.currentWeight,
+      targetWeight: formData.targetWeight,
+      deadline: deadlineTimestamp,
+      cheatDayFrequency: formData.cheatDayFrequency,
+      age: formData.age,
+      gender: formData.gender,
+      height_cm: formData.height_cm,
+      activity_level: formData.activity_level,
+      goal: formData.goal,
+      allergies: formData.allergies,
+      favoriteIngredients: formData.favoriteIngredients,
+      cookingSkillLevel: formData.cookingSkillLevel,
+      availableTime: formData.availableTime,
+    });
+
+    if (formData.preferredCuisines.length > 0 || formData.flavorProfile) {
+      const initialCuisines: Record<string, number> = {};
+      formData.preferredCuisines.forEach((cuisine) => {
+        initialCuisines[cuisine.toLowerCase()] = 10;
+      });
+
+      const initialFlavorProfile: Record<string, number> = {};
+      if (formData.flavorProfile === "light") {
+        initialFlavorProfile["light"] = 10;
+        initialFlavorProfile["sour"] = 5;
+      } else if (formData.flavorProfile === "rich") {
+        initialFlavorProfile["rich"] = 10;
+        initialFlavorProfile["heavy"] = 5;
+      } else {
+        initialFlavorProfile["medium"] = 10;
+      }
+
+      const userRef = doc(db, "users", user!.uid);
+      await updateDoc(userRef, {
+        "learnedPreferences.cuisines": initialCuisines,
+        "learnedPreferences.flavorProfile": initialFlavorProfile,
+        updatedAt: serverTimestamp(),
+      });
+    }
+
+    setCurrentStep(5);
+  };
+
   const handleNext = async () => {
     if (currentStep === 2) {
-      // Step 2 完了時: 栄養計算
       setSubmitting(true);
       try {
-        const response = await fetch("/api/user/calculate-nutrition", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: user?.uid,
-            profile: {
-              age: formData.age,
-              gender: formData.gender,
-              height_cm: formData.height_cm,
-              weight_kg: formData.currentWeight,
-              activity_level: formData.activity_level,
-              goal: formData.goal,
-            },
-            preferences: {
-              lossPaceKgPerMonth: formData.lossPaceKgPerMonth,
-              maintenanceAdjustKcalPerDay: formData.maintenanceAdjustKcalPerDay,
-              gainPaceKgPerMonth: formData.gainPaceKgPerMonth,
-              gainStrategy: formData.gainStrategy,
-              macroPreset: formData.macroPreset,
-            },
-          }),
-        });
-
-        const result = await response.json();
-        if (result.error) throw new Error(result.error);
-
-        setNutritionResult(result.nutrition);
-        setCurrentStep(3);
+        await calculateNutrition();
       } catch (error) {
         console.error("Nutrition calculation failed:", error);
         alert("栄養目標の計算に失敗しました。");
       } finally {
         setSubmitting(false);
       }
-    } else if (currentStep === 4) {
-      // Step 4 完了時: プロフィール保存
+      return;
+    }
+
+    if (currentStep === 4) {
       setSubmitting(true);
       try {
-        // deadlineをTimestampに変換
-        const deadlineDate = formData.deadline
-          ? new Date(formData.deadline + "T00:00:00")
-          : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000); // デフォルト: 90日後
-        const deadlineTimestamp = Timestamp.fromDate(deadlineDate);
-
-        await updateUserProfile(user!.uid, {
-          displayName: formData.displayName || "ユーザー",
-          currentWeight: formData.currentWeight,
-          targetWeight: formData.targetWeight,
-          deadline: deadlineTimestamp,
-          cheatDayFrequency: formData.cheatDayFrequency,
-          age: formData.age,
-          gender: formData.gender,
-          height_cm: formData.height_cm,
-          activity_level: formData.activity_level,
-          goal: formData.goal,
-          allergies: formData.allergies,
-          favoriteIngredients: formData.favoriteIngredients,
-          cookingSkillLevel: formData.cookingSkillLevel,
-          availableTime: formData.availableTime,
-        });
-
-        // 初期嗜好プロファイルを設定
-        if (formData.preferredCuisines.length > 0 || formData.flavorProfile) {
-          const initialCuisines: Record<string, number> = {};
-          formData.preferredCuisines.forEach((cuisine) => {
-            initialCuisines[cuisine.toLowerCase()] = 10; // 初期スコア
-          });
-
-          const initialFlavorProfile: Record<string, number> = {};
-          if (formData.flavorProfile === "light") {
-            initialFlavorProfile["light"] = 10;
-            initialFlavorProfile["sour"] = 5;
-          } else if (formData.flavorProfile === "rich") {
-            initialFlavorProfile["rich"] = 10;
-            initialFlavorProfile["heavy"] = 5;
-          } else {
-            initialFlavorProfile["medium"] = 10;
-          }
-
-          // learnedPreferencesを更新
-          const userRef = doc(db, "users", user!.uid);
-          await updateDoc(userRef, {
-            "learnedPreferences.cuisines": initialCuisines,
-            "learnedPreferences.flavorProfile": initialFlavorProfile,
-            updatedAt: serverTimestamp(),
-          });
-        }
-        setCurrentStep(5);
+        await saveProfileAndPreferences();
       } catch (error) {
         console.error("Profile save failed:", error);
         alert("プロフィールの保存に失敗しました。");
       } finally {
         setSubmitting(false);
       }
-    } else {
-      setCurrentStep((s) => Math.min(s + 1, TOTAL_STEPS));
+      return;
     }
+
+    setCurrentStep((s) => Math.min(s + 1, TOTAL_STEPS));
   };
 
   const handleBack = () => {
@@ -510,7 +543,7 @@ export default function OnboardingPage() {
                 <Label htmlFor="gender">性別</Label>
                 <select
                   id="gender"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className={SELECT_CLASS_NAME}
                   value={formData.gender}
                   onChange={(e) => setFormData({ ...formData, gender: e.target.value as "male" | "female" | "other" })}
                 >
@@ -534,7 +567,7 @@ export default function OnboardingPage() {
             <div className="space-y-2">
               <Label>活動レベル</Label>
               <select
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className={SELECT_CLASS_NAME}
                 value={formData.activity_level}
                 onChange={(e) => setFormData({ ...formData, activity_level: e.target.value as "sedentary" | "light" | "moderate" | "active" | "very_active" })}
               >
@@ -549,7 +582,7 @@ export default function OnboardingPage() {
             <div className="space-y-2">
               <Label>目標</Label>
               <select
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className={SELECT_CLASS_NAME}
                 value={formData.goal}
                 onChange={(e) => setFormData({ ...formData, goal: e.target.value as "lose" | "maintain" | "gain" })}
               >
@@ -563,7 +596,7 @@ export default function OnboardingPage() {
               goal={formData.goal}
               formData={formData}
               onFormChange={(updates) => setFormData({ ...formData, ...updates })}
-              selectClassName="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              selectClassName={SELECT_CLASS_NAME}
             />
           </CardContent>
         </Card>
@@ -764,7 +797,7 @@ export default function OnboardingPage() {
             <div className="space-y-2">
               <Label>料理スキル</Label>
               <select
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className={SELECT_CLASS_NAME}
                 value={formData.cookingSkillLevel}
                 onChange={(e) => setFormData({ ...formData, cookingSkillLevel: e.target.value as "beginner" | "intermediate" | "advanced" })}
               >
@@ -777,7 +810,7 @@ export default function OnboardingPage() {
             <div className="space-y-2">
               <Label>調理時間の目安</Label>
               <select
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className={SELECT_CLASS_NAME}
                 value={formData.availableTime}
                 onChange={(e) => setFormData({ ...formData, availableTime: e.target.value as "short" | "medium" | "long" })}
               >

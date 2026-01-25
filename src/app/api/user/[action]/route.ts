@@ -8,51 +8,11 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { calculateNutrition, learnPreference, updateNutritionPreferences } from "@/lib/services/user-service";
 import { HttpError, successResponse } from "@/lib/api-utils";
-import { NutritionPreferencesSchema } from "@/lib/tools/calculateMacroGoals";
-
-const CalculateNutritionRequestSchema = z.object({
-  userId: z.string().min(1, "userId は必須です"),
-  profile: z.object({
-    age: z
-      .number({ required_error: "age は必須です" })
-      .int("age は整数である必要があります")
-      .min(1, "age は1以上である必要があります")
-      .max(120, "age は120以下である必要があります"),
-    gender: z.enum(["male", "female"], {
-      required_error: "gender は必須です",
-      invalid_type_error: "gender は male または female である必要があります",
-    }),
-    height_cm: z
-      .number({ required_error: "height_cm は必須です" })
-      .min(50, "height_cm は50以上である必要があります")
-      .max(300, "height_cm は300以下である必要があります"),
-    weight_kg: z
-      .number({ required_error: "weight_kg は必須です" })
-      .min(10, "weight_kg は10以上である必要があります")
-      .max(500, "weight_kg は500以下である必要があります"),
-    activity_level: z.enum(["sedentary", "light", "moderate", "active", "very_active"], {
-      required_error: "activity_level は必須です",
-    }),
-    goal: z.enum(["lose", "maintain", "gain"], {
-      required_error: "goal は必須です",
-    }),
-  }),
-  preferences: NutritionPreferencesSchema.optional(),
-});
-
-const UpdateNutritionPreferencesSchema = z.object({
-  userId: z.string().min(1, "userId は必須です"),
-  preferences: NutritionPreferencesSchema,
-});
-
-const LearnPreferenceRequestSchema = z.object({
-  userId: z.string().min(1),
-  recipeId: z.string().min(1),
-  feedback: z.object({
-    wantToMakeAgain: z.boolean(),
-    comment: z.string().optional(),
-  }),
-});
+import {
+  CalculateNutritionRequestSchema,
+  UpdateNutritionPreferencesSchema,
+  LearnPreferenceRequestSchema,
+} from "@/lib/schemas/user";
 
 /**
  * ユーザー関連API

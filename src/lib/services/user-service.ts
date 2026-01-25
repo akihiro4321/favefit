@@ -9,25 +9,11 @@ import { updateLearnedPreferences, updateUserNutrition, updateUserNutritionPrefe
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { calculatePersonalizedMacroGoals } from "@/lib/tools/calculateMacroGoals";
-
-export interface CalculateNutritionRequest {
-  userId: string;
-  profile: {
-    age: number;
-    gender: "male" | "female";
-    height_cm: number;
-    weight_kg: number;
-    activity_level: "sedentary" | "light" | "moderate" | "active" | "very_active";
-    goal: "lose" | "maintain" | "gain";
-  };
-  preferences?: {
-    lossPaceKgPerMonth?: number;
-    maintenanceAdjustKcalPerDay?: number;
-    gainPaceKgPerMonth?: number;
-    gainStrategy?: "lean" | "standard" | "aggressive";
-    macroPreset?: "balanced" | "lowfat" | "lowcarb" | "highprotein";
-  };
-}
+import type {
+  CalculateNutritionRequest,
+  LearnPreferenceRequest,
+  UpdateNutritionPreferencesRequest,
+} from "@/lib/schemas/user";
 
 export interface CalculateNutritionResponse {
   nutrition: {
@@ -45,15 +31,6 @@ export interface CalculateNutritionResponse {
       gainStrategy?: "lean" | "standard" | "aggressive";
       macroPreset?: "balanced" | "lowfat" | "lowcarb" | "highprotein";
     };
-  };
-}
-
-export interface LearnPreferenceRequest {
-  userId: string;
-  recipeId: string;
-  feedback: {
-    wantToMakeAgain: boolean;
-    comment?: string;
   };
 }
 
@@ -86,7 +63,7 @@ export async function calculateNutrition(
 
 export async function updateNutritionPreferences(
   userId: string,
-  preferences: NonNullable<CalculateNutritionRequest["preferences"]>
+  preferences: UpdateNutritionPreferencesRequest["preferences"]
 ): Promise<void> {
   await updateUserNutritionPreferences(userId, preferences);
 }
