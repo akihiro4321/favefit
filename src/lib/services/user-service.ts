@@ -17,6 +17,8 @@ import type {
 
 export interface CalculateNutritionResponse {
   nutrition: {
+    bmr: number;
+    tdee: number;
     dailyCalories: number;
     pfc: {
       protein: number;
@@ -51,6 +53,8 @@ export async function calculateNutrition(
   });
 
   const nutrition = {
+    bmr: result.bmr,
+    tdee: result.tdee,
     dailyCalories: result.targetCalories,
     pfc: result.pfc,
     preferences,

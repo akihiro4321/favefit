@@ -213,6 +213,8 @@ export default function OnboardingPage() {
   const [submitting, setSubmitting] = useState(false); // 送信中フラグ
   // AI計算による栄養目標の結果を保持
   const [nutritionResult, setNutritionResult] = useState<{
+    bmr: number;
+    tdee: number;
     dailyCalories: number;
     pfc: { protein: number; fat: number; carbs: number };
     strategySummary?: string;
@@ -239,6 +241,8 @@ export default function OnboardingPage() {
       // 既に栄養情報がある場合はセット
       if (profile.nutrition?.dailyCalories) {
         setNutritionResult({
+          bmr: profile.nutrition.bmr || 0,
+          tdee: profile.nutrition.tdee || 0,
           dailyCalories: profile.nutrition.dailyCalories,
           pfc: profile.nutrition.pfc || { protein: 0, fat: 0, carbs: 0 },
           strategySummary: profile.nutrition.strategySummary,
@@ -593,7 +597,7 @@ export default function OnboardingPage() {
               <CardTitle>身体情報</CardTitle>
             </div>
             <CardDescription>
-              AIが最適な栄養プランを計算するための情報です
+              最適な栄養プランを計算するための情報です
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -671,52 +675,226 @@ export default function OnboardingPage() {
       )}
 
       {/* Step 3: 栄養目標確認 */}
-      {currentStep === ONBOARDING_STEP.NUTRITION_REVIEW && nutritionResult && (
-        <Card className="animate-pop-in flex-1">
-          <CardHeader>
-            <div className="flex items-center gap-2 mb-2">
-              <Zap className="w-5 h-5 text-primary" />
-              <CardTitle>あなたの栄養目標</CardTitle>
-            </div>
-            <CardDescription>
-              入力内容に基づいて栄養目標を算出しました
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="text-center p-6 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-2xl">
-              <p className="text-sm text-muted-foreground mb-1">1日の目標カロリー</p>
-              <p className="text-4xl font-bold text-primary">
-                {nutritionResult.dailyCalories.toLocaleString()}
-                <span className="text-lg font-normal text-muted-foreground ml-1">kcal</span>
-              </p>
-            </div>
+      {currentStep === ONBOARDING_STEP.NUTRITION_REVIEW && nutritionResult && (() => {
+        // PFCのカロリー計算
+        const proteinKcal = nutritionResult.pfc.protein * 4;
+        const fatKcal = nutritionResult.pfc.fat * 9;
+        const carbsKcal = nutritionResult.pfc.carbs * 4;
+        const totalKcal = proteinKcal + fatKcal + carbsKcal;
+        const pct = (kcal: number) => totalKcal ? Math.round((kcal / totalKcal) * 100) : 0;
 
-            <div className="grid grid-cols-3 gap-4">
-              <div className="text-center p-4 bg-muted rounded-xl">
-                <p className="text-xs text-muted-foreground mb-1">タンパク質</p>
-                <p className="text-xl font-bold">{nutritionResult.pfc.protein}g</p>
-              </div>
-              <div className="text-center p-4 bg-muted rounded-xl">
-                <p className="text-xs text-muted-foreground mb-1">脂質</p>
-                <p className="text-xl font-bold">{nutritionResult.pfc.fat}g</p>
-              </div>
-              <div className="text-center p-4 bg-muted rounded-xl">
-                <p className="text-xs text-muted-foreground mb-1">炭水化物</p>
-                <p className="text-xl font-bold">{nutritionResult.pfc.carbs}g</p>
-              </div>
-            </div>
+        // ペース情報の計算
+        const delta = nutritionResult.dailyCalories - (nutritionResult.tdee || 0);
 
-            {nutritionResult.strategySummary && (
-              <div className="p-4 bg-muted/50 rounded-xl">
-                <p className="text-sm text-muted-foreground flex items-start gap-2">
-                  <Sparkles className="w-4 h-4 flex-shrink-0 mt-0.5 text-primary" />
-                  {nutritionResult.strategySummary}
+        // カラーパレット
+        const COLORS = {
+          primary: "#FF8C00",   // Protein (Orange)
+          secondary: "#FFD700", // Fat (Yellow)
+          tertiary: "#4CAF50",  // Carbs (Green)
+        };
+        
+        // アクセシビリティ用テキストカラー（背景白に対して十分なコントラストを確保）
+        const TEXT_COLORS = {
+          primary: "text-orange-700",
+          secondary: "text-yellow-700",
+          tertiary: "text-green-700",
+        };
+
+        // ドーナツチャート計算用
+        const radius = 40;
+        const circumference = 2 * Math.PI * radius;
+        const pPct = pct(proteinKcal);
+        const fPct = pct(fatKcal);
+        const cPct = pct(carbsKcal);
+
+        // 各セグメントの長さ（stroke-dasharray用）
+        // dash gap (gap is full circumference to avoid repetition)
+        const pDash = `${(circumference * pPct) / 100} ${circumference}`;
+        const fDash = `${(circumference * fPct) / 100} ${circumference}`;
+        const cDash = `${(circumference * cPct) / 100} ${circumference}`;
+
+        // 各セグメントの開始位置（stroke-dashoffset用）
+        // 12時の位置(0deg)から時計回り
+        // Protein: 0
+        // Fat: Proteinの終わりから
+        // Carbs: Fatの終わりから
+        const pOffset = 0;
+        const fOffset = -((circumference * pPct) / 100);
+        const cOffset = -((circumference * (pPct + fPct)) / 100);
+
+        return (
+          <Card className="animate-pop-in flex-1 overflow-auto bg-white/50 backdrop-blur-sm">
+            <CardContent className="space-y-8 pt-8 pb-6">
+              
+              {/* 1. Main Goal: 摂取カロリー目標 */}
+              <div className="text-center space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground tracking-wider uppercase">
+                  Daily Target
                 </p>
+                <div className="flex items-baseline justify-center gap-1.5">
+                  <span className="text-5xl font-extrabold tracking-tight" style={{ color: COLORS.primary }}>
+                    {nutritionResult.dailyCalories.toLocaleString()}
+                  </span>
+                  <span className="text-lg font-medium text-muted-foreground">kcal</span>
+                </div>
+                
+                <div className="inline-flex items-center px-3 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-100 text-xs font-medium mt-2">
+                  {formData.goal === "lose" && (
+                    <>
+                      <span className="mr-1.5">📉</span>
+                      減量: {Math.abs(Math.round(delta))}kcal 削減 / 日
+                    </>
+                  )}
+                  {formData.goal === "gain" && (
+                    <>
+                      <span className="mr-1.5">📈</span>
+                      増量: {Math.abs(Math.round(delta))}kcal 上乗せ / 日
+                    </>
+                  )}
+                  {formData.goal === "maintain" && (
+                    <>
+                      <span className="mr-1.5">⚖️</span>
+                      維持: バランス重視
+                    </>
+                  )}
+                </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+
+              {/* 2. Visualization: PFC Balance Donut Chart */}
+              <div className="bg-white rounded-2xl border shadow-sm p-6">
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-8">
+                  {/* SVG Chart */}
+                  <div className="relative w-32 h-32 flex-shrink-0">
+                    <svg viewBox="0 0 100 100" className="transform -rotate-90 w-full h-full">
+                      {/* Background Circle */}
+                      <circle cx="50" cy="50" r={radius} stroke="#eee" strokeWidth="12" fill="transparent" />
+                      
+                      {/* Protein Segment */}
+                      <circle
+                        cx="50" cy="50" r={radius}
+                        stroke={COLORS.primary} strokeWidth="12" fill="transparent"
+                        strokeDasharray={pDash}
+                        strokeDashoffset={pOffset}
+                        strokeLinecap="butt"
+                        className="transition-all duration-1000 ease-out"
+                      />
+                      {/* Fat Segment */}
+                      <circle
+                        cx="50" cy="50" r={radius}
+                        stroke={COLORS.secondary} strokeWidth="12" fill="transparent"
+                        strokeDasharray={fDash}
+                        strokeDashoffset={fOffset}
+                        strokeLinecap="butt"
+                        className="transition-all duration-1000 ease-out"
+                      />
+                      {/* Carbs Segment */}
+                      <circle
+                        cx="50" cy="50" r={radius}
+                        stroke={COLORS.tertiary} strokeWidth="12" fill="transparent"
+                        strokeDasharray={cDash}
+                        strokeDashoffset={cOffset}
+                        strokeLinecap="butt"
+                        className="transition-all duration-1000 ease-out"
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-xs text-foreground pointer-events-none">
+                      <span className="font-bold">PFC</span>
+                      <span className="font-bold">Balance</span>
+                    </div>
+                  </div>
+
+                  {/* Legend / Details */}
+                  <div className="flex-1 w-full space-y-3">
+                    {/* Protein */}
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.primary }} />
+                        <span className={`font-bold ${TEXT_COLORS.primary}`}>Protein</span>
+                      </div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="font-bold">{nutritionResult.pfc.protein}g</span>
+                        <span className="text-xs text-muted-foreground w-8 text-right">{pct(proteinKcal)}%</span>
+                      </div>
+                    </div>
+                    {/* Fat */}
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.secondary }} />
+                        <span className={`font-bold ${TEXT_COLORS.secondary}`}>Fat</span>
+                      </div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="font-bold">{nutritionResult.pfc.fat}g</span>
+                        <span className="text-xs text-muted-foreground w-8 text-right">{pct(fatKcal)}%</span>
+                      </div>
+                    </div>
+                    {/* Carbs */}
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.tertiary }} />
+                        <span className={`font-bold ${TEXT_COLORS.tertiary}`}>Carbs</span>
+                      </div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="font-bold">{nutritionResult.pfc.carbs}g</span>
+                        <span className="text-xs text-muted-foreground w-8 text-right">{pct(carbsKcal)}%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Stats Grid: BMR, TDEE, Diff */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="p-3 bg-muted/30 rounded-xl border text-center space-y-1">
+                  <p className="text-[10px] text-muted-foreground uppercase">BMR</p>
+                  <p className="font-bold text-lg leading-none">{nutritionResult.bmr?.toLocaleString()}</p>
+                  <p className="text-[10px] text-muted-foreground">基礎代謝</p>
+                </div>
+                <div className="p-3 bg-muted/30 rounded-xl border text-center space-y-1">
+                  <p className="text-[10px] text-muted-foreground uppercase">TDEE</p>
+                  <p className="font-bold text-lg leading-none">{nutritionResult.tdee?.toLocaleString()}</p>
+                  <p className="text-[10px] text-muted-foreground">活動代謝</p>
+                </div>
+                <div className={`p-3 rounded-xl border text-center space-y-1 ${
+                  delta !== 0 ? "bg-orange-50/50 border-orange-100" : "bg-muted/30"
+                }`}>
+                  <p className="text-[10px] text-muted-foreground uppercase">Diff</p>
+                  <p className="font-bold text-lg leading-none text-orange-600">
+                    {delta > 0 ? "+" : ""}{Math.round(delta)}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {delta > 0 ? "上乗せ" : delta < 0 ? "削減" : "維持"}
+                  </p>
+                </div>
+              </div>
+
+              {/* 4. Advice / Hints (Accordion-like or simple box) */}
+              <div className="text-xs text-muted-foreground bg-muted/30 p-4 rounded-xl space-y-2">
+                 <div className="flex gap-2 items-start">
+                    <Sparkles className="w-4 h-4 text-orange-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      {formData.goal === "lose" && "無理のないペース設定です。空腹を感じにくい高タンパク質な食事を心がけましょう。"}
+                      {formData.goal === "gain" && "筋肉合成に必要なカロリー余剰を確保しています。トレーニング強度に合わせて調整可能です。"}
+                      {formData.goal === "maintain" && "現在の体重を維持するための設定です。日々の活動量に応じて微調整しましょう。"}
+                      {nutritionResult.strategySummary && <span className="block mt-1 pt-1 border-t border-muted-foreground/20">{nutritionResult.strategySummary}</span>}
+                    </div>
+                 </div>
+                 
+                 <details className="pt-2">
+                    <summary className="cursor-pointer hover:text-foreground transition-colors flex items-center gap-1 font-medium">
+                      計算の詳細を見る
+                    </summary>
+                    <div className="mt-2 pl-4 border-l-2 border-muted space-y-1">
+                      <p>1. BMR (Mifflin-St Jeor): {nutritionResult.bmr?.toLocaleString()} kcal</p>
+                      <p>2. TDEE (x 活動係数): {nutritionResult.tdee?.toLocaleString()} kcal</p>
+                      <p>3. 目標ペース調整: {delta > 0 ? "+" : ""}{Math.round(delta)} kcal</p>
+                    </div>
+                 </details>
+              </div>
+
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Step 4: 好み設定 */}
       {currentStep === ONBOARDING_STEP.PREFERENCES && (

@@ -31,6 +31,8 @@ export interface UserProfile {
 }
 
 export interface UserNutrition {
+  bmr?: number; // 基礎代謝 (Basal Metabolic Rate)
+  tdee?: number; // 総消費カロリー (Total Daily Energy Expenditure)
   dailyCalories: number;
   pfc: {
     protein: number;
