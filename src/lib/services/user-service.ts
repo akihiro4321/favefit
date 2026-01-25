@@ -5,9 +5,10 @@
 
 import { mastra } from "@/mastra";
 import { PreferenceAnalysis } from "@/mastra/agents/preference-learner";
-import { updateUserNutrition, updateLearnedPreferences } from "@/lib/user";
+import { updateLearnedPreferences, updateUserNutrition, updateUserNutritionPreferences } from "@/lib/user";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
+import { calculatePersonalizedMacroGoals } from "@/lib/tools/calculateMacroGoals";
 
 export interface CalculateNutritionRequest {
   userId: string;
@@ -16,8 +17,15 @@ export interface CalculateNutritionRequest {
     gender: "male" | "female";
     height_cm: number;
     weight_kg: number;
-    activity_level: "low" | "moderate" | "high";
+    activity_level: "sedentary" | "light" | "moderate" | "active" | "very_active";
     goal: "lose" | "maintain" | "gain";
+  };
+  preferences?: {
+    lossPaceKgPerMonth?: number;
+    maintenanceAdjustKcalPerDay?: number;
+    gainPaceKgPerMonth?: number;
+    gainStrategy?: "lean" | "standard" | "aggressive";
+    macroPreset?: "balanced" | "lowfat" | "lowcarb" | "highprotein";
   };
 }
 
@@ -30,6 +38,13 @@ export interface CalculateNutritionResponse {
       carbs: number;
     };
     strategySummary?: string;
+    preferences?: {
+      lossPaceKgPerMonth?: number;
+      maintenanceAdjustKcalPerDay?: number;
+      gainPaceKgPerMonth?: number;
+      gainStrategy?: "lean" | "standard" | "aggressive";
+      macroPreset?: "balanced" | "lowfat" | "lowcarb" | "highprotein";
+    };
   };
 }
 
@@ -52,43 +67,28 @@ export interface LearnPreferenceResponse {
 export async function calculateNutrition(
   request: CalculateNutritionRequest
 ): Promise<CalculateNutritionResponse> {
-  const { userId, profile } = request;
-
-  const agent = mastra.getAgent("nutritionPlanner");
-
-  const messageText = `以下の身体情報に基づいて栄養素目標を算出してJSONで答えてください:
-${JSON.stringify(profile)}`;
-
-  const result = await agent.generate(messageText);
-
-  // 構造化出力が有効な場合は直接取得、そうでない場合はJSONをパース
-  let nutritionResult;
-  if (result.text) {
-    const jsonMatch = result.text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error("Failed to extract JSON:", result.text);
-      throw new Error("AI応答からJSONを抽出できませんでした");
-    }
-    nutritionResult = JSON.parse(jsonMatch[0]);
-  } else if (result.object) {
-    nutritionResult = result.object;
-  } else {
-    throw new Error("AI応答が無効です");
-  }
+  const { userId, profile, preferences } = request;
+  const result = calculatePersonalizedMacroGoals({
+    ...profile,
+    preferences,
+  });
 
   const nutrition = {
-    dailyCalories: nutritionResult.daily_calorie_target,
-    pfc: {
-      protein: nutritionResult.protein_g,
-      fat: nutritionResult.fat_g,
-      carbs: nutritionResult.carbs_g,
-    },
-    strategySummary: nutritionResult.strategy_summary,
+    dailyCalories: result.targetCalories,
+    pfc: result.pfc,
+    preferences,
   };
 
   await updateUserNutrition(userId, nutrition);
 
   return { nutrition };
+}
+
+export async function updateNutritionPreferences(
+  userId: string,
+  preferences: NonNullable<CalculateNutritionRequest["preferences"]>
+): Promise<void> {
+  await updateUserNutritionPreferences(userId, preferences);
 }
 
 /**

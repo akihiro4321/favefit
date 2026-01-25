@@ -125,6 +125,25 @@ export const updateUserNutrition = async (
 };
 
 /**
+ * 栄養方針（preferences）を更新
+ */
+export const updateUserNutritionPreferences = async (
+  uid: string,
+  preferences: NonNullable<UserNutrition["preferences"]>
+): Promise<void> => {
+  try {
+    const userRef = doc(db, "users", uid);
+    await updateDoc(userRef, {
+      "nutrition.preferences": preferences,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    console.error("Error updating nutrition preferences:", error);
+    throw error;
+  }
+};
+
+/**
  * オンボーディング完了をマーク
  */
 export const completeOnboarding = async (uid: string): Promise<void> => {
