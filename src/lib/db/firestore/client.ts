@@ -11,8 +11,32 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+// 環境変数の確認（開発環境のみ）
+if (process.env.NODE_ENV === "development") {
+  const requiredEnvVars = [
+    "NEXT_PUBLIC_FIREBASE_API_KEY",
+    "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
+    "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
+    "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET",
+    "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID",
+    "NEXT_PUBLIC_FIREBASE_APP_ID",
+  ];
+  const missingVars = requiredEnvVars.filter((varName) => !process.env[varName]);
+  if (missingVars.length > 0) {
+    console.warn(`[Firebase Client] Missing environment variables: ${missingVars.join(", ")}`);
+  } else {
+    console.log(`[Firebase Client] All Firebase environment variables are set. Project ID: ${firebaseConfig.projectId}`);
+  }
+}
+
 // サーバーサイドレンダリング時の重複初期化を防ぐ
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+
+if (!getApps().length) {
+  console.log(`[Firebase Client] Initialized Firebase app for project: ${firebaseConfig.projectId}`);
+} else {
+  console.log(`[Firebase Client] Using existing Firebase app for project: ${firebaseConfig.projectId}`);
+}
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);

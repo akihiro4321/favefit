@@ -108,7 +108,7 @@ export default function HomePage() {
   if (!activePlan && !pendingPlan) {
     // オンボーディング完了済みならプラン作成ページへ、未完了ならオンボーディングへ
     const targetPath = profile?.onboardingCompleted ? "/plan" : "/onboarding";
-    const buttonText = profile?.onboardingCompleted ? "プランを作成する" : "はじめる";
+    const buttonText = profile?.onboardingCompleted ? "プランを作成する" : "オンボーディングを開始する";
 
     return (
       <div className="container max-w-2xl mx-auto py-8 px-4 space-y-8">
