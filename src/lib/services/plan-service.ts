@@ -4,7 +4,8 @@
  */
 
 import { mastra } from "@/mastra";
-import { PlanGeneratorInput, PlanGeneratorOutputSchema, PartialPlanOutputSchema, DEFAULT_PLAN_DURATION_DAYS } from "@/mastra/agents/plan-generator";
+import { z } from "zod";
+import { PlanGeneratorInput, PlanGeneratorOutputSchema, PartialPlanOutputSchema, SingleMealSchema, DEFAULT_PLAN_DURATION_DAYS } from "@/mastra/agents/plan-generator";
 import { getOrCreateUser, setPlanCreating, setPlanCreated } from "@/lib/db/firestore/userRepository";
 import { createPlan, updatePlanStatus, getActivePlan, updatePlanDays, getPlan, updateMealSlot } from "@/lib/plan";
 import { createShoppingList } from "@/lib/shoppingList";
@@ -12,6 +13,9 @@ import { getFavorites } from "@/lib/recipeHistory";
 import { DayPlan, MealSlot, ShoppingItem } from "@/lib/schema";
 import { buildRecipePrompt } from "@/mastra/agents/recipe-creator";
 import { calculatePersonalizedMacroGoals } from "@/lib/tools/calculateMacroGoals";
+import { calculateMealTargets, NutritionValues, MealTargetNutrition } from "@/lib/tools/mealNutritionCalculator";
+import { validatePlanNutrition, recalculateDayNutrition } from "@/lib/tools/nutritionValidator";
+import { PromptService } from "@/lib/services/prompt-service";
 
 interface MealInfo {
   date: string;
@@ -149,79 +153,24 @@ async function generatePlanBackground(
 
   try {
     const favorites = await getFavorites(userId);
-    const favoriteRecipes = favorites.map((f) => ({
-      id: f.id,
-      title: f.title,
-      tags: f.tags,
-    }));
-
-    const cheapIngredients = ["キャベツ", "もやし", "鶏むね肉", "卵", "豆腐"];
+    const favoriteRecipes = favorites.map((f) => ({ id: f.id, title: f.title, tags: f.tags }));
+    const cheapIngredients = ["キャベツ", "もやし", "鶏むね肉", "卵", "豆腐"]; // TODO: DBから取得
     const startDate = new Date().toISOString().split("T")[0];
 
+    // 既存のプランをアーカイブ
     const existingPlan = await getActivePlan(userId);
     if (existingPlan) {
       await updatePlanStatus(existingPlan.id, "archived");
     }
 
-    // 栄養目標の動的計算
-    let targetCalories: number;
-    let pfc: { protein: number; fat: number; carbs: number };
-
-    const profile = userDoc.profile;
-    const hasRequiredProfileData =
-      profile.age &&
-      profile.gender &&
-      (profile.gender === "male" || profile.gender === "female") &&
-      profile.height_cm &&
-      profile.currentWeight &&
-      profile.activity_level &&
-      profile.goal;
-
-    if (hasRequiredProfileData) {
-      // preferences がある場合は決定論の計算を優先
-      if (userDoc.nutrition?.preferences) {
-        const macroGoals = calculatePersonalizedMacroGoals({
-          age: profile.age!,
-          gender: profile.gender as "male" | "female",
-          height_cm: profile.height_cm!,
-          weight_kg: profile.currentWeight,
-          activity_level: profile.activity_level!,
-          goal: profile.goal!,
-          preferences: userDoc.nutrition.preferences,
-        });
-        targetCalories = macroGoals.targetCalories;
-        pfc = macroGoals.pfc;
-      } else if (
-        userDoc.nutrition?.dailyCalories &&
-        userDoc.nutrition.dailyCalories > 0 &&
-        userDoc.nutrition.pfc?.protein &&
-        userDoc.nutrition.pfc.protein > 0
-      ) {
-        // 既存のnutritionデータを使用
-        targetCalories = userDoc.nutrition.dailyCalories;
-        pfc = userDoc.nutrition.pfc;
-      } else {
-        // プロファイル情報から決定論的に計算（preferencesなし）
-        const macroGoals = calculatePersonalizedMacroGoals({
-          age: profile.age!,
-          gender: profile.gender as "male" | "female",
-          height_cm: profile.height_cm!,
-          weight_kg: profile.currentWeight,
-          activity_level: profile.activity_level!,
-          goal: profile.goal!,
-        });
-        targetCalories = macroGoals.targetCalories;
-        pfc = macroGoals.pfc;
-      }
-    } else {
-      // プロファイル情報が不足している場合はデフォルト値を使用
-      targetCalories = 1800;
-      pfc = { protein: 100, fat: 50, carbs: 200 };
-    }
+    // 栄養目標の計算
+    const { targetCalories, pfc } = calculateUserMacroGoals(userDoc);
+    const mealTargets = calculateMealTargets({ calories: targetCalories, ...pfc });
 
     const input: PlanGeneratorInput = {
       targetCalories,
       pfc,
+      mealTargets,
       preferences: {
         cuisines: userDoc.learnedPreferences.cuisines,
         flavorProfile: userDoc.learnedPreferences.flavorProfile,
@@ -233,178 +182,250 @@ async function generatePlanBackground(
       startDate,
     };
 
+    // LLMでプラン生成
     const agent = mastra.getAgent("planGenerator");
-
     const feedbackText = userDoc.planRejectionFeedback
-      ? `\n\n【前回のプラン拒否時のフィードバック】
-${userDoc.planRejectionFeedback}
-
-このフィードバックを考慮して、より適切なプランを生成してください。`
+      ? `\n\n【前回のフィードバック】\n${userDoc.planRejectionFeedback}\nこのフィードバックを考慮してください。`
       : "";
 
-    const messageText = `以下の情報に基づいて${DEFAULT_PLAN_DURATION_DAYS}日間の食事プランと買い物リストを生成してください。
+    // Langfuse からユーザープロンプトを取得
+    const userMessage = await PromptService.getInstance().getCompiledPrompt(
+      "plan_generator_user",
+      {
+        duration: DEFAULT_PLAN_DURATION_DAYS,
+        user_info: JSON.stringify(input, null, 2),
+        feedback_text: feedbackText,
+      }
+    );
 
-【ユーザー情報】
-${JSON.stringify(input, null, 2)}${feedbackText}`;
-
-    // 構造化出力を使用してスキーマに準拠したデータを取得
-    const result = await agent.generate(messageText, {
-      structuredOutput: {
-        schema: PlanGeneratorOutputSchema,
-        // Gemini 2.5モデルではjsonPromptInjectionが必要な場合がある
-        jsonPromptInjection: true,
-      },
+    const result = await agent.generate(userMessage, { 
+      structuredOutput: { schema: PlanGeneratorOutputSchema, jsonPromptInjection: true } 
     });
 
-    // 構造化出力が有効な場合はresult.objectから直接取得
-    let parsedResult;
-    if (result.object) {
-      parsedResult = result.object;
-    } else if (result.text) {
-      // フォールバック: テキストからJSONを抽出
-      console.warn(`[Plan Generation] Structured output not available, falling back to text parsing`);
-      const jsonMatch = result.text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        console.error("[Plan Generation] Failed to extract JSON from text:", result.text.substring(0, 500));
-        throw new Error("AI応答からJSONを抽出できませんでした");
-      }
-      parsedResult = JSON.parse(jsonMatch[0]);
-    } else {
-      console.error("[Plan Generation] No object or text in response");
-      throw new Error("AI応答が無効です");
+    if (!result.object) {
+      throw new Error("AIからの構造化出力の取得に失敗しました。");
     }
 
-    // スキーマ検証（PlanGeneratorOutputSchemaで検証）
-    if (!parsedResult.days || !Array.isArray(parsedResult.days)) {
-      throw new Error("AI応答にdays配列が含まれていません");
-    }
+    // 内部形式に変換、バリデーション、保存
+    const days = convertToDayPlans(result.object.days);
+    await validateAndRegeneratePlan(days, mealTargets, userDoc.learnedPreferences.dislikedIngredients);
+    await createPlan(userId, startDate, days, "pending");
+    await clearUserRejectionFeedback(userId);
 
-    // 指定日数分のプランであることを検証（構造化出力で保証されるが、フォールバックとして残す）
-    if (parsedResult.days.length !== DEFAULT_PLAN_DURATION_DAYS) {
-      console.error(`プランは${DEFAULT_PLAN_DURATION_DAYS}日間である必要がありますが、${parsedResult.days.length}日間でした。`, parsedResult);
-      throw new Error(`プラン生成エラー: ${DEFAULT_PLAN_DURATION_DAYS}日間のプランが必要ですが、${parsedResult.days.length}日間のプランが返されました。`);
-    }
-
-    const days: Record<string, DayPlan> = {};
-
-    for (const day of parsedResult.days || []) {
-      const date = day.date;
-
-      const convertMeal = (meal: {
-        recipeId: string;
-        title: string;
-        tags: string[];
-        ingredients: string[];
-        steps: string[];
-        nutrition: { calories: number; protein: number; fat: number; carbs: number };
-      }): MealSlot => {
-        // nutritionの各フィールドを検証・変換（防御的プログラミング）
-        const safeNutrition = {
-          calories: Number(meal.nutrition?.calories) || 0,
-          protein: Number(meal.nutrition?.protein) || 0,
-          fat: Number(meal.nutrition?.fat) || 0,
-          carbs: Number(meal.nutrition?.carbs) || 0,
-        };
-
-        return {
-          recipeId:
-            meal.recipeId || `recipe-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-          title: meal.title,
-          status: "planned",
-          nutrition: safeNutrition,
-          tags: meal.tags || [],
-          ingredients: meal.ingredients || [],
-          steps: meal.steps || [],
-        };
-      };
-
-      const breakfast = convertMeal(day.breakfast);
-      const lunch = convertMeal(day.lunch);
-      const dinner = convertMeal(day.dinner);
-
-      // totalNutrition計算時のNaNチェック（防御的プログラミング）
-      const totalNutrition = {
-        calories:
-          (Number(breakfast.nutrition.calories) || 0) +
-          (Number(lunch.nutrition.calories) || 0) +
-          (Number(dinner.nutrition.calories) || 0),
-        protein:
-          (Number(breakfast.nutrition.protein) || 0) +
-          (Number(lunch.nutrition.protein) || 0) +
-          (Number(dinner.nutrition.protein) || 0),
-        fat:
-          (Number(breakfast.nutrition.fat) || 0) +
-          (Number(lunch.nutrition.fat) || 0) +
-          (Number(dinner.nutrition.fat) || 0),
-        carbs:
-          (Number(breakfast.nutrition.carbs) || 0) +
-          (Number(lunch.nutrition.carbs) || 0) +
-          (Number(dinner.nutrition.carbs) || 0),
-      };
-
-      days[date] = {
-        isCheatDay: day.isCheatDay || false,
-        meals: { breakfast, lunch, dinner },
-        totalNutrition,
-      };
-    }
-
-    // pending状態でプランを作成（承認後にレシピ詳細を生成）
-    console.log(`[Plan Generation] Attempting to create plan for user ${userId} with ${Object.keys(days).length} days`);
-    let planId: string;
-    try {
-      planId = await createPlan(userId, startDate, days, "pending");
-      console.log(`[Plan Generation] Successfully created plan ${planId} for user ${userId}`);
-    } catch (createError) {
-      console.error(`[Plan Generation] Failed to create plan in Firestore for user ${userId}:`, createError);
-      if (createError instanceof Error) {
-        console.error(`[Plan Generation] Create plan error details:`, {
-          message: createError.message,
-          stack: createError.stack,
-          name: createError.name,
-        });
-      }
-      // createPlanのエラーを再スローして、上位のcatchブロックで処理
-      throw new Error(`Firebaseへのプラン作成に失敗しました: ${createError instanceof Error ? createError.message : String(createError)}`);
-    }
-
-    // プラン生成完了後、フィードバックをクリア
-    if (userDoc.planRejectionFeedback) {
-      try {
-        const { db } = await import("@/lib/db/firestore/client");
-        const { doc, updateDoc, serverTimestamp } = await import("firebase/firestore");
-        const userRef = doc(db, "users", userId);
-        await updateDoc(userRef, {
-          planRejectionFeedback: null,
-          updatedAt: serverTimestamp(),
-        });
-        console.log(`[Plan Generation] Cleared rejection feedback for user ${userId}`);
-      } catch (feedbackError) {
-        console.error(`[Plan Generation] Failed to clear rejection feedback for user ${userId}:`, feedbackError);
-        // フィードバッククリアの失敗は致命的ではないので、続行
-      }
-    }
   } catch (error) {
-    console.error(`[Plan Generation] Error generating plan for user ${userId}:`, error);
-    // エラーの種類に応じた処理
-    if (error instanceof Error) {
-      console.error(`[Plan Generation] Error details:`, {
-        message: error.message,
-        stack: error.stack,
-        name: error.name,
-      });
-    }
+    console.error(`[Plan Generation] Failed for user ${userId}:`, error);
     throw error;
   } finally {
-    // プラン作成状態をクリア（エラーが発生しても実行）
-    try {
-      await setPlanCreated(userId);
-      console.log(`[Plan Generation] Cleared plan creation status for user ${userId}`);
-    } catch (statusError) {
-      console.error(`[Plan Generation] Failed to clear plan creation status for user ${userId}:`, statusError);
-      // ステータスクリアの失敗もログに記録するが、エラーは再スローしない
+    await setPlanCreated(userId).catch(() => {});
+  }
+}
+
+/**
+ * ユーザーのプロファイルから栄養目標（マクロ）を計算
+ */
+function calculateUserMacroGoals(userDoc: NonNullable<Awaited<ReturnType<typeof getOrCreateUser>>>) {
+  const profile = userDoc.profile;
+  const hasRequiredProfileData =
+    profile.age &&
+    profile.gender &&
+    (profile.gender === "male" || profile.gender === "female") &&
+    profile.height_cm &&
+    profile.currentWeight &&
+    profile.activity_level &&
+    profile.goal;
+
+  if (!hasRequiredProfileData) {
+    return {
+      targetCalories: 1800,
+      pfc: { protein: 100, fat: 50, carbs: 200 }
+    };
+  }
+
+  // preferences がある場合は決定論の計算を優先
+  if (userDoc.nutrition?.preferences) {
+    return calculatePersonalizedMacroGoals({
+      age: profile.age!,
+      gender: profile.gender as "male" | "female",
+      height_cm: profile.height_cm!,
+      weight_kg: profile.currentWeight,
+      activity_level: profile.activity_level!,
+      goal: profile.goal!,
+      preferences: userDoc.nutrition.preferences,
+    });
+  }
+
+  // 既存の明示的な栄養データがある場合
+  if (
+    userDoc.nutrition?.dailyCalories &&
+    userDoc.nutrition.dailyCalories > 0 &&
+    userDoc.nutrition.pfc?.protein &&
+    userDoc.nutrition.pfc.protein > 0
+  ) {
+    return {
+      targetCalories: userDoc.nutrition.dailyCalories,
+      pfc: userDoc.nutrition.pfc
+    };
+  }
+
+  // プロファイル情報から標準計算
+  return calculatePersonalizedMacroGoals({
+    age: profile.age!,
+    gender: profile.gender as "male" | "female",
+    height_cm: profile.height_cm!,
+    weight_kg: profile.currentWeight,
+    activity_level: profile.activity_level!,
+    goal: profile.goal!,
+  });
+}
+
+/**
+ * LLMの出力を内部の DayPlan 形式に変換
+ */
+function convertToDayPlans(outputDays: z.infer<typeof PlanGeneratorOutputSchema>["days"]): Record<string, DayPlan> {
+  const days: Record<string, DayPlan> = {};
+
+  for (const day of outputDays) {
+    const convertMeal = (meal: z.infer<typeof SingleMealSchema>): MealSlot => ({
+      recipeId: meal.recipeId || `recipe-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      title: meal.title,
+      status: "planned",
+      nutrition: {
+        calories: meal.nutrition.calories,
+        protein: meal.nutrition.protein,
+        fat: meal.nutrition.fat,
+        carbs: meal.nutrition.carbs,
+      },
+      tags: meal.tags || [],
+      ingredients: meal.ingredients || [],
+      steps: meal.steps || [],
+    });
+
+    const breakfast = convertMeal(day.breakfast);
+    const lunch = convertMeal(day.lunch);
+    const dinner = convertMeal(day.dinner);
+
+    const totalNutrition = {
+      calories: breakfast.nutrition.calories + lunch.nutrition.calories + dinner.nutrition.calories,
+      protein: breakfast.nutrition.protein + lunch.nutrition.protein + dinner.nutrition.protein,
+      fat: breakfast.nutrition.fat + lunch.nutrition.fat + dinner.nutrition.fat,
+      carbs: breakfast.nutrition.carbs + lunch.nutrition.carbs + dinner.nutrition.carbs,
+    };
+
+    days[day.date] = {
+      isCheatDay: !!day.isCheatDay,
+      meals: { breakfast, lunch, dinner },
+      totalNutrition,
+    };
+  }
+
+  return days;
+}
+
+/**
+ * プランの栄養素を検証し、逸脱している場合は再生成を試みる
+ */
+async function validateAndRegeneratePlan(
+  days: Record<string, DayPlan>,
+  mealTargets: MealTargetNutrition,
+  dislikedIngredients: string[]
+) {
+  const validationResult = validatePlanNutrition(days, mealTargets);
+  if (validationResult.isValid) return;
+
+  for (const { date, mealType, target } of validationResult.invalidMeals) {
+    const existingTitles = Object.values(days).flatMap((d) => [
+      d.meals.breakfast.title, d.meals.lunch.title, d.meals.dinner.title,
+    ]);
+
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const newMeal = await regenerateSingleMeal(mealType, target, dislikedIngredients, existingTitles);
+        const diff = Math.abs(newMeal.nutrition.calories - target.calories) / target.calories;
+        if (diff <= 0.15) {
+          days[date].meals[mealType] = newMeal;
+          days[date] = recalculateDayNutrition(days[date]);
+          break;
+        }
+      } catch {
+        // 再生成失敗時は次の試行へ
+      }
     }
   }
+}
+
+/**
+ * ユーザーの拒否フィードバックをクリア
+ */
+async function clearUserRejectionFeedback(userId: string) {
+  try {
+    const { db } = await import("@/lib/db/firestore/client");
+    const { doc, updateDoc, serverTimestamp } = await import("firebase/firestore");
+    await updateDoc(doc(db, "users", userId), { planRejectionFeedback: null, updatedAt: serverTimestamp() });
+  } catch {
+    // フィードバッククリアの失敗は無視
+  }
+}
+
+/**
+ * 単一の食事を再生成
+ *
+ * @param mealType - 食事の種類
+ * @param targetNutrition - 目標栄養素
+ * @param dislikedIngredients - 避けるべき食材
+ * @param existingTitles - 既存のメニュータイトル（重複回避用）
+ * @returns 再生成された食事
+ */
+async function regenerateSingleMeal(
+  mealType: "breakfast" | "lunch" | "dinner",
+  targetNutrition: NutritionValues,
+  dislikedIngredients: string[],
+  existingTitles: string[]
+): Promise<MealSlot> {
+  const agent = mastra.getAgent("planGenerator");
+
+  const mealTypeJa = {
+    breakfast: "朝食",
+    lunch: "昼食",
+    dinner: "夕食",
+  }[mealType];
+
+  const prompt = `以下の条件で${mealTypeJa}のレシピを1つだけ生成してください。
+
+【厳守：栄養素】
+- カロリー: ${targetNutrition.calories}kcal
+- タンパク質: ${targetNutrition.protein}g
+- 脂質: ${targetNutrition.fat}g
+- 炭水化物: ${targetNutrition.carbs}g
+
+上記の数値をそのままnutritionに出力してください。自分で計算し直さないでください。
+
+【避けるべき食材】
+${dislikedIngredients.length > 0 ? dislikedIngredients.join(", ") : "なし"}
+
+【避けるべきメニュー名（重複回避）】
+${existingTitles.slice(0, 10).join(", ")}`;
+
+  const result = await agent.generate(prompt, {
+    structuredOutput: {
+      schema: SingleMealSchema,
+      jsonPromptInjection: true,
+    },
+  });
+
+  if (!result.object) {
+    console.error("[regenerateSingleMeal] Structured output failed:", result.text?.substring(0, 500));
+    throw new Error("食事の再生成に失敗しました");
+  }
+
+  return {
+    recipeId: result.object.recipeId,
+    title: result.object.title,
+    status: "planned",
+    nutrition: result.object.nutrition,
+    tags: result.object.tags,
+    ingredients: result.object.ingredients,
+    steps: result.object.steps,
+  };
 }
 
 /**
@@ -451,21 +472,21 @@ ${JSON.stringify(recentMeals, null, 2)}
 【ユーザー嗜好】
 ${JSON.stringify(userDoc.learnedPreferences, null, 2)}`;
 
-    const analyzerResult = await analyzerAgent.generate(analyzerMessageText);
-
-    // 構造化出力が有効な場合は直接取得、そうでない場合はJSONをパース
-    let analysisResult;
-    if (analyzerResult.text) {
-      const analyzerMatch = analyzerResult.text.match(/\{[\s\S]*\}/);
-      if (!analyzerMatch) {
-        throw new Error("Boredom analysis failed to return JSON");
+    const analyzerResult = await analyzerAgent.generate(analyzerMessageText, {
+      structuredOutput: {
+        schema: z.object({
+          boredomScore: z.number(),
+          shouldRefresh: z.boolean(),
+          refreshDates: z.array(z.string()).optional(),
+          analysis: z.string().optional(),
+        }),
       }
-      analysisResult = JSON.parse(analyzerMatch[0]);
-    } else if (analyzerResult.object) {
-      analysisResult = analyzerResult.object;
-    } else {
-      throw new Error("AI応答が無効です");
+    });
+
+    if (!analyzerResult.object) {
+      throw new Error("Boredom analysis failed to return structured data");
     }
+    const analysisResult = analyzerResult.object;
 
     if (analysisResult.boredomScore >= 60 || analysisResult.shouldRefresh) {
       datesToRefresh = analysisResult.refreshDates || [];
@@ -540,21 +561,19 @@ ${JSON.stringify(badRecipes, null, 2)}
 【現在の嗜好プロファイル】
 ${JSON.stringify(userDoc.learnedPreferences, null, 2)}`;
 
-  const analyzerResult = await analyzerAgent.generate(analyzerMessageText);
-
-  // 構造化出力が有効な場合は直接取得、そうでない場合はJSONをパース
-  let analysisResult;
-  if (analyzerResult.text) {
-    const analyzerMatch = analyzerResult.text.match(/\{[\s\S]*\}/);
-    if (!analyzerMatch) {
-      throw new Error("Boredom analysis failed to return JSON");
+  const analyzerResult = await analyzerAgent.generate(analyzerMessageText, {
+    structuredOutput: {
+      schema: z.object({
+        explorationProfile: z.any(),
+        message: z.string().optional(),
+      }),
     }
-    analysisResult = JSON.parse(analyzerMatch[0]);
-  } else if (analyzerResult.object) {
-    analysisResult = analyzerResult.object;
-  } else {
-    throw new Error("AI応答が無効です");
+  });
+
+  if (!analyzerResult.object) {
+    throw new Error("Feedback analysis failed to return structured data");
   }
+  const analysisResult = analyzerResult.object;
 
   const today = new Date().toISOString().split("T")[0];
   const futureDates = Object.keys(activePlan.days)
@@ -648,21 +667,29 @@ ${Array.from(existingTitles).slice(0, 20).join(", ")}
   ]
 }`;
 
-  const result = await planAgent.generate(messageText);
-
-  // 構造化出力が有効な場合は直接取得、そうでない場合はJSONをパース
-  let parsedResult;
-  if (result.text) {
-    const planMatch = result.text.match(/\{[\s\S]*\}/);
-    if (!planMatch) {
-      throw new Error("Recipe suggestions failed to return JSON");
+  const result = await planAgent.generate(messageText, {
+    structuredOutput: {
+      schema: z.object({
+        recipes: z.array(z.object({
+          recipeId: z.string(),
+          title: z.string(),
+          description: z.string(),
+          tags: z.array(z.string()),
+          nutrition: z.object({
+            calories: z.number(),
+            protein: z.number(),
+            fat: z.number(),
+            carbs: z.number(),
+          }),
+        })),
+      }),
     }
-    parsedResult = JSON.parse(planMatch[0]);
-  } else if (result.object) {
-    parsedResult = result.object;
-  } else {
-    throw new Error("AI応答が無効です");
+  });
+
+  if (!result.object) {
+    throw new Error("Recipe suggestions failed to return structured data");
   }
+  const parsedResult = result.object;
 
   const recipes = (parsedResult.recipes || []).slice(0, 5);
 
@@ -705,22 +732,12 @@ ${existingTitles.join(", ")}`;
     },
   });
 
-  // 構造化出力が有効な場合はresult.objectから直接取得
-  let parsedPlanResult1;
-  if (planResult1.object) {
-    parsedPlanResult1 = planResult1.object;
-  } else if (planResult1.text) {
-    // フォールバック: テキストからJSONを抽出
-    const planMatch = planResult1.text.match(/\{[\s\S]*\}/);
-    if (!planMatch) {
-      throw new Error("Plan generation failed to return JSON");
-    }
-    parsedPlanResult1 = JSON.parse(planMatch[0]);
-  } else {
-    throw new Error("AI応答が無効です");
+  if (!planResult1.object) {
+    console.error("[generatePlanDays] Structured output failed:", planResult1.text?.substring(0, 500));
+    throw new Error("プラン日付の生成に失敗しました");
   }
 
-  return convertPlanResultToDays(parsedPlanResult1);
+  return convertPlanResultToDays(planResult1.object);
 }
 
 /**
@@ -767,22 +784,12 @@ ${userDoc.learnedPreferences.dislikedIngredients.join(", ") || "なし"}`;
     },
   });
 
-  // 構造化出力が有効な場合はresult.objectから直接取得
-  let parsedPlanResult2;
-  if (planResult2.object) {
-    parsedPlanResult2 = planResult2.object;
-  } else if (planResult2.text) {
-    // フォールバック: テキストからJSONを抽出
-    const planMatch = planResult2.text.match(/\{[\s\S]*\}/);
-    if (!planMatch) {
-      throw new Error("New plan generation failed to return JSON");
-    }
-    parsedPlanResult2 = JSON.parse(planMatch[0]);
-  } else {
-    throw new Error("AI応答が無効です");
+  if (!planResult2.object) {
+    console.error("[generatePlanDaysWithProfile] Structured output failed:", planResult2.text?.substring(0, 500));
+    throw new Error("探索プロファイルに基づくプラン生成に失敗しました");
   }
 
-  return convertPlanResultToDays(parsedPlanResult2);
+  return convertPlanResultToDays(planResult2.object);
 }
 
 /**
@@ -1162,8 +1169,14 @@ async function approvePlanAndGenerateDetails(
     // レシピ詳細をバッチ処理で生成
     await generateRecipeDetailsBatch(userId, planId, days);
 
-    // 買い物リストを生成
-    await generateShoppingListFromRecipes(planId, days);
+    // Firestoreから最新のプランデータを再取得（ingredients/stepsが追加されている）
+    const updatedPlan = await getPlan(planId);
+    if (!updatedPlan) {
+      throw new Error("更新されたプランが見つかりません");
+    }
+
+    // 買い物リストを生成（最新のdaysデータを使用）
+    await generateShoppingListFromRecipes(planId, updatedPlan.days);
   } catch (error) {
     console.error("Error in approvePlanAndGenerateDetails:", error);
     throw error;
