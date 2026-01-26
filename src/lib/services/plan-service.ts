@@ -190,7 +190,7 @@ async function generatePlanBackground(
 
     // Langfuse からユーザープロンプトを取得
     const userMessage = await PromptService.getInstance().getCompiledPrompt(
-      "plan_generator_user",
+      "plan_generate_prompt/with_specific_days",
       {
         duration: DEFAULT_PLAN_DURATION_DAYS,
         user_info: JSON.stringify(input, null, 2),

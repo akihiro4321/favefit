@@ -175,7 +175,7 @@ export const planGeneratorAgent = new Agent({
   id: "plan_generator",
   name: "Plan Generator",
   instructions: async () => {
-    return PromptService.getInstance().getInstructions("plan_generator");
+    return PromptService.getInstance().getInstructions("plan_generate_prompt/with_specific_days");
   },
   model: "google/gemini-2.5-flash-lite",
 });

@@ -29,13 +29,17 @@ export class PromptService {
   }
 
   /**
+   * Langfuseのプロンプトオブジェクトを直接取得します（Chatプロンプト用）
+   */
+  public async getPrompt(name: string, label: string = "production") {
+    return await this.langfuse.getPrompt(name, undefined, {
+      label,
+      cacheTtlSeconds: 300,
+    });
+  }
+
+  /**
    * 指定された名前のプロンプトをLangfuseから取得します。
-   * 取得に失敗した場合は fallback を返します。
-   * 
-   * @param name プロンプト名
-   * @param fallback フォールバック文字列
-   * @param tag プロンプトラベル（デフォルト: production）
-   * @returns コンパイルされたプロンプト文字列
    */
   public async getInstructions(
     name: string,
@@ -43,10 +47,13 @@ export class PromptService {
     label: string = "production"
   ): Promise<string> {
     try {
-      const prompt = await this.langfuse.getPrompt(name, undefined, {
-        label,
-        cacheTtlSeconds: 300, 
-      });
+      const prompt = await this.getPrompt(name, label);
+
+      // Chatプロンプトの場合はsystemメッセージを探す
+      if (Array.isArray(prompt.prompt)) {
+        const systemMessage = (prompt.prompt as any[]).find(m => m.role === "system");
+        if (systemMessage) return systemMessage.content;
+      }
 
       return prompt.compile();
     } catch (error) {
@@ -61,12 +68,6 @@ export class PromptService {
 
   /**
    * 指定された名前のプロンプトをLangfuseから取得し、変数を埋め込んでコンパイルします。
-   * 
-   * @param name プロンプト名
-   * @param variables 埋め込む変数
-   * @param fallback フォールバック文字列（任意）
-   * @param label プロンプトラベル（デフォルト: production）
-   * @returns コンパイルされたプロンプト文字列
    */
   public async getCompiledPrompt(
     name: string,
@@ -76,17 +77,20 @@ export class PromptService {
     label: string = "production"
   ): Promise<string> {
     try {
-      const prompt = await this.langfuse.getPrompt(name, undefined, {
-        label,
-        cacheTtlSeconds: 300,
-      });
+      const prompt = await this.getPrompt(name, label);
+      const compiled = prompt.compile(variables);
 
-      return prompt.compile(variables);
+      // Chatプロンプトの場合はuserメッセージを探す
+      if (Array.isArray(compiled)) {
+        const userMessage = (compiled as any[]).find(m => m.role === "user");
+        if (userMessage) return userMessage.content;
+      }
+
+      return compiled as string;
     } catch (error) {
       if (fallback !== undefined) {
         console.warn(`[PromptService] Failed to fetch prompt "${name}" (label: ${label}), using fallback.`, error);
         
-        // フォールバック文字列内の {{variable}} を簡易的に置換
         let compiledFallback = fallback;
         Object.entries(variables).forEach(([key, value]) => {
           compiledFallback = compiledFallback.replaceAll(`{{${key}}}`, String(value));
