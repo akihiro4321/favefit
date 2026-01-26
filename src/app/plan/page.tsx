@@ -3,27 +3,24 @@
 import { useAuth } from "@/components/auth-provider";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Loader2,
   CalendarDays,
-  PartyPopper,
-  RefreshCw,
-  ChevronRight,
   Sparkles,
+  ChevronRight,
+  Clock,
+  RotateCw,
+  CheckCircle,
 } from "lucide-react";
 import { getActivePlan, getPendingPlan } from "@/lib/plan";
 import { PlanDocument, DayPlan } from "@/lib/schema";
 import { BoredomRefreshDialog } from "@/components/boredom-refresh-dialog";
 import { PlanSummary } from "@/components/plan-summary";
 import Link from "next/link";
-import { CheckCircle2, XCircle } from "lucide-react";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 import { PlanCreatingScreen } from "@/components/plan-creating-screen";
-import { PlanRejectionFeedbackDialog } from "@/components/plan-rejection-feedback-dialog";
 
 export default function PlanPage() {
   const { user, profile, loading, refreshProfile } = useAuth();
@@ -38,9 +35,7 @@ export default function PlanPage() {
   const [fetching, setFetching] = useState(true);
   const [showBoredomDialog, setShowBoredomDialog] = useState(false);
   const [approving, setApproving] = useState(false);
-  const [targetCalories, setTargetCalories] = useState<number | undefined>();
-  const [showRefreshDialog, setShowRefreshDialog] = useState(false);
-  const [showRejectFeedbackDialog, setShowRejectFeedbackDialog] = useState(false);
+  const [targetMacros, setTargetMacros] = useState<{ protein: number; fat: number; carbs: number } | undefined>();
 
   // プラン作成中かどうか
   const isPlanCreating = profile?.planCreationStatus === "creating";
@@ -78,7 +73,7 @@ export default function PlanPage() {
       import("@/lib/db/firestore/userRepository").then(({ getOrCreateUser }) => {
         getOrCreateUser(user.uid).then((userDoc) => {
           if (userDoc) {
-            setTargetCalories(userDoc.nutrition.dailyCalories);
+            setTargetMacros(userDoc.nutrition.pfc);
           }
         });
       });
@@ -97,7 +92,7 @@ export default function PlanPage() {
         ]);
         setActivePlan(active);
         setPendingPlan(pending);
-      }, 5000); // 5秒ごとにチェック
+      }, 5000);
       return () => clearInterval(interval);
     }
   }, [isPlanCreating, user, refreshProfile]);
@@ -113,7 +108,6 @@ export default function PlanPage() {
 
   if (!user) return null;
 
-  // プラン作成中の場合はスピナーを表示
   if (isPlanCreating) {
     return <PlanCreatingScreen />;
   }
@@ -126,18 +120,11 @@ export default function PlanPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: user.uid }),
       });
-
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.error || "プラン生成に失敗しました");
       }
-
-      // プロフィールを更新してplanCreationStatusを確認
-      // これにより、isPlanCreatingがtrueになり、プラン作成中画面が表示される
       await refreshProfile();
-      
-      // プラン作成中画面が表示されるため、ここではプランを再取得しない
-      // プラン生成完了後、useEffectのポーリングで自動的にプランが取得される
     } catch (error) {
       console.error("Generate plan error:", error);
       toast.error(error instanceof Error ? error.message : "プラン生成に失敗しました");
@@ -147,7 +134,6 @@ export default function PlanPage() {
 
   const handleApprovePlan = async () => {
     if (!pendingPlan) return;
-
     setApproving(true);
     try {
       const res = await fetch("/api/plan/approve", {
@@ -158,21 +144,17 @@ export default function PlanPage() {
           planId: pendingPlan.id,
         }),
       });
-
       const result = await res.json();
       if (!res.ok) {
         throw new Error(result.error || "プラン承認に失敗しました");
       }
-
-      // プランを再取得（承認後はactiveになる）
       const [active, pending] = await Promise.all([
         getActivePlan(user.uid),
         getPendingPlan(user.uid),
       ]);
       setActivePlan(active);
       setPendingPlan(pending);
-
-      toast.success("プランを承認しました。レシピ詳細を生成中です。完了まで1〜2分かかる場合があります。");
+      toast.success("プランを承認しました。レシピ詳細を生成中です。");
     } catch (error) {
       console.error("Approve plan error:", error);
       toast.error(error instanceof Error ? error.message : "プラン承認に失敗しました");
@@ -181,105 +163,39 @@ export default function PlanPage() {
     }
   };
 
-  const handleRejectPlan = () => {
+  const handleRejectPlan = async () => {
     if (!pendingPlan) return;
-    setShowRejectFeedbackDialog(true);
-  };
-
-  const executeRejectPlan = async (feedback: string = "") => {
-    if (!pendingPlan) return;
-
     setFetching(true);
     try {
-      // プランを拒否
       const res = await fetch("/api/plan/reject", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: user.uid,
           planId: pendingPlan.id,
-          feedback: feedback || undefined,
         }),
       });
-
       const result = await res.json();
       if (!res.ok) {
         throw new Error(result.error || "プラン拒否に失敗しました");
       }
-
-      // プランを再取得（拒否後はプランなし状態になる）
       const pending = await getPendingPlan(user.uid);
       setPendingPlan(pending);
-
-      toast.success("プランを拒否しました。フィードバックを参考に新しいプランを生成します。");
-      
-      // プロフィールを更新
+      toast.success("プランを拒否しました。新しいプランを生成します。");
       await refreshProfile();
-
-      // フィードバックを参考に新しいプラン生成を自動的に開始
-      const generateRes = await fetch("/api/plan/generate", {
+      await fetch("/api/plan/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: user.uid }),
       });
-
-      if (!generateRes.ok) {
-        const error = await generateRes.json();
-        throw new Error(error.error || "プラン生成に失敗しました");
-      }
-
-      // プロフィールを更新してplanCreationStatusを確認
-      // これにより、isPlanCreatingがtrueになり、プラン作成中画面が表示される
       await refreshProfile();
-      
-      // プラン作成中画面が表示されるため、ここではプランを再取得しない
-      // プラン生成完了後、useEffectのポーリングで自動的にプランが取得される
     } catch (error) {
       console.error("Reject plan error:", error);
-      toast.error(error instanceof Error ? error.message : "プラン拒否または生成に失敗しました");
+      toast.error(error instanceof Error ? error.message : "プラン拒否に失敗しました");
       setFetching(false);
     }
   };
 
-  const handleRefreshPlan = () => {
-    if (!activePlan) return;
-    setShowRefreshDialog(true);
-  };
-
-  const executeRefreshPlan = async () => {
-    if (!activePlan) return;
-
-    setFetching(true);
-    try {
-      // 一括再生成は新規プラン生成と同じフローを使用
-      // 既存のActiveプランは自動的にArchivedに変更される
-      const res = await fetch("/api/plan/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.uid }),
-      });
-
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "一括再生成に失敗しました");
-      }
-
-      // プロフィールを更新してplanCreationStatusを確認
-      // これにより、isPlanCreatingがtrueになり、プラン作成中画面が表示される
-      await refreshProfile();
-      
-      toast.success("14日間のプランを一括再生成しました。プラン生成中です...");
-      
-      // プラン作成中画面が表示されるため、ここではプランを再取得しない
-      // プラン生成完了後、useEffectのポーリングで自動的にプランが取得される
-    } catch (error) {
-      console.error("Refresh plan error:", error);
-      toast.error(error instanceof Error ? error.message : "一括再生成に失敗しました");
-      setFetching(false);
-    }
-  };
-
-  // pending状態のプランを表示（承認待ち）
   const planToDisplay = pendingPlan || activePlan;
   const isPending = !!pendingPlan && !activePlan;
 
@@ -289,9 +205,7 @@ export default function PlanPage() {
         <div className="text-center space-y-4 animate-pop-in">
           <CalendarDays className="w-16 h-16 mx-auto text-muted-foreground" />
           <h1 className="text-2xl font-bold">プランがありません</h1>
-          <p className="text-muted-foreground">
-            まずは2週間のプランを作成しましょう
-          </p>
+          <p className="text-muted-foreground">まずは2週間のプランを作成しましょう</p>
           <Button
             size="lg"
             className="rounded-full px-8 mt-4"
@@ -312,129 +226,93 @@ export default function PlanPage() {
     );
   }
 
-  // 日付でソート
-  const sortedDays = Object.entries(planToDisplay.days).sort(([a], [b]) =>
-    a.localeCompare(b)
-  );
-
+  const sortedDays = Object.entries(planToDisplay.days).sort(([a], [b]) => a.localeCompare(b));
   const today = new Date().toISOString().split("T")[0];
 
   return (
-    <div className="container max-w-2xl mx-auto py-8 px-4 space-y-6 pb-24">
-      {/* ヘッダー */}
-      <div className="flex items-center justify-between animate-slide-up">
-        <div>
-          <h1 className="text-2xl font-bold">2週間プラン</h1>
-          <p className="text-sm text-muted-foreground">
-            {planToDisplay.startDate} 〜
-          </p>
-          {isPending && (
-            <Badge variant="outline" className="mt-2">
-              承認待ち
-            </Badge>
+    <div className={`container max-w-2xl mx-auto py-8 px-4 space-y-6 ${isPending ? "pb-48" : "pb-24"}`}>
+      {/* ページヘッダー（プロトタイプ準拠） */}
+      <div className="space-y-2">
+        <div className="flex justify-between items-start">
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-1.5 bg-[#fff8e1] text-[#b8860b] px-3.5 py-1.5 rounded-full text-[0.8rem] font-bold">
+              <Clock className="w-3.5 h-3.5" />
+              {isPending ? "承認待ち" : "作成済み"}
+            </div>
+            <h1 className="text-[1.4rem] font-[800] text-[#2d3436] m-0">
+              プランの{isPending ? "承認" : "確認"}
+            </h1>
+            <p className="text-[0.85rem] text-[#636e72]">
+              {planToDisplay.startDate} 〜 14日間のプラン内容
+            </p>
+          </div>
+          {!isPending && (
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-full gap-2 border-[#edf2f7]"
+                onClick={() => setShowBoredomDialog(true)}
+                disabled={fetching}
+              >
+                <Sparkles className="w-4 h-4 text-primary" />
+                飽きた
+              </Button>
+            </div>
           )}
         </div>
-        {!isPending && (
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-full gap-2"
-              onClick={() => setShowBoredomDialog(true)}
-              disabled={fetching}
-            >
-              <Sparkles className="w-4 h-4" />
-              飽きた
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-full gap-2"
-              onClick={handleRefreshPlan}
-              disabled={fetching}
-              title="14日間のプランを一括で再生成します"
-            >
-              <RefreshCw className="w-4 h-4" />
-              一括再生成
-            </Button>
-          </div>
-        )}
       </div>
 
       {/* プラン概要（pending状態の時のみ表示） */}
       {isPending && (
-        <PlanSummary days={planToDisplay.days} targetCalories={targetCalories} />
+        <PlanSummary days={planToDisplay.days} targetMacros={targetMacros} />
       )}
 
       {/* 承認/拒否ボタン（pending状態の時のみ表示） */}
       {isPending && (
-        <div className="flex gap-4 justify-center pb-4">
-          <Button
-            size="lg"
-            className="rounded-full px-8 gap-2"
-            onClick={handleApprovePlan}
-            disabled={approving || fetching}
-          >
-            {approving ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                承認中...
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="w-5 h-5" />
-                このプランで進める
-              </>
-            )}
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            className="rounded-full px-8 gap-2"
-            onClick={handleRejectPlan}
-            disabled={fetching}
-          >
-            <XCircle className="w-5 h-5" />
-            別のプランを生成する
-          </Button>
+        <div className="fixed bottom-16 left-0 right-0 bg-white p-6 shadow-[0_-10px_20px_rgba(0,0,0,0.03)] border-t z-50">
+          <div className="max-w-2xl mx-auto flex gap-3">
+            <Button
+              variant="secondary"
+              className="flex-1 h-14 rounded-[16px] font-bold text-[1rem] bg-[#f1f3f5] text-[#636e72] gap-2"
+              onClick={handleRejectPlan}
+              disabled={fetching}
+            >
+              <RotateCw className="w-5 h-5" />
+              別の案を生成
+            </Button>
+            <Button
+              className="flex-[1.5] h-14 rounded-[16px] font-bold text-[1rem] bg-[#2d3436] text-white hover:bg-[#1d2325] gap-2"
+              onClick={handleApprovePlan}
+              disabled={approving || fetching}
+            >
+              {approving ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <CheckCircle className="w-5 h-5" />
+              )}
+              このプランで決定
+            </Button>
+          </div>
+          <div className="text-center mt-3 text-[0.8rem] text-[#636e72] underline cursor-pointer decoration-[#636e72]/30">
+            一部のメニューだけを修正する
+          </div>
         </div>
       )}
 
-      {/* 飽き防止ダイアログ */}
       {showBoredomDialog && user && (
         <BoredomRefreshDialog
           userId={user.uid}
           onComplete={() => {
             setShowBoredomDialog(false);
-            // プランを再取得
-            getActivePlan(user.uid).then((plan) => {
-              setActivePlan(plan);
-            });
+            getActivePlan(user.uid).then((plan) => setActivePlan(plan));
           }}
           onClose={() => setShowBoredomDialog(false)}
         />
       )}
 
-      {/* 一括再生成確認ダイアログ */}
-      <ConfirmDialog
-        open={showRefreshDialog}
-        onOpenChange={setShowRefreshDialog}
-        title="14日間のプランを一括で再生成しますか？"
-        description="現在のプランはアーカイブされ、新しいプランが生成されます。生成後、プランを確認して承認してください。"
-        confirmText="再生成する"
-        cancelText="キャンセル"
-        onConfirm={executeRefreshPlan}
-      />
-
-      {/* プラン拒否フィードバックダイアログ */}
-      <PlanRejectionFeedbackDialog
-        open={showRejectFeedbackDialog}
-        onOpenChange={setShowRejectFeedbackDialog}
-        onConfirm={executeRejectPlan}
-      />
-
       {/* 日別カード */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         {sortedDays.map(([date, dayPlan], index) => {
           const isToday = date === today;
           const isPast = date < today;
@@ -480,140 +358,71 @@ function DayCard({
     return `${d.getMonth() + 1}/${d.getDate()} (${weekdays[d.getDay()]})`;
   };
 
+  const isCheat = dayPlan.isCheatDay;
+
   return (
     <Card
-      className={`transition-all ${
-        isToday
-          ? "border-primary shadow-md"
-          : isPast
-          ? "opacity-60"
-          : "hover:shadow-md"
-      }`}
+      className={`overflow-hidden transition-all duration-300 border-0 rounded-[18px] ${
+        isCheat
+          ? "bg-[#fdfaff] shadow-[0_4px_12px_rgba(103,58,183,0.1)]"
+          : "shadow-[0_4px_10px_rgba(0,0,0,0.04)]"
+      } ${
+        isToday ? "border-primary border-2 shadow-lg" : ""
+      } ${isPast ? "opacity-60" : "hover:shadow-lg"}`}
     >
-      <CardHeader className="pb-2 pt-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-medium text-muted-foreground">
-              Day {dayNumber}
+      <div className={`px-4 py-3 flex items-center justify-between font-bold text-white ${
+        isCheat
+          ? "bg-gradient-to-br from-[#512da8] to-[#673ab7]"
+          : "bg-[#4CAF50]"
+      }`}>
+        <span>
+          Day {dayNumber}: {formatDate(date)}{" "}
+          {isCheat && (
+            <span className="bg-[#ffc107] text-black text-[0.6rem] font-bold px-2 py-0.5 rounded-[4px] ml-2 align-middle inline-block">
+              <Sparkles className="w-3 h-3 inline align-baseline mr-0.5" />
+              CHEAT DAY
             </span>
-            <span className="font-medium">{formatDate(date)}</span>
-            {isToday && (
-              <Badge variant="default" className="text-xs">
-                今日
-              </Badge>
-            )}
-            {dayPlan.isCheatDay && (
-              <Badge
-                variant="secondary"
-                className="text-xs gap-1 bg-secondary/80"
-              >
-                <PartyPopper className="w-3 h-3" />
-                CHEAT DAY
-              </Badge>
-            )}
-          </div>
-          <div className="text-right">
-            <div className="text-sm font-medium">
-              {(Number(dayPlan.totalNutrition?.calories) || 0).toFixed(1)} kcal
-            </div>
-            {isPending && dayPlan.totalNutrition && (
-              <div className="text-xs text-muted-foreground">
-                P:
-                {(() => {
-                  const protein = Number(dayPlan.totalNutrition.protein) || 0;
-                  return Math.round(isNaN(protein) ? 0 : protein);
-                })()}
-                g F:
-                {(() => {
-                  const fat = Number(dayPlan.totalNutrition.fat) || 0;
-                  return Math.round(isNaN(fat) ? 0 : fat);
-                })()}
-                g C:
-                {(() => {
-                  const carbs = Number(dayPlan.totalNutrition.carbs) || 0;
-                  return Math.round(isNaN(carbs) ? 0 : carbs);
-                })()}
-                g
-              </div>
-            )}
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-0 pb-4">
-        <div className="space-y-3">
+          )}
+        </span>
+        <span>
+          {(Number(dayPlan.totalNutrition?.calories) || 0).toLocaleString()} kcal
+        </span>
+      </div>
+      <CardContent className="p-0">
+        <div className="divide-y divide-[#f1f3f5]">
           {(["breakfast", "lunch", "dinner"] as const).map((type) => {
             const meal = dayPlan.meals[type];
-            const labels = { breakfast: "朝", lunch: "昼", dinner: "夜" };
+            const labels = { breakfast: "朝食", lunch: "昼食", dinner: "夕食" };
 
-            if (isPending) {
-              // pending状態: 詳細表示
-              return (
-                <div key={type} className="border-b border-dashed pb-2 last:border-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-medium text-muted-foreground">
-                          {labels[type]}
-                        </span>
-                        <span className="font-medium text-sm break-words">
-                          {meal.title}
-                        </span>
-                      </div>
-                      {meal.tags && meal.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {meal.tags.slice(0, 3).map((tag) => (
-                            <Badge
-                              key={tag}
-                              variant="outline"
-                              className="text-xs"
-                            >
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {(() => {
-                          const calories = Number(meal.nutrition?.calories) || 0;
-                          return isNaN(calories) ? "0.0" : calories.toFixed(1);
-                        })()}
-                        kcal | P:
-                        {(() => {
-                          const protein = Number(meal.nutrition?.protein) || 0;
-                          return isNaN(protein) ? 0 : protein;
-                        })()}
-                        g F:
-                        {(() => {
-                          const fat = Number(meal.nutrition?.fat) || 0;
-                          return isNaN(fat) ? 0 : fat;
-                        })()}
-                        g C:
-                        {(() => {
-                          const carbs = Number(meal.nutrition?.carbs) || 0;
-                          return isNaN(carbs) ? 0 : carbs;
-                        })()}
-                        g
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            } else {
-              // active状態: 簡易表示（既存の表示）
-              return (
-                <Link
-                  key={type}
-                  href={`/recipe/${meal.recipeId}`}
-                  className="flex items-center gap-1 px-2 py-1 rounded-full bg-muted hover:bg-muted/80 transition-colors"
-                >
-                  <span className="text-xs text-muted-foreground">
+            const content = (
+              <div key={type} className="px-5 py-4 group cursor-pointer hover:bg-black/[0.02] transition-colors">
+                <div className="flex flex-col gap-0.5">
+                  <span className={`text-[0.7rem] font-bold uppercase tracking-tight ${isCheat ? "text-[#673ab7]" : "text-[#636e72]"}`}>
                     {labels[type]}
                   </span>
-                  <span className="truncate max-w-[100px]">{meal.title}</span>
-                  <ChevronRight className="w-3 h-3 text-muted-foreground" />
-                </Link>
-              );
-            }
+                  <div className="flex justify-between items-start gap-2">
+                    <span className="font-bold text-[0.95rem] leading-tight text-[#2d3436]">
+                      {meal.title}
+                    </span>
+                    {!isPending && <ChevronRight className="w-4 h-4 text-[#636e72]/40" />}
+                  </div>
+                  <div className={`mt-2 flex justify-between items-center text-[0.75rem] ${isCheat ? "text-[#673ab7]/70" : "text-[#636e72]"}`}>
+                    <span className="font-medium">{Number(meal.nutrition?.calories || 0).toFixed(0)} kcal</span>
+                    <span className="opacity-80 font-mono">
+                      P:{Math.round(meal.nutrition?.protein || 0)} F:{Math.round(meal.nutrition?.fat || 0)} C:{Math.round(meal.nutrition?.carbs || 0)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+
+            return isPending ? (
+              content
+            ) : (
+              <Link key={type} href={`/recipe/${meal.recipeId}`} className="block">
+                {content}
+              </Link>
+            );
           })}
         </div>
       </CardContent>

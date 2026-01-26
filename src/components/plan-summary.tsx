@@ -1,62 +1,135 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { DayPlan } from "@/lib/schema";
-import { Flame, TrendingUp, Tag } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 
 interface PlanSummaryProps {
   days: Record<string, DayPlan>;
-  targetCalories?: number;
+  targetMacros?: {
+    protein: number;
+    fat: number;
+    carbs: number;
+  };
 }
 
-/**
- * プラン概要コンポーネント
- * 14日間の統計情報、栄養バランス、タグ分析を表示
- */
-export function PlanSummary({ days, targetCalories }: PlanSummaryProps) {
-  // すべての食事を取得
+const getStatusColor = (current: number, target: number, type: 'calories' | 'protein' | 'fat' | 'carbs') => {
+  const ratio = current / target;
+  if (type === 'fat') {
+    if (ratio > 1.2) return 'bg-[#f44336]';
+    if (ratio > 1.0) return 'bg-[#ff9800]';
+    return 'bg-[#4CAF50]';
+  }
+  if (type === 'protein') {
+    if (ratio < 0.9) return 'bg-[#ffc107]';
+    return 'bg-[#4CAF50]';
+  }
+  if (ratio > 1.1) return 'bg-[#f44336]';
+  if (ratio < 0.9) return 'bg-[#ff9800]';
+  return 'bg-[#4CAF50]';
+};
+
+const getTextColor = (current: number, target: number, type: 'calories' | 'protein' | 'fat' | 'carbs') => {
+  const ratio = current / target;
+  if (type === 'fat') {
+    if (ratio > 1.2) return 'text-[#f44336]';
+    if (ratio > 1.0) return 'text-[#ff9800]';
+    return 'text-[#4CAF50]';
+  }
+  if (type === 'protein') {
+    if (ratio < 0.9) return 'text-[#ffc107]';
+    return 'text-[#4CAF50]';
+  }
+  if (ratio > 1.1) return 'text-[#f44336]';
+  if (ratio < 0.9) return 'text-[#ff9800]';
+  return 'text-[#4CAF50]';
+};
+
+const NutrientRow = ({ 
+  label, 
+  current, 
+  target, 
+  unit, 
+  type 
+}: { 
+  label: string, 
+  current: number, 
+  target: number, 
+  unit: string,
+  type: 'calories' | 'protein' | 'fat' | 'carbs'
+}) => {
+  const ratio = Math.min(current / target, 1.5);
+  const progressWidth = Math.min(ratio * 100, 100);
+  const markerLeft = current > target ? (target / current) * 100 : 100;
+  const isOver = current > target * 1.1;
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex justify-between text-[0.75rem] font-bold">
+        <span>{label}</span>
+        <span className={getTextColor(current, target, type)}>
+          {current.toFixed(1)}{unit} / 目標 {target}{unit}
+        </span>
+      </div>
+      <div className="relative h-2.5 w-full bg-[#edf2f7] rounded-full overflow-hidden">
+        <div 
+          className={`h-full transition-all duration-1000 ease-out ${getStatusColor(current, target, type)}`}
+          style={{ width: `${progressWidth}%` }}
+        />
+        <div 
+          className="absolute top-0 w-[3px] h-full bg-[#2d3436] z-10 shadow-[0_0_4px_rgba(0,0,0,0.2)]"
+          style={{ left: `${markerLeft}%` }}
+        />
+      </div>
+      {(isOver || (type === 'fat' && current > target)) && (
+        <div className="flex items-center gap-1 text-[0.7rem] text-[#f44336] font-medium">
+          <AlertCircle className="w-3 h-3" />
+          目標を{current > target * 1.5 ? "大幅に" : ""}超過しています
+        </div>
+      )}
+    </div>
+  );
+};
+
+export function PlanSummary({ days, targetMacros }: PlanSummaryProps) {
   const allMeals = Object.values(days).flatMap((day) => [
     day.meals.breakfast,
     day.meals.lunch,
     day.meals.dinner,
   ]);
 
-  // 平均カロリー（NaNチェック付き）
   const avgCalories =
     allMeals.length > 0
       ? allMeals.reduce((sum, meal) => {
           const calories = Number(meal.nutrition?.calories) || 0;
           return sum + (isNaN(calories) ? 0 : calories);
-        }, 0) / allMeals.length
+        }, 0) / (allMeals.length / 3) 
       : 0;
 
-  // 平均PFC（NaNチェック付き）
   const avgPFC = {
     protein:
       allMeals.length > 0
         ? allMeals.reduce((sum, meal) => {
             const protein = Number(meal.nutrition?.protein) || 0;
             return sum + (isNaN(protein) ? 0 : protein);
-          }, 0) / allMeals.length
+          }, 0) / (allMeals.length / 3)
         : 0,
     fat:
       allMeals.length > 0
         ? allMeals.reduce((sum, meal) => {
             const fat = Number(meal.nutrition?.fat) || 0;
             return sum + (isNaN(fat) ? 0 : fat);
-          }, 0) / allMeals.length
+          }, 0) / (allMeals.length / 3)
         : 0,
     carbs:
       allMeals.length > 0
         ? allMeals.reduce((sum, meal) => {
             const carbs = Number(meal.nutrition?.carbs) || 0;
             return sum + (isNaN(carbs) ? 0 : carbs);
-          }, 0) / allMeals.length
+          }, 0) / (allMeals.length / 3)
         : 0,
   };
 
-  // タグの出現頻度
   const tagFrequency: Record<string, number> = {};
   allMeals.forEach((meal) => {
     meal.tags?.forEach((tag) => {
@@ -64,103 +137,93 @@ export function PlanSummary({ days, targetCalories }: PlanSummaryProps) {
     });
   });
 
-  // タグを出現頻度順にソート
   const sortedTags = Object.entries(tagFrequency)
     .sort(([, a], [, b]) => b - a)
-    .slice(0, 10); // 上位10個
+    .slice(0, 8);
 
-  // チートデイの日付を取得
-  const cheatDays = Object.entries(days)
-    .filter(([, day]) => day.isCheatDay)
-    .map(([date]) => date);
-
-  // 目標カロリーとの比較
-  const calorieDiff = targetCalories
-    ? avgCalories - targetCalories
-    : null;
-  const calorieDiffPercent = targetCalories && calorieDiff !== null
-    ? Math.round((calorieDiff / targetCalories) * 100)
-    : null;
+  const cheatDaysCount = Object.values(days).filter((day) => day.isCheatDay).length;
 
   return (
-    <Card className="mb-6">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <TrendingUp className="w-5 h-5" />
-          プラン概要
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* 栄養統計 */}
-        <div>
-          <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
-            <Flame className="w-4 h-4" />
-            14日間の平均栄養価
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center p-3 bg-muted rounded-lg">
-              <div className="text-lg font-bold">{avgCalories.toFixed(1)}</div>
-              <div className="text-xs text-muted-foreground">kcal</div>
-              {targetCalories && calorieDiffPercent !== null && (
-                <div
-                  className={`text-xs mt-1 ${
-                    Math.abs(calorieDiffPercent) <= 5
-                      ? "text-green-600"
-                      : calorieDiffPercent > 0
-                      ? "text-orange-600"
-                      : "text-blue-600"
-                  }`}
-                >
-                  {calorieDiffPercent > 0 ? "+" : ""}
-                  {calorieDiffPercent}%
-                </div>
-              )}
-            </div>
-            <div className="text-center p-3 bg-muted rounded-lg">
-              <div className="text-lg font-bold">
-                {Math.round(avgPFC.protein)}
-              </div>
-              <div className="text-xs text-muted-foreground">タンパク質(g)</div>
-            </div>
-            <div className="text-center p-3 bg-muted rounded-lg">
-              <div className="text-lg font-bold">{Math.round(avgPFC.fat)}</div>
-              <div className="text-xs text-muted-foreground">脂質(g)</div>
-            </div>
-            <div className="text-center p-3 bg-muted rounded-lg">
-              <div className="text-lg font-bold">
-                {Math.round(avgPFC.carbs)}
-              </div>
-              <div className="text-xs text-muted-foreground">炭水化物(g)</div>
-            </div>
+    <Card className="mb-6 border border-[#edf2f7] shadow-[0_4px_12px_rgba(0,0,0,0.02)] rounded-[24px] overflow-hidden">
+      <CardContent className="space-y-6 p-5">
+        <div className="flex justify-between items-center mb-1">
+          <span className="text-[0.9rem] font-bold text-[#2d3436]">
+            📊 プラン概要
+          </span>
+          <span className="text-[0.7rem] text-[#636e72] bg-[#f1f3f5] px-2 py-0.5 rounded-[4px]">
+            1日あたりの平均
+          </span>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3 text-center">
+          <div className="flex flex-col">
+            <span className="text-[1.2rem] font-[800] leading-tight text-[#2d3436]">
+              {Math.round(avgCalories).toLocaleString()}
+            </span>
+            <span className="text-[0.7rem] text-[#636e72]">kcal</span>
+          </div>
+          <div className="flex flex-col">
+            <span 
+              className="text-[1.2rem] font-[800] leading-tight"
+              style={{ color: targetMacros && avgPFC.protein >= targetMacros.protein * 0.9 ? "#4CAF50" : "#ff9800" }}
+            >
+              {Math.round(avgPFC.protein)}g
+            </span>
+            <span className="text-[0.7rem] text-[#636e72]">Protein</span>
+          </div>
+          <div className="flex flex-col">
+            <span 
+              className="text-[1.2rem] font-[800] leading-tight"
+              style={{ color: targetMacros && avgPFC.fat > targetMacros.fat ? "#f44336" : "#4CAF50" }}
+            >
+              {Math.round(avgPFC.fat)}g
+            </span>
+            <span className="text-[0.7rem] text-[#636e72]">Fat</span>
           </div>
         </div>
 
-        {/* タグ分析 */}
-        {sortedTags.length > 0 && (
-          <div>
-            <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
-              <Tag className="w-4 h-4" />
-              使用ジャンル・タグ
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {sortedTags.map(([tag, count]) => (
-                <Badge key={tag} variant="secondary" className="text-xs">
-                  {tag} ({count}回)
-                </Badge>
+        <div className="grid gap-5">
+          {targetMacros && (
+            <>
+              <NutrientRow 
+                label="脂質 (F)" 
+                current={avgPFC.fat} 
+                target={targetMacros.fat} 
+                unit="g" 
+                type="fat"
+              />
+              <NutrientRow 
+                label="炭水化物 (C)" 
+                current={avgPFC.carbs} 
+                target={targetMacros.carbs} 
+                unit="g" 
+                type="carbs"
+              />
+              <NutrientRow 
+                label="タンパク質 (P)" 
+                current={avgPFC.protein} 
+                target={targetMacros.protein} 
+                unit="g" 
+                type="protein"
+              />
+            </>
+          )}
+        </div>
+
+        <div className="pt-2 border-t border-[#f1f3f5] flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap gap-1.5">
+              {sortedTags.slice(0, 4).map(([tag]) => (
+                <span key={tag} className="text-[0.65rem] bg-[#f1f3f5] px-2 py-0.5 rounded-[4px] text-[#636e72]">
+                  {tag}
+                </span>
               ))}
             </div>
-          </div>
-        )}
-
-        {/* チートデイ情報 */}
-        {cheatDays.length > 0 && (
-          <div>
-            <h3 className="text-sm font-medium mb-2">チートデイ</h3>
-            <div className="text-sm text-muted-foreground">
-              {cheatDays.length}日間: {cheatDays.join(", ")}
-            </div>
-          </div>
-        )}
+            {cheatDaysCount > 0 && (
+              <span className="text-[0.65rem] font-bold bg-[#fff8e1] text-[#b8860b] px-2 py-0.5 rounded-full border border-[#fff3cd]">
+                チートデイ {cheatDaysCount}日間
+              </span>
+            )}
+        </div>
       </CardContent>
     </Card>
   );
