@@ -51,6 +51,7 @@ export class PromptService {
 
       // Chatプロンプトの場合はsystemメッセージを探す
       if (Array.isArray(prompt.prompt)) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const systemMessage = (prompt.prompt as any[]).find(m => m.role === "system");
         if (systemMessage) return systemMessage.content;
       }
@@ -82,6 +83,7 @@ export class PromptService {
 
       // Chatプロンプトの場合はuserメッセージを探す
       if (Array.isArray(compiled)) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const userMessage = (compiled as any[]).find(m => m.role === "user");
         if (userMessage) return userMessage.content;
       }
