@@ -13,6 +13,7 @@ import { menuAdjusterAgent } from "./agents/menu-adjuster";
 import { preferenceLearnerAgent } from "./agents/preference-learner";
 import { boredomAnalyzerAgent } from "./agents/boredom-analyzer";
 import { testPlanGeneratorWorkflow } from "./workflows/test-plan-generator";
+import { mealPlanGenerationWorkflow } from "./workflows/meal-plan-generation";
 
 /**
  * Mastraインスタンス
@@ -28,6 +29,7 @@ export const mastra = new Mastra({
   },
   workflows: {
     testPlanGenerator: testPlanGeneratorWorkflow,
+    mealPlanGeneration: mealPlanGenerationWorkflow,
   },
   observability: new Observability({
     configs: {

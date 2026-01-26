@@ -5,7 +5,7 @@
 
 import { mastra } from "@/mastra";
 import { z } from "zod";
-import { PlanGeneratorInput, PlanGeneratorOutputSchema, PartialPlanOutputSchema, SingleMealSchema, DEFAULT_PLAN_DURATION_DAYS } from "@/mastra/agents/plan-generator";
+import { PlanGeneratorInput, PartialPlanOutputSchema } from "@/mastra/agents/plan-generator";
 import { getOrCreateUser, setPlanCreating, setPlanCreated } from "@/lib/db/firestore/userRepository";
 import { createPlan, updatePlanStatus, getActivePlan, updatePlanDays, getPlan, updateMealSlot } from "@/lib/plan";
 import { createShoppingList } from "@/lib/shoppingList";
@@ -13,9 +13,7 @@ import { getFavorites } from "@/lib/recipeHistory";
 import { DayPlan, MealSlot, ShoppingItem } from "@/lib/schema";
 import { buildRecipePrompt } from "@/mastra/agents/recipe-creator";
 import { calculatePersonalizedMacroGoals } from "@/lib/tools/calculateMacroGoals";
-import { calculateMealTargets, NutritionValues, MealTargetNutrition } from "@/lib/tools/mealNutritionCalculator";
-import { validatePlanNutrition, recalculateDayNutrition } from "@/lib/tools/nutritionValidator";
-import { PromptService } from "@/lib/services/prompt-service";
+import { calculateMealTargets } from "@/lib/tools/mealNutritionCalculator";
 
 interface MealInfo {
   date: string;
@@ -182,33 +180,25 @@ async function generatePlanBackground(
       startDate,
     };
 
-    // LLMでプラン生成
-    const agent = mastra.getAgent("planGenerator");
-    const feedbackText = userDoc.planRejectionFeedback
-      ? `\n\n【前回のフィードバック】\n${userDoc.planRejectionFeedback}\nこのフィードバックを考慮してください。`
-      : "";
-
-    // Langfuse からユーザープロンプトを取得
-    const userMessage = await PromptService.getInstance().getCompiledPrompt(
-      "plan_generate_prompt/with_specific_days",
-      {
-        duration: DEFAULT_PLAN_DURATION_DAYS,
-        user_info: JSON.stringify(input, null, 2),
-        feedback_text: feedbackText,
-      }
-    );
-
-    const result = await agent.generate(userMessage, { 
-      structuredOutput: { schema: PlanGeneratorOutputSchema, jsonPromptInjection: true } 
+    // Mastra ワークフローを実行
+    const workflow = mastra.getWorkflow("mealPlanGeneration");
+    const run = await workflow.createRun();
+    const result = await run.start({
+      inputData: {
+        input,
+        feedbackText: userDoc.planRejectionFeedback || "",
+        mealTargets,
+        dislikedIngredients: userDoc.learnedPreferences.dislikedIngredients,
+      },
     });
 
-    if (!result.object) {
-      throw new Error("AIからの構造化出力の取得に失敗しました。");
+    if (result.status !== "success") {
+      throw new Error(`プラン生成ワークフローが失敗したか中断されました: ${result.status}`);
     }
 
-    // 内部形式に変換、バリデーション、保存
-    const days = convertToDayPlans(result.object.days);
-    await validateAndRegeneratePlan(days, mealTargets, userDoc.learnedPreferences.dislikedIngredients);
+    const days = result.result as Record<string, DayPlan>;
+
+    // 保存
     await createPlan(userId, startDate, days, "pending");
     await clearUserRejectionFeedback(userId);
 
@@ -278,80 +268,6 @@ function calculateUserMacroGoals(userDoc: NonNullable<Awaited<ReturnType<typeof 
   });
 }
 
-/**
- * LLMの出力を内部の DayPlan 形式に変換
- */
-function convertToDayPlans(outputDays: z.infer<typeof PlanGeneratorOutputSchema>["days"]): Record<string, DayPlan> {
-  const days: Record<string, DayPlan> = {};
-
-  for (const day of outputDays) {
-    const convertMeal = (meal: z.infer<typeof SingleMealSchema>): MealSlot => ({
-      recipeId: meal.recipeId || `recipe-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      title: meal.title,
-      status: "planned",
-      nutrition: {
-        calories: meal.nutrition.calories,
-        protein: meal.nutrition.protein,
-        fat: meal.nutrition.fat,
-        carbs: meal.nutrition.carbs,
-      },
-      tags: meal.tags || [],
-      ingredients: meal.ingredients || [],
-      steps: meal.steps || [],
-    });
-
-    const breakfast = convertMeal(day.breakfast);
-    const lunch = convertMeal(day.lunch);
-    const dinner = convertMeal(day.dinner);
-
-    const totalNutrition = {
-      calories: breakfast.nutrition.calories + lunch.nutrition.calories + dinner.nutrition.calories,
-      protein: breakfast.nutrition.protein + lunch.nutrition.protein + dinner.nutrition.protein,
-      fat: breakfast.nutrition.fat + lunch.nutrition.fat + dinner.nutrition.fat,
-      carbs: breakfast.nutrition.carbs + lunch.nutrition.carbs + dinner.nutrition.carbs,
-    };
-
-    days[day.date] = {
-      isCheatDay: !!day.isCheatDay,
-      meals: { breakfast, lunch, dinner },
-      totalNutrition,
-    };
-  }
-
-  return days;
-}
-
-/**
- * プランの栄養素を検証し、逸脱している場合は再生成を試みる
- */
-async function validateAndRegeneratePlan(
-  days: Record<string, DayPlan>,
-  mealTargets: MealTargetNutrition,
-  dislikedIngredients: string[]
-) {
-  const validationResult = validatePlanNutrition(days, mealTargets);
-  if (validationResult.isValid) return;
-
-  for (const { date, mealType, target } of validationResult.invalidMeals) {
-    const existingTitles = Object.values(days).flatMap((d) => [
-      d.meals.breakfast.title, d.meals.lunch.title, d.meals.dinner.title,
-    ]);
-
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        const newMeal = await regenerateSingleMeal(mealType, target, dislikedIngredients, existingTitles);
-        const diff = Math.abs(newMeal.nutrition.calories - target.calories) / target.calories;
-        if (diff <= 0.15) {
-          days[date].meals[mealType] = newMeal;
-          days[date] = recalculateDayNutrition(days[date]);
-          break;
-        }
-      } catch {
-        // 再生成失敗時は次の試行へ
-      }
-    }
-  }
-}
 
 /**
  * ユーザーの拒否フィードバックをクリア
@@ -364,68 +280,6 @@ async function clearUserRejectionFeedback(userId: string) {
   } catch {
     // フィードバッククリアの失敗は無視
   }
-}
-
-/**
- * 単一の食事を再生成
- *
- * @param mealType - 食事の種類
- * @param targetNutrition - 目標栄養素
- * @param dislikedIngredients - 避けるべき食材
- * @param existingTitles - 既存のメニュータイトル（重複回避用）
- * @returns 再生成された食事
- */
-async function regenerateSingleMeal(
-  mealType: "breakfast" | "lunch" | "dinner",
-  targetNutrition: NutritionValues,
-  dislikedIngredients: string[],
-  existingTitles: string[]
-): Promise<MealSlot> {
-  const agent = mastra.getAgent("planGenerator");
-
-  const mealTypeJa = {
-    breakfast: "朝食",
-    lunch: "昼食",
-    dinner: "夕食",
-  }[mealType];
-
-  const prompt = `以下の条件で${mealTypeJa}のレシピを1つだけ生成してください。
-
-【厳守：栄養素】
-- カロリー: ${targetNutrition.calories}kcal
-- タンパク質: ${targetNutrition.protein}g
-- 脂質: ${targetNutrition.fat}g
-- 炭水化物: ${targetNutrition.carbs}g
-
-上記の数値をそのままnutritionに出力してください。自分で計算し直さないでください。
-
-【避けるべき食材】
-${dislikedIngredients.length > 0 ? dislikedIngredients.join(", ") : "なし"}
-
-【避けるべきメニュー名（重複回避）】
-${existingTitles.slice(0, 10).join(", ")}`;
-
-  const result = await agent.generate(prompt, {
-    structuredOutput: {
-      schema: SingleMealSchema,
-      jsonPromptInjection: true,
-    },
-  });
-
-  if (!result.object) {
-    console.error("[regenerateSingleMeal] Structured output failed:", result.text?.substring(0, 500));
-    throw new Error("食事の再生成に失敗しました");
-  }
-
-  return {
-    recipeId: result.object.recipeId,
-    title: result.object.title,
-    status: "planned",
-    nutrition: result.object.nutrition,
-    tags: result.object.tags,
-    ingredients: result.object.ingredients,
-    steps: result.object.steps,
-  };
 }
 
 /**
