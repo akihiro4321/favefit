@@ -206,9 +206,12 @@ export default function RecipePage() {
           </CardHeader>
           <CardContent>
             {recipe.ingredients && recipe.ingredients.length > 0 ? (
-              <ul className="space-y-2 list-disc list-inside text-sm">
+              <ul className="space-y-1 text-sm">
                 {recipe.ingredients.map((item, i) => (
-                  <li key={i}>{item}</li>
+                  <li key={i} className="flex justify-between items-center border-b border-dashed border-muted py-1 last:border-0">
+                    <span>{item.name}</span>
+                    <span className="text-muted-foreground">{item.amount}</span>
+                  </li>
                 ))}
               </ul>
             ) : (

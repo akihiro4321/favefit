@@ -79,9 +79,7 @@ export async function getRecipeDetail(
     throw new Error("AI応答が無効です");
   }
 
-  const ingredients = aiResult.ingredients.map(
-    (i: { name: string; amount: string }) => `${i.name}: ${i.amount}`
-  );
+  const ingredients = aiResult.ingredients;
   const steps = aiResult.instructions || aiResult.steps;
 
   const updates = {

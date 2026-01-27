@@ -75,6 +75,11 @@ export interface UserDocument {
 export type MealStatus = "planned" | "completed" | "swapped";
 export type PlanStatus = "pending" | "active" | "completed" | "archived";
 
+export interface IngredientItem {
+  name: string;
+  amount: string;
+}
+
 export interface MealSlot {
   recipeId: string;
   title: string;
@@ -87,7 +92,7 @@ export interface MealSlot {
   };
   tags?: string[];
   imageUrl?: string;
-  ingredients?: string[];
+  ingredients?: IngredientItem[];
   steps?: string[];
 }
 
@@ -124,7 +129,7 @@ export interface RecipeHistoryItem {
   title: string;
   description?: string;
   tags: string[];
-  ingredients: string[];
+  ingredients: IngredientItem[];
   steps: string[];
   nutrition: {
     calories: number;

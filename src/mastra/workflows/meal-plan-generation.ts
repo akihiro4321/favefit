@@ -26,11 +26,11 @@ function getFallbackMeal(mealType: string, target: NutritionValues): MealSlot {
     nutrition: { ...target },
     tags: ["高タンパク", "調整用", "時短"],
     ingredients: [
-      "鶏胸肉 (150g)",
-      "ブロッコリー (100g)",
-      "玄米 (150g)",
-      "オリーブオイル",
-      "塩コショウ"
+      { name: "鶏胸肉", amount: "150g" },
+      { name: "ブロッコリー", amount: "100g" },
+      { name: "玄米", amount: "150g" },
+      { name: "オリーブオイル", amount: "適量" },
+      { name: "塩コショウ", amount: "少々" }
     ],
     steps: [
       "鶏胸肉とブロッコリーを一口大に切る",
@@ -52,7 +52,7 @@ function convertToInternalFormat(generatedPlan: z.infer<typeof PlanGeneratorOutp
       recipeId?: string;
       title: string;
       tags?: string[];
-      ingredients?: string[];
+      ingredients?: { name: string; amount: string }[];
       steps?: string[];
       nutrition: { calories: number; protein: number; fat: number; carbs: number };
     }): MealSlot => ({
@@ -253,7 +253,7 @@ const fixInvalidMealsStep = createStep({
             status: "planned",
             nutrition: fixedMeal.recipe.nutrition,
             tags: fixedMeal.recipe.tags,
-            ingredients: fixedMeal.recipe.ingredients,
+            ingredients: fixedMeal.recipe.ingredients, // すでに構造化されている
             steps: fixedMeal.recipe.steps,
           };
           updatedDays[date].meals[mealType as "breakfast" | "lunch" | "dinner"] = mealSlot;

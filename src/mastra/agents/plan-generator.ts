@@ -79,42 +79,57 @@ export const PlanGeneratorOutputSchema = z.object({
         date: z.string().describe("日付 (YYYY-MM-DD)"),
         isCheatDay: z.boolean().describe("チートデイかどうか"),
         breakfast: z.object({
-          recipeId: z.string(),
-          title: z.string(),
-          tags: z.array(z.string()),
-          ingredients: z.array(z.string()),
-          steps: z.array(z.string()),
+          recipeId: z.string().describe("ユニークなレシピID"),
+          title: z.string().describe("レシピ名"),
+          tags: z.array(z.string()).describe("タグ（和食、洋食など）"),
+          ingredients: z.array(
+            z.object({
+              name: z.string().describe("材料名"),
+              amount: z.string().describe("分量（例: 100g, 1/2個）"),
+            })
+          ).describe("材料リスト"),
+          steps: z.array(z.string()).describe("調理手順"),
           nutrition: z.object({
-            calories: z.number(),
-            protein: z.number(),
-            fat: z.number(),
-            carbs: z.number(),
+            calories: z.number().describe("カロリー (kcal)"),
+            protein: z.number().describe("タンパク質 (g)"),
+            fat: z.number().describe("脂質 (g)"),
+            carbs: z.number().describe("炭水化物 (g)"),
           }),
         }),
         lunch: z.object({
-          recipeId: z.string(),
-          title: z.string(),
-          tags: z.array(z.string()),
-          ingredients: z.array(z.string()),
-          steps: z.array(z.string()),
+          recipeId: z.string().describe("ユニークなレシピID"),
+          title: z.string().describe("レシピ名"),
+          tags: z.array(z.string()).describe("タグ（和食、洋食など）"),
+          ingredients: z.array(
+            z.object({
+              name: z.string().describe("材料名"),
+              amount: z.string().describe("分量（例: 100g, 1/2個）"),
+            })
+          ).describe("材料リスト"),
+          steps: z.array(z.string()).describe("調理手順"),
           nutrition: z.object({
-            calories: z.number(),
-            protein: z.number(),
-            fat: z.number(),
-            carbs: z.number(),
+            calories: z.number().describe("カロリー (kcal)"),
+            protein: z.number().describe("タンパク質 (g)"),
+            fat: z.number().describe("脂質 (g)"),
+            carbs: z.number().describe("炭水化物 (g)"),
           }),
         }),
         dinner: z.object({
-          recipeId: z.string(),
-          title: z.string(),
-          tags: z.array(z.string()),
-          ingredients: z.array(z.string()),
-          steps: z.array(z.string()),
+          recipeId: z.string().describe("ユニークなレシピID"),
+          title: z.string().describe("レシピ名"),
+          tags: z.array(z.string()).describe("タグ（和食、洋食など）"),
+          ingredients: z.array(
+            z.object({
+              name: z.string().describe("材料名"),
+              amount: z.string().describe("分量（例: 100g, 1/2個）"),
+            })
+          ).describe("材料リスト"),
+          steps: z.array(z.string()).describe("調理手順"),
           nutrition: z.object({
-            calories: z.number(),
-            protein: z.number(),
-            fat: z.number(),
-            carbs: z.number(),
+            calories: z.number().describe("カロリー (kcal)"),
+            protein: z.number().describe("タンパク質 (g)"),
+            fat: z.number().describe("脂質 (g)"),
+            carbs: z.number().describe("炭水化物 (g)"),
           }),
         }),
       })
@@ -133,7 +148,14 @@ export const SingleMealSchema = z.object({
   recipeId: z.string().describe("ユニークなレシピID"),
   title: z.string().describe("レシピ名"),
   tags: z.array(z.string()).describe("タグ（和食、洋食など）"),
-  ingredients: z.array(z.string()).describe("材料リスト（「材料名: 分量」形式）"),
+  ingredients: z
+    .array(
+      z.object({
+        name: z.string().describe("材料名"),
+        amount: z.string().describe("分量（例: 100g, 1/2個）"),
+      })
+    )
+    .describe("材料リスト"),
   steps: z.array(z.string()).describe("調理手順"),
   nutrition: z.object({
     calories: z.number().describe("カロリー (kcal)"),

@@ -81,9 +81,8 @@ export default function ShoppingPage() {
               Object.values(dayPlan.meals).forEach((meal) => {
                 if (meal.ingredients && Array.isArray(meal.ingredients)) {
                   meal.ingredients.forEach((ing) => {
-                    // 食材名を正規化（「鶏もも肉 200g」→「鶏もも肉」）
-                    const normalizedIng = ing.split(/\s+/)[0].trim();
-                    dayIngredients.add(normalizedIng);
+                    // 食材名をそのまま利用（既に構造化されているため）
+                    dayIngredients.add(ing.name.trim());
                   });
                 }
               });
@@ -213,7 +212,31 @@ export default function ShoppingPage() {
 
         {/* カテゴリ別表示 */}
         <TabsContent value="category" className="space-y-4 mt-4">
-        {Object.entries(itemsByCategory).map(([category, items]) => {
+        {Object.entries(itemsByCategory)
+          .sort(([catA], [catB]) => {
+            const CATEGORY_ORDER = [
+              "主食・穀類",
+              "肉類",
+              "魚介類",
+              "野菜・ハーブ類",
+              "果実類",
+              "卵・乳製品",
+              "大豆製品",
+              "加工食品・その他",
+              "その他",
+              "調味料・甘味料",
+              "基本調味料・常備品 (お家にあれば購入不要)",
+            ];
+            const indexA = CATEGORY_ORDER.indexOf(catA);
+            const indexB = CATEGORY_ORDER.indexOf(catB);
+            
+            // 定義されていないカテゴリは最後に回す
+            const orderA = indexA === -1 ? 999 : indexA;
+            const orderB = indexB === -1 ? 999 : indexB;
+            
+            return orderA - orderB;
+          })
+          .map(([category, items]) => {
           const isExpanded = expandedCategories.has(category);
           const categoryChecked = items.filter((i) => i.checked).length;
 

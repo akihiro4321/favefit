@@ -43,7 +43,7 @@ const SuggestedRecipeSchema = z.object({
   title: z.string(),
   description: z.string().describe("なぜこのレシピを提案したか"),
   tags: z.array(z.string()),
-  ingredients: z.array(z.string()),
+  ingredients: z.array(z.object({ name: z.string(), amount: z.string() })),
   additionalIngredients: z
     .array(z.string())
     .describe("追加で必要な食材（手元にないもの）"),
@@ -83,6 +83,15 @@ export const menuAdjusterAgent = new Agent({
 3. dislikedIngredients は絶対に使わない
 4. previousSuggestions と同じレシピは提案しない
 5. userComment があれば最優先で考慮（「辛く」→スパイシーに、「さっぱり」→和風や酢を使う等）
+6. **食材リストの分解:** 1つの要素（name）に複数の食材を入れず、必ず1食材1要素に分解してください。
+   - 【例】
+     × Bad: { "name": "醤油、砂糖、酒", "amount": "各小さじ1" }
+     ○ Good: 
+       { "name": "醤油", "amount": "小さじ1" },
+       { "name": "砂糖", "amount": "小さじ1" },
+       { "name": "酒", "amount": "小さじ1" }
+7. **調味料・常備品の分量表現:** 一般的な調味料や常備品については、以下の表現を優先的に使用してください：
+   「大さじ」「小さじ」「少々」「適量」「少量」「たっぷり」「ひとつまみ」
 
 【description の書き方】
 - 「冷蔵庫の鶏肉とキャベツを活用！タンパク質もしっかり摂れます。」

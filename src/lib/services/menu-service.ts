@@ -19,7 +19,7 @@ export interface MenuSuggestion {
   title: string;
   description: string;
   tags: string[];
-  ingredients: string[];
+  ingredients: { name: string; amount: string }[];
   additionalIngredients: string[];
   steps: string[];
   nutrition: {
@@ -102,7 +102,7 @@ ${JSON.stringify(input, null, 2)}`;
       title: string;
       description: string;
       tags?: string[];
-      ingredients?: string[];
+      ingredients?: { name: string; amount: string }[];
       additionalIngredients?: string[];
       steps?: string[];
       nutrition: { calories: number; protein: number; fat: number; carbs: number };

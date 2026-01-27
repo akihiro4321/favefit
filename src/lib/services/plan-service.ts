@@ -10,7 +10,7 @@ import { getOrCreateUser, setPlanCreating, setPlanCreated } from "@/lib/db/fires
 import { createPlan, updatePlanStatus, getActivePlan, updatePlanDays, getPlan, updateMealSlot } from "@/lib/plan";
 import { createShoppingList } from "@/lib/shoppingList";
 import { getFavorites } from "@/lib/recipeHistory";
-import { DayPlan, MealSlot, ShoppingItem } from "@/lib/schema";
+import { DayPlan, MealSlot, ShoppingItem, IngredientItem } from "@/lib/schema";
 import { buildRecipePrompt } from "@/mastra/agents/recipe-creator";
 import { calculatePersonalizedMacroGoals } from "@/lib/tools/calculateMacroGoals";
 import { calculateMealTargets } from "@/lib/tools/mealNutritionCalculator";
@@ -657,7 +657,7 @@ function convertPlanResultToDays(planResult: {
       recipeId?: string;
       title: string;
       tags?: string[];
-      ingredients?: string[];
+      ingredients?: IngredientItem[];
       steps?: string[];
       nutrition: { calories: number; protein: number; fat: number; carbs: number };
     };
@@ -665,7 +665,7 @@ function convertPlanResultToDays(planResult: {
       recipeId?: string;
       title: string;
       tags?: string[];
-      ingredients?: string[];
+      ingredients?: IngredientItem[];
       steps?: string[];
       nutrition: { calories: number; protein: number; fat: number; carbs: number };
     };
@@ -673,7 +673,7 @@ function convertPlanResultToDays(planResult: {
       recipeId?: string;
       title: string;
       tags?: string[];
-      ingredients?: string[];
+      ingredients?: IngredientItem[];
       steps?: string[];
       nutrition: { calories: number; protein: number; fat: number; carbs: number };
     };
@@ -688,7 +688,7 @@ function convertPlanResultToDays(planResult: {
       recipeId?: string;
       title: string;
       tags?: string[];
-      ingredients?: string[];
+      ingredients?: IngredientItem[];
       steps?: string[];
       nutrition: { calories: number; protein: number; fat: number; carbs: number };
     }): MealSlot => {
@@ -700,13 +700,31 @@ function convertPlanResultToDays(planResult: {
         carbs: Number(meal.nutrition?.carbs) || 0,
       };
 
+      // ingredientsが文字列配列の場合とIngredientItem配列の場合に対応
+      let ingredients: IngredientItem[] = [];
+      if (meal.ingredients && meal.ingredients.length > 0) {
+        if (typeof meal.ingredients[0] === 'string') {
+          // 古い形式（文字列配列）の場合
+          ingredients = (meal.ingredients as unknown as string[]).map(ingredientStr => {
+            const match = ingredientStr.match(/^(.+?):\s*(.+)$/);
+            if (match) {
+              return { name: match[1].trim(), amount: match[2].trim() };
+            }
+            return { name: ingredientStr.trim(), amount: "" }; // 分量がない場合
+          });
+        } else {
+          // 新しい形式（IngredientItem配列）の場合
+          ingredients = meal.ingredients as IngredientItem[];
+        }
+      }
+
       return {
         recipeId: meal.recipeId || `recipe-${Date.now()}-${Math.random().toString(36).slice(2)}`,
         title: meal.title,
         status: "planned",
         nutrition: safeNutrition,
         tags: meal.tags || [],
-        ingredients: meal.ingredients || [],
+        ingredients: ingredients,
         steps: meal.steps || [],
       };
     };
@@ -782,7 +800,7 @@ async function generateSingleRecipeDetail(
   }
 
   const ingredients = aiResult.ingredients.map(
-    (i: { name: string; amount: string }) => `${i.name}: ${i.amount}`
+    (i: { name: string; amount: string }) => ({ name: i.name, amount: i.amount })
   );
   const steps = aiResult.instructions || aiResult.steps;
 
@@ -849,128 +867,133 @@ async function generateRecipeDetailsBatch(
 }
 
 /**
- * レシピ詳細から買い物リストを生成
+ * レシピデータから買い物リストを生成
  */
 async function generateShoppingListFromRecipes(
   planId: string,
   days: Record<string, DayPlan>
 ): Promise<void> {
-  // すべてのレシピの材料を集計
-  const ingredientMap = new Map<string, { amount: string; category: string }>();
+  // TypeScriptによる高度な事前集計
+  // Map<食材名, { amounts: string[]; category: string }>
+  const ingredientGroups = new Map<string, { amounts: string[]; category: string }>();
 
-  for (const dayPlan of Object.values(days)) {
-    for (const meal of Object.values(dayPlan.meals)) {
-      if (meal.ingredients && meal.ingredients.length > 0) {
-        for (const ingredientStr of meal.ingredients) {
-          // "材料名: 分量" の形式をパース
-          const match = ingredientStr.match(/^(.+?):\s*(.+)$/);
-          if (match) {
-            const [, name, amount] = match;
-            const normalizedName = name.trim();
+  Object.values(days)
+    .filter(dayPlan => !dayPlan.isCheatDay)
+    .flatMap(dayPlan => Object.values(dayPlan.meals))
+    .flatMap(meal => meal.ingredients ?? [])
+    .forEach(ing => {
+      const normalizedName = ing.name.trim();
+      const amount = ing.amount.trim();
 
-            // 既に存在する場合は統合（分量を合計）
-            if (ingredientMap.has(normalizedName)) {
-              const existing = ingredientMap.get(normalizedName)!;
-              // 分量の統合は簡易的に「,」で結合（実際のアプリではより高度な統合が必要）
-              existing.amount = `${existing.amount}, ${amount.trim()}`;
-            } else {
-              // カテゴリの推定（簡易版）
-              const category = categorizeIngredient(normalizedName);
-              ingredientMap.set(normalizedName, {
-                amount: amount.trim(),
-                category,
-              });
-            }
-          }
-        }
+      if (ingredientGroups.has(normalizedName)) {
+        ingredientGroups.get(normalizedName)!.amounts.push(amount);
+      } else {
+        ingredientGroups.set(normalizedName, {
+          amounts: [amount],
+          category: categorizeIngredient(normalizedName, amount),
+        });
       }
-    }
+    });
+
+  // 集計結果を ShoppingItem 形式に変換
+  const shoppingItems: ShoppingItem[] = [];
+
+  for (const [name, data] of ingredientGroups.entries()) {
+    const totalAmount = sumAmounts(data.amounts);
+    shoppingItems.push({
+      ingredient: name,
+      amount: totalAmount,
+      category: data.category,
+      checked: false,
+    });
   }
 
-  // ShoppingItemに変換
-  const shoppingItems: ShoppingItem[] = Array.from(ingredientMap.entries()).map(
-    ([ingredient, { amount, category }]) => ({
-      ingredient,
-      amount,
-      category,
-      checked: false,
-    })
-  );
-
-  // カテゴリ別にソート
-  const categoryOrder: Record<string, number> = {
-    野菜: 1,
-    肉: 2,
-    魚: 3,
-    調味料: 4,
-    その他: 99,
-  };
-
-  shoppingItems.sort((a, b) => {
-    const orderA = categoryOrder[a.category] || 99;
-    const orderB = categoryOrder[b.category] || 99;
-    if (orderA !== orderB) {
-      return orderA - orderB;
-    }
-    return a.ingredient.localeCompare(b.ingredient);
-  });
-
-  await createShoppingList(planId, shoppingItems);
+  // Firestoreに保存
+  if (shoppingItems.length > 0) {
+    await createShoppingList(planId, shoppingItems);
+  }
 }
 
 /**
- * 材料名からカテゴリを推定（簡易版）
+ * 分量の数値合算ロジック (TypeScript)
  */
-function categorizeIngredient(ingredient: string): string {
-  const lower = ingredient.toLowerCase();
+function sumAmounts(amounts: string[]): string {
+  const summary: Record<string, number> = {};
+  const strings: string[] = [];
 
-  if (
-    lower.includes("野菜") ||
-    lower.includes("キャベツ") ||
-    lower.includes("もやし") ||
-    lower.includes("トマト") ||
-    lower.includes("玉ねぎ") ||
-    lower.includes("にんじん") ||
-    lower.includes("きゅうり") ||
-    lower.includes("レタス") ||
-    lower.includes("ほうれん草")
-  ) {
-    return "野菜";
+  for (const amt of amounts) {
+    // 数値と単位を分離 (例: "200g", "1.5個", "1/2個")
+    const match = amt.match(/^(\d*(?:\.\d+)?|\d+\/\d+)\s*([a-zA-Zぁ-んァ-ヶー一-龠]*)$/);
+
+    if (match) {
+      const [, valueStr, unit] = match;
+      if (valueStr) {
+        const value = parseValue(valueStr);
+        summary[unit] = (summary[unit] || 0) + value;
+      } else {
+        // 数値がないが単位（または文字列）のみの場合（例：「適量」）
+        strings.push(amt);
+      }
+    } else {
+      strings.push(amt);
+    }
   }
 
-  if (
-    lower.includes("肉") ||
-    lower.includes("鶏") ||
-    lower.includes("豚") ||
-    lower.includes("牛") ||
-    lower.includes("ハム") ||
-    lower.includes("ベーコン")
-  ) {
-    return "肉";
+  const results = Object.entries(summary).map(([unit, val]) => {
+    // 小数点以下の整形 (0.5 => 1/2 のような変換はせず、0.5のまま)
+    const displayVal = Number.isInteger(val) ? val.toString() : val.toFixed(1).replace(/\.0$/, "");
+    return `${displayVal}${unit}`;
+  });
+
+  // 重複した文字列を排除して結合
+  const uniqueStrings = Array.from(new Set(strings));
+  return [...results, ...uniqueStrings].join(", ");
+}
+
+/**
+ * 文字列の数値をパース（分数対応）
+ */
+function parseValue(valStr: string): number {
+  if (valStr.includes("/")) {
+    const [num, den] = valStr.split("/").map(Number);
+    if (den === 0) return 0;
+    return num / den;
+  }
+  return parseFloat(valStr) || 0;
+}
+
+/**
+ * 食材カテゴリの簡易判定
+ */
+function categorizeIngredient(name: string, amount?: string): string {
+  const lowerName = name.toLowerCase();
+  const lowerAmount = amount?.toLowerCase() || "";
+
+  // 常備品・基本調味料の判定（分量の表現で判断）
+  const stapleMeasureKeywords = ["大さじ", "小さじ", "少々", "適量", "少量", "たっぷり", "ひとつまみ"];
+  if (stapleMeasureKeywords.some((k) => lowerAmount.includes(k))) {
+    return "基本調味料・常備品 (お家にあれば購入不要)";
   }
 
-  if (
-    lower.includes("魚") ||
-    lower.includes("サーモン") ||
-    lower.includes("マグロ") ||
-    lower.includes("サバ") ||
-    lower.includes("イワシ")
-  ) {
-    return "魚";
-  }
+  const meatKeywords = ["肉", "牛", "豚", "鶏", "ひき肉", "ベーコン", "ハム", "ウィンナー", "ソーセージ", "ささみ", "チャーシュー"];
+  const fishKeywords = ["魚", "鮭", "マグロ", "海老", "イカ", "タコ", "貝", "刺身", "鯖", "鯛", "あゆ", "ぶり", "カツオ", "しらす", "アサリ"];
+  const veggieKeywords = ["野菜", "玉ねぎ", "人参", "キャベツ", "レタス", "トマト", "ブロッコリー", "ピーマン", "なす", "ほうれん草", "じゃがいも", "大根", "きのこ", "椎茸", "えのき", "セロリ", "パプリカ", "もやし", "キュウリ", "きゅうり", "ニラ", "パセリ", "刻みネギ", "バジル"];
+  const fruitKeywords = ["果物", "フルーツ", "レモン", "バナナ", "ブルーベリー", "イチゴ", "リンゴ", "みかん", "アボカド"];
+  const grainKeywords = ["パスタ", "ラザニア", "パン", "米", "ご飯", "飯", "うどん", "そば", "麺", "ピザ生地", "トースト", "全粒粉"];
+  const dairyEggKeywords = ["卵", "チーズ", "牛乳", "ヨーグルト", "バター", "生クリーム"];
+  const soyKeywords = ["豆腐", "納豆", "豆乳", "油揚げ", "厚揚げ"];
+  const condimentKeywords = ["塩", "胡椒", "醤油", "味噌", "油", "だし", "砂糖", "酢", "みりん", "酒", "マヨネーズ", "ケチャップ", "ソース", "コンソメ", "めんつゆ", "ドレッシング", "ポン酢", "はちみつ", "シロップ", "片栗粉", "豆板醤", "生姜", "わさび", "にんにく", "練りごま", "ハーブ"];
+  const processedKeywords = ["プロテイン", "わかめ", "海苔", "寿司", "茶碗蒸し"];
 
-  if (
-    lower.includes("醤油") ||
-    lower.includes("塩") ||
-    lower.includes("胡椒") ||
-    lower.includes("砂糖") ||
-    lower.includes("油") ||
-    lower.includes("酢") ||
-    lower.includes("みそ") ||
-    lower.includes("だし")
-  ) {
-    return "調味料";
-  }
+  if (meatKeywords.some((k) => lowerName.includes(k))) return "肉類";
+  if (fishKeywords.some((k) => lowerName.includes(k))) return "魚介類";
+  if (veggieKeywords.some((k) => lowerName.includes(k))) return "野菜・ハーブ類";
+  if (fruitKeywords.some((k) => lowerName.includes(k))) return "果実類";
+  if (dairyEggKeywords.some((k) => lowerName.includes(k))) return "卵・乳製品";
+  if (soyKeywords.some((k) => lowerName.includes(k))) return "大豆製品";
+  if (grainKeywords.some((k) => lowerName.includes(k))) return "主食・穀類";
+  if (condimentKeywords.some((k) => lowerName.includes(k))) return "調味料・甘味料";
+  if (processedKeywords.some((k) => lowerName.includes(k))) return "加工食品・その他";
 
   return "その他";
 }
@@ -996,6 +1019,9 @@ export async function approvePlan(
   if (plan.status !== "pending") {
     throw new Error("このプランは承認可能な状態ではありません");
   }
+
+  // プラン承認前に（簡易的な）買い物リストを作成
+  await generateShoppingListFromRecipes(planId, plan.days);
 
   // プランのステータスをactiveに変更
   await updatePlanStatus(planId, "active");

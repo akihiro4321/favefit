@@ -22,7 +22,7 @@ interface SuggestedRecipe {
   title: string;
   description: string;
   tags: string[];
-  ingredients: string[];
+  ingredients: { name: string; amount: string }[];
   steps: string[];
   additionalIngredients: string[];
   nutrition: {
