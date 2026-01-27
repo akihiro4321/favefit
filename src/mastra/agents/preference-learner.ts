@@ -68,5 +68,5 @@ export const preferenceLearnerAgent = new Agent({
 【出力形式】
 JSON形式で出力してください。cuisineUpdates と flavorUpdates はキー(文字列)と値(数値)のオブジェクトにしてください。
 `,
-  model: "google/gemini-2.5-flash",
+  model: "google/gemini-flash-latest",
 });

@@ -238,7 +238,7 @@ export const myAgent = new Agent({
   id: "my_agent",
   name: "My Agent",
   instructions: "...",
-  model: "google/gemini-2.5-flash",
+  model: "google/gemini-flash-latest",
 });
 ```
 

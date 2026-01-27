@@ -88,5 +88,5 @@ JSON形式で以下のフィールドを含めてください:
 - "flavor": 味付けの変更提案
 - "ingredient": 食材の変更提案
 `,
-  model: "google/gemini-2.5-flash",
+  model: "google/gemini-flash-latest",
 });

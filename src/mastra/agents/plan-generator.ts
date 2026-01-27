@@ -165,5 +165,5 @@ export const planGeneratorAgent = new Agent({
   id: "plan_generator",
   name: "Plan Generator",
   instructions: PLAN_GENERATOR_INSTRUCTIONS,
-  model: "google/gemini-2.5-flash",
+  model: "google/gemini-flash-latest",
 });

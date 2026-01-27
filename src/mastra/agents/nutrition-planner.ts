@@ -41,7 +41,7 @@ JSON形式で以下のキーを含めてください:
 - carbs_g: number
 - strategy_summary: string
 `,
-  model: "google/gemini-2.5-flash",
+  model: "google/gemini-flash-latest",
   tools: {
     calculate_nutrition: nutritionCalculatorTool,
   },
