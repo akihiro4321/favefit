@@ -5,6 +5,7 @@
 
 import { Agent } from "@mastra/core/agent";
 import { z } from "zod";
+import { PLAN_GENERATOR_INSTRUCTIONS } from "../prompts/plan-generator";
 
 /**
  * 入力スキーマ
@@ -120,15 +121,6 @@ export const PlanGeneratorOutputSchema = z.object({
     )
     .length(DEFAULT_PLAN_DURATION_DAYS)
     .describe(`${DEFAULT_PLAN_DURATION_DAYS}日間のプラン`),
-  shoppingList: z
-    .array(
-      z.object({
-        ingredient: z.string().describe("食材名"),
-        amount: z.string().describe("数量（単位含む）"),
-        category: z.string().describe("カテゴリ（野菜, 肉, 等）"),
-      })
-    )
-    .describe("複数日分の合計数量を算出した買い物リスト"),
 });
 
 /**
@@ -166,16 +158,12 @@ export const PartialPlanOutputSchema = z.object({
 export type PlanGeneratorInput = z.infer<typeof PlanGeneratorInputSchema>;
 export type PlanGeneratorOutput = z.infer<typeof PlanGeneratorOutputSchema>;
 
-import { PromptService } from "@/lib/services/prompt-service";
-
 /**
  * Plan Generator Agent
  */
 export const planGeneratorAgent = new Agent({
   id: "plan_generator",
   name: "Plan Generator",
-  instructions: async () => {
-    return PromptService.getInstance().getInstructions("plan_generate_prompt/with_specific_days");
-  },
-  model: "google/gemini-2.5-flash-lite",
+  instructions: PLAN_GENERATOR_INSTRUCTIONS,
+  model: "google/gemini-2.5-flash",
 });

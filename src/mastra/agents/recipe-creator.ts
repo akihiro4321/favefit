@@ -62,7 +62,7 @@ export const recipeCreatorAgent = new Agent({
 7. **正確な栄養計算:** 各食材の分量から計算される栄養価の合計を、レスポンスのnutritionフィールドに正確に記載してください。
 
 出力は必ず指定されたJSONスキーマに従ってください。`,
-  model: "google/gemini-2.5-flash-lite",
+  model: "google/gemini-2.5-flash",
 });
 
 /**

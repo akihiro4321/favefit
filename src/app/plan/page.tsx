@@ -243,7 +243,7 @@ export default function PlanPage() {
               プランの{isPending ? "承認" : "確認"}
             </h1>
             <p className="text-[0.85rem] text-[#636e72]">
-              {planToDisplay.startDate} 〜 14日間のプラン内容
+              {planToDisplay.startDate} 〜 7日間のプラン内容
             </p>
           </div>
           {!isPending && (

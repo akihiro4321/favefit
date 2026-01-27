@@ -6,7 +6,7 @@ import {
   DEFAULT_PLAN_DURATION_DAYS,
   SingleMealSchema
 } from "../agents/plan-generator";
-import { PromptService } from "@/lib/services/prompt-service";
+import { getPlanGenerationPrompt, getBatchMealFixPrompt } from "../prompts/plan-generator";
 import { validatePlanNutrition, recalculateDayNutrition } from "@/lib/tools/nutritionValidator";
 import { DayPlan, MealSlot } from "@/lib/schema";
 import { MealTargetNutrition } from "@/lib/tools/mealNutritionCalculator";
@@ -42,6 +42,62 @@ function getFallbackMeal(mealType: string, target: NutritionValues): MealSlot {
 }
 
 /**
+ * AI出力を内部形式に変換するヘルパー
+ */
+function convertToInternalFormat(generatedPlan: z.infer<typeof PlanGeneratorOutputSchema>): Record<string, DayPlan> {
+  const days: Record<string, DayPlan> = {};
+  
+  for (const day of generatedPlan.days) {
+    const convertMeal = (meal: {
+      recipeId?: string;
+      title: string;
+      tags?: string[];
+      ingredients?: string[];
+      steps?: string[];
+      nutrition: { calories: number; protein: number; fat: number; carbs: number };
+    }): MealSlot => ({
+      recipeId: meal.recipeId || `recipe-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      title: meal.title,
+      status: "planned",
+      nutrition: {
+        calories: Number(meal.nutrition.calories) || 0,
+        protein: Number(meal.nutrition.protein) || 0,
+        fat: Number(meal.nutrition.fat) || 0,
+        carbs: Number(meal.nutrition.carbs) || 0,
+      },
+      tags: meal.tags || [],
+      ingredients: meal.ingredients || [],
+      steps: meal.steps || [],
+    });
+
+    const breakfast = convertMeal(day.breakfast);
+    const lunch = convertMeal(day.lunch);
+    const dinner = convertMeal(day.dinner);
+
+    days[day.date] = {
+      isCheatDay: !!day.isCheatDay,
+      meals: { breakfast, lunch, dinner },
+      totalNutrition: {
+        calories: (breakfast.nutrition.calories + lunch.nutrition.calories + dinner.nutrition.calories),
+        protein: (breakfast.nutrition.protein + lunch.nutrition.protein + dinner.nutrition.protein),
+        fat: (breakfast.nutrition.fat + lunch.nutrition.fat + dinner.nutrition.fat),
+        carbs: (breakfast.nutrition.carbs + lunch.nutrition.carbs + dinner.nutrition.carbs),
+      },
+    };
+  }
+  
+  return days;
+}
+
+// 一括修正用の出力スキーマ
+const BatchFixOutputSchema = z.object({
+  meals: z.array(z.object({
+    key: z.string().describe("日付とmealTypeを結合したキー（例：2024-01-01_breakfast）"),
+    recipe: SingleMealSchema,
+  })),
+});
+
+/**
  * ステップ1: 初回のプラン生成
  */
 const generateInitialPlanStep = createStep({
@@ -54,14 +110,11 @@ const generateInitialPlanStep = createStep({
   execute: async ({ inputData, mastra }) => {
     const agent = mastra.getAgent("planGenerator");
     
-    const userMessage = await PromptService.getInstance().getCompiledPrompt(
-      "plan_generate_prompt/with_specific_days",
-      {
-        duration: DEFAULT_PLAN_DURATION_DAYS,
-        user_info: JSON.stringify(inputData.input, null, 2),
-        feedback_text: inputData.feedbackText || "",
-      }
-    );
+    const userMessage = getPlanGenerationPrompt({
+      duration: DEFAULT_PLAN_DURATION_DAYS,
+      user_info: JSON.stringify(inputData.input, null, 2),
+      feedback_text: inputData.feedbackText || "",
+    });
 
     const result = await agent.generate(userMessage, { 
       structuredOutput: { schema: PlanGeneratorOutputSchema, jsonPromptInjection: true } 
@@ -93,48 +146,12 @@ const validatePlanStep = createStep({
     const { generatedPlan, mealTargets } = inputData;
 
     // 内部形式に変換
-    const days: Record<string, DayPlan> = {};
-    for (const day of generatedPlan.days) {
-      const convertMeal = (meal: {
-        recipeId?: string;
-        title: string;
-        tags?: string[];
-        ingredients?: string[];
-        steps?: string[];
-        nutrition: { calories: number; protein: number; fat: number; carbs: number };
-      }): MealSlot => ({
-        recipeId: meal.recipeId || `recipe-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        title: meal.title,
-        status: "planned",
-        nutrition: {
-          calories: Number(meal.nutrition.calories) || 0,
-          protein: Number(meal.nutrition.protein) || 0,
-          fat: Number(meal.nutrition.fat) || 0,
-          carbs: Number(meal.nutrition.carbs) || 0,
-        },
-        tags: meal.tags || [],
-        ingredients: meal.ingredients || [],
-        steps: meal.steps || [],
-      });
-
-      const breakfast = convertMeal(day.breakfast);
-      const lunch = convertMeal(day.lunch);
-      const dinner = convertMeal(day.dinner);
-
-      days[day.date] = {
-        isCheatDay: !!day.isCheatDay,
-        meals: { breakfast, lunch, dinner },
-        totalNutrition: {
-          calories: (breakfast.nutrition.calories + lunch.nutrition.calories + dinner.nutrition.calories),
-          protein: (breakfast.nutrition.protein + lunch.nutrition.protein + dinner.nutrition.protein),
-          fat: (breakfast.nutrition.fat + lunch.nutrition.fat + dinner.nutrition.fat),
-          carbs: (breakfast.nutrition.carbs + lunch.nutrition.carbs + dinner.nutrition.carbs),
-        },
-      };
-    }
+    const days = convertToInternalFormat(generatedPlan);
 
     // バリデーション実行
     const validationResult = validatePlanNutrition(days, mealTargets);
+    
+    console.log(`[Workflow:validatePlan] Valid: ${validationResult.isValid}, Invalid meals: ${validationResult.invalidMeals.length}`);
     
     return {
       days,
@@ -145,188 +162,132 @@ const validatePlanStep = createStep({
 });
 
 /**
- * ステップ3: 単一の食事を修正する (foreach で使用)
+ * ステップ3: 不合格の食事を一括で再生成
  */
-const fixSingleMealStep = createStep({
-  id: "fixSingleMeal",
+const fixInvalidMealsStep = createStep({
+  id: "fixInvalidMeals",
   inputSchema: z.object({
-    date: z.string(),
-    mealType: z.string(),
-    target: z.any(),
+    days: z.record(z.any()),
+    invalidMeals: z.array(z.any()),
+    isValid: z.boolean(),
+    mealTargets: z.custom<MealTargetNutrition>(),
     dislikedIngredients: z.array(z.string()),
-    existingTitles: z.array(z.string()),
   }),
   outputSchema: z.object({
-    date: z.string(),
-    mealType: z.string(),
-    meal: SingleMealSchema.nullable(),
+    days: z.record(z.any()),
+    invalidMeals: z.array(z.any()),
+    isValid: z.boolean(),
   }),
   execute: async ({ inputData, mastra }) => {
-    const { date, mealType, target, dislikedIngredients, existingTitles } = inputData;
+    const { days, invalidMeals, isValid, mealTargets, dislikedIngredients } = inputData as {
+      days: Record<string, DayPlan>;
+      invalidMeals: MealValidationError[];
+      isValid: boolean;
+      mealTargets: MealTargetNutrition;
+      dislikedIngredients: string[];
+    };
+
+    // バリデーション合格ならそのまま返す
+    if (isValid || invalidMeals.length === 0) {
+      console.log("[Workflow:fixInvalidMeals] All meals valid, skipping fix step.");
+      return { days, invalidMeals: [], isValid: true };
+    }
+
+    console.log(`[Workflow:fixInvalidMeals] Fixing ${invalidMeals.length} invalid meals in one batch...`);
+
     const agent = mastra.getAgent("planGenerator");
+    
+    // 既存メニュー名を収集（重複回避用）
+    const existingTitles = Object.values(days).flatMap((d) => [
+      d.meals.breakfast.title, d.meals.lunch.title, d.meals.dinner.title,
+    ]);
+
+    // 不合格食事の情報を整形
+    const mealTypeJaMap = { breakfast: "朝食", lunch: "昼食", dinner: "夕食" } as const;
+    const invalidMealInfos = invalidMeals.map(m => ({
+      date: m.date,
+      mealType: m.mealType,
+      mealTypeJa: mealTypeJaMap[m.mealType],
+      target: m.target,
+    }));
+
+    // 一括修正プロンプトを生成
+    const prompt = getBatchMealFixPrompt({
+      invalidMeals: invalidMealInfos,
+      dislikedIngredients,
+      existingTitles,
+    });
 
     try {
-      const mealTypeJa = { breakfast: "朝食", lunch: "昼食", dinner: "夕食" }[mealType as "breakfast" | "lunch" | "dinner"];
-      const prompt = `以下の条件で${mealTypeJa}のレシピを1つだけ生成してください。
-
-【厳守：栄養素】
-- カロリー: ${target.calories}kcal
-- タンパク質: ${target.protein}g
-- 脂質: ${target.fat}g
-- 炭水化物: ${target.carbs}g
-
-上記の数値をそのままnutritionに出力してください。自分で計算し直さないでください。
-
-【避けるべき食材】
-${dislikedIngredients.length > 0 ? dislikedIngredients.join(", ") : "なし"}
-
-【避けるべきメニュー名（重複回避）】
-${existingTitles.slice(0, 10).join(", ")}`;
-
       const result = await agent.generate(prompt, {
-        structuredOutput: { schema: SingleMealSchema, jsonPromptInjection: true },
+        structuredOutput: { schema: BatchFixOutputSchema, jsonPromptInjection: true },
       });
 
-      if (result.object) {
-        return { date, mealType, meal: result.object };
+      if (!result.object) {
+        console.error("[Workflow:fixInvalidMeals] Failed to get structured output from AI.");
+        return { days, invalidMeals, isValid: false };
       }
-    } catch (e) {
-      console.error(`[Workflow:fixSingleMeal] Failed for ${date} ${mealType}:`, e);
-    }
-    
-    return { date, mealType, meal: null };
-  },
-});
 
-/**
- * 修正サイクル用のサブワークフロー
- * 複数の不合格メニューを並列で修正してマージする
- */
-const fixCycleWorkflow = createWorkflow({
-  id: "fix-cycle",
-  inputSchema: z.object({
-    days: z.record(z.any()),
-    invalidMeals: z.array(z.any()),
-    mealTargets: z.custom<MealTargetNutrition>(),
-    dislikedIngredients: z.array(z.string()),
-    isValid: z.boolean(),
-  }),
-  outputSchema: z.object({
-    days: z.record(z.any()),
-    invalidMeals: z.array(z.any()),
-    mealTargets: z.custom<MealTargetNutrition>(),
-    dislikedIngredients: z.array(z.string()),
-    isValid: z.boolean(),
-  }),
-})
-  .then(createStep({
-    id: "prepFixArray",
-    inputSchema: z.object({
-      days: z.record(z.any()),
-      invalidMeals: z.array(z.any()),
-      mealTargets: z.custom<MealTargetNutrition>(),
-      dislikedIngredients: z.array(z.string()),
-      isValid: z.boolean(),
-    }),
-    outputSchema: z.array(z.object({
-      date: z.string(),
-      mealType: z.string(),
-      target: z.any(),
-      dislikedIngredients: z.array(z.string()),
-      existingTitles: z.array(z.string()),
-    })),
-    execute: async ({ inputData }) => {
-      const { days, invalidMeals, dislikedIngredients } = inputData as {
-        days: Record<string, DayPlan>;
-        invalidMeals: MealValidationError[];
-        dislikedIngredients: string[];
-      };
-      
-      const existingTitles = Object.values(days).flatMap((d) => [
-        d.meals.breakfast.title, d.meals.lunch.title, d.meals.dinner.title,
-      ]);
-
-      // foreach 用に配列に変換
-      return invalidMeals.map(m => ({
-        date: m.date,
-        mealType: m.mealType,
-        target: m.target,
-        dislikedIngredients,
-        existingTitles,
-      }));
-    }
-  }))
-  .foreach(fixSingleMealStep, { concurrency: 3 })
-  .then(createStep({
-    id: "mergeAndRevalidate",
-    inputSchema: z.array(z.object({
-      date: z.string(),
-      mealType: z.string(),
-      meal: SingleMealSchema.nullable(),
-    })),
-    outputSchema: z.object({
-      days: z.record(z.any()),
-      invalidMeals: z.array(z.any()),
-      mealTargets: z.custom<MealTargetNutrition>(),
-      dislikedIngredients: z.array(z.string()),
-      isValid: z.boolean(),
-    }),
-    execute: async ({ inputData, getInitData }) => {
-      const fixedResults = inputData;
-      const initData = getInitData<{
-        days: Record<string, DayPlan>;
-        mealTargets: MealTargetNutrition;
-        dislikedIngredients: string[];
-      }>();
-      const { days, mealTargets, dislikedIngredients } = initData;
-      
+      // 修正結果をマージ
       const updatedDays = { ...days };
       
-      for (const res of fixedResults) {
-        if (res.meal) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const target = (mealTargets as any)[res.mealType];
-          const diff = Math.abs(res.meal.nutrition.calories - target.calories) / target.calories;
-          
-          if (diff <= 0.15) {
-            const mealSlot: MealSlot = {
-              recipeId: res.meal.recipeId,
-              title: res.meal.title,
-              status: "planned",
-              nutrition: res.meal.nutrition,
-              tags: res.meal.tags,
-              ingredients: res.meal.ingredients,
-              steps: res.meal.steps,
-            };
-            updatedDays[res.date].meals[res.mealType as "breakfast" | "lunch" | "dinner"] = mealSlot;
-            updatedDays[res.date] = recalculateDayNutrition(updatedDays[res.date]);
-          }
+      for (const fixedMeal of result.object.meals) {
+        const [date, mealType] = fixedMeal.key.split("_");
+        
+        if (!date || !mealType || !updatedDays[date]) {
+          console.warn(`[Workflow:fixInvalidMeals] Invalid key: ${fixedMeal.key}`);
+          continue;
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const target = (mealTargets as any)[mealType];
+        if (!target) continue;
+
+        // カロリー差が15%以内かチェック
+        const diff = Math.abs(fixedMeal.recipe.nutrition.calories - target.calories) / target.calories;
+        
+        if (diff <= 0.15) {
+          const mealSlot: MealSlot = {
+            recipeId: fixedMeal.recipe.recipeId,
+            title: fixedMeal.recipe.title,
+            status: "planned",
+            nutrition: fixedMeal.recipe.nutrition,
+            tags: fixedMeal.recipe.tags,
+            ingredients: fixedMeal.recipe.ingredients,
+            steps: fixedMeal.recipe.steps,
+          };
+          updatedDays[date].meals[mealType as "breakfast" | "lunch" | "dinner"] = mealSlot;
+          updatedDays[date] = recalculateDayNutrition(updatedDays[date]);
         }
       }
 
+      // 再バリデーション
       const validationResult = validatePlanNutrition(updatedDays, mealTargets);
+      console.log(`[Workflow:fixInvalidMeals] After fix - Valid: ${validationResult.isValid}, Remaining invalid: ${validationResult.invalidMeals.length}`);
       
       return {
         days: updatedDays,
         invalidMeals: validationResult.invalidMeals,
-        mealTargets,
-        dislikedIngredients,
         isValid: validationResult.isValid,
       };
+    } catch (e) {
+      console.error("[Workflow:fixInvalidMeals] Error during batch fix:", e);
+      return { days, invalidMeals, isValid: false };
     }
-  }));
+  },
+});
 
 /**
- * 最終的なフォールバックを適用するステップ
- * dountil 終了後も不合格な食事が残っている場合に固定メニューに差し替える
+ * ステップ4: 最終的なフォールバックを適用
+ * 2回目の修正後も不合格な食事が残っている場合に固定メニューに差し替える
  */
 const applyFinalFallbackStep = createStep({
   id: "applyFinalFallback",
   inputSchema: z.object({
     days: z.record(z.any()),
     invalidMeals: z.array(z.any()),
-    mealTargets: z.custom<MealTargetNutrition>(),
     isValid: z.boolean(),
+    mealTargets: z.custom<MealTargetNutrition>(),
   }),
   outputSchema: z.record(z.any()), // Record<string, DayPlan>
   execute: async ({ inputData }) => {
@@ -341,7 +302,7 @@ const applyFinalFallbackStep = createStep({
       return days;
     }
 
-    console.log(`[Workflow] Applying fallback for ${invalidMeals.length} remaining invalid meals.`);
+    console.log(`[Workflow:applyFinalFallback] Applying fallback for ${invalidMeals.length} remaining invalid meals.`);
     const finalDays = { ...days };
 
     for (const { date, mealType } of invalidMeals) {
@@ -355,7 +316,13 @@ const applyFinalFallbackStep = createStep({
 });
 
 /**
- * 14日間食事プラン生成ワークフロー (メイン)
+ * 7日間食事プラン生成ワークフロー (メイン)
+ * 
+ * シンプルな4ステップフロー:
+ * 1. generateInitialPlan - 初回プラン生成
+ * 2. validatePlan - バリデーション
+ * 3. fixInvalidMeals - 不合格分を一括再生成（1回のLLM呼び出し）
+ * 4. applyFinalFallback - それでもダメならフォールバック
  */
 export const mealPlanGenerationWorkflow = createWorkflow({
   id: "meal-plan-generation",
@@ -367,7 +334,9 @@ export const mealPlanGenerationWorkflow = createWorkflow({
   }),
   outputSchema: z.record(z.any()), // Record<string, DayPlan>
 })
+  // ステップ1: 初回プラン生成
   .then(generateInitialPlanStep)
+  // マップ: validatePlan用に入力を整形
   .map(async ({ inputData, getInitData }) => {
     const initData = getInitData() as { mealTargets: MealTargetNutrition };
     return {
@@ -375,7 +344,9 @@ export const mealPlanGenerationWorkflow = createWorkflow({
       mealTargets: initData.mealTargets,
     };
   })
+  // ステップ2: バリデーション
   .then(validatePlanStep)
+  // マップ: fixInvalidMeals用に入力を整形
   .map(async ({ inputData, getInitData }) => {
     const initData = getInitData() as { 
       mealTargets: MealTargetNutrition; 
@@ -387,13 +358,16 @@ export const mealPlanGenerationWorkflow = createWorkflow({
       dislikedIngredients: initData.dislikedIngredients,
     };
   })
-  .dountil(fixCycleWorkflow, async ({ inputData, iterationCount }) => {
-    const result = inputData as { isValid: boolean };
-    if (iterationCount >= 2) {
-      console.log("[Workflow] Max iterations reached.");
-      return true;
-    }
-    return result.isValid;
+  // ステップ3: 不合格分を一括で再生成
+  .then(fixInvalidMealsStep)
+  // マップ: applyFinalFallback用に入力を整形
+  .map(async ({ inputData, getInitData }) => {
+    const initData = getInitData() as { mealTargets: MealTargetNutrition };
+    return {
+      ...inputData,
+      mealTargets: initData.mealTargets,
+    };
   })
+  // ステップ4: 最終フォールバック
   .then(applyFinalFallbackStep)
   .commit();

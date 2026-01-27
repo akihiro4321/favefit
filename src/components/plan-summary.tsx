@@ -92,7 +92,10 @@ const NutrientRow = ({
 };
 
 export function PlanSummary({ days, targetMacros }: PlanSummaryProps) {
-  const allMeals = Object.values(days).flatMap((day) => [
+  // チートデイを除外した通常日のみを抽出
+  const normalDays = Object.values(days).filter((day) => !day.isCheatDay);
+  
+  const allMeals = normalDays.flatMap((day) => [
     day.meals.breakfast,
     day.meals.lunch,
     day.meals.dinner,
@@ -103,7 +106,7 @@ export function PlanSummary({ days, targetMacros }: PlanSummaryProps) {
       ? allMeals.reduce((sum, meal) => {
           const calories = Number(meal.nutrition?.calories) || 0;
           return sum + (isNaN(calories) ? 0 : calories);
-        }, 0) / (allMeals.length / 3) 
+        }, 0) / normalDays.length
       : 0;
 
   const avgPFC = {
@@ -112,21 +115,21 @@ export function PlanSummary({ days, targetMacros }: PlanSummaryProps) {
         ? allMeals.reduce((sum, meal) => {
             const protein = Number(meal.nutrition?.protein) || 0;
             return sum + (isNaN(protein) ? 0 : protein);
-          }, 0) / (allMeals.length / 3)
+          }, 0) / normalDays.length
         : 0,
     fat:
       allMeals.length > 0
         ? allMeals.reduce((sum, meal) => {
             const fat = Number(meal.nutrition?.fat) || 0;
             return sum + (isNaN(fat) ? 0 : fat);
-          }, 0) / (allMeals.length / 3)
+          }, 0) / normalDays.length
         : 0,
     carbs:
       allMeals.length > 0
         ? allMeals.reduce((sum, meal) => {
             const carbs = Number(meal.nutrition?.carbs) || 0;
             return sum + (isNaN(carbs) ? 0 : carbs);
-          }, 0) / (allMeals.length / 3)
+          }, 0) / normalDays.length
         : 0,
   };
 
