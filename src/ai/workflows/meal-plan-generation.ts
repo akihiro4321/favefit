@@ -5,9 +5,8 @@
  * MastraのcreateWorkflow/createStepを標準的な非同期関数チェーンに変換
  */
 
-import { generateObject } from "ai";
 import { z } from "zod";
-import { geminiFlash } from "../config";
+import { runAgentWithSchema } from "../utils/agent-helpers";
 import {
   SingleMealSchema,
   DEFAULT_PLAN_DURATION_DAYS,
@@ -20,7 +19,6 @@ import {
   getPlanGenerationPrompt, 
   getBatchMealFixPrompt 
 } from "../agents/prompts/plan-generator";
-import { getTelemetryConfig } from "../observability";
 import { validatePlanNutrition, recalculateDayNutrition, MealValidationError } from "@/lib/tools/nutritionValidator";
 import { DayPlan, MealSlot } from "@/lib/schema";
 import { MealTargetNutrition, NutritionValues } from "@/lib/tools/mealNutritionCalculator";
@@ -238,13 +236,14 @@ async function fixInvalidMeals(
   });
 
   try {
-    const { object } = await generateObject({
-      model: geminiFlash,
-      system: PLAN_GENERATOR_INSTRUCTIONS,
+    const object = await runAgentWithSchema(
+      PLAN_GENERATOR_INSTRUCTIONS,
       prompt,
-      schema: BatchFixOutputSchema,
-      experimental_telemetry: getTelemetryConfig("fix-invalid-meals", userId),
-    });
+      BatchFixOutputSchema,
+      "flash",
+      "fix-invalid-meals",
+      userId
+    );
 
     // 修正結果をマージ
     const updatedDays = { ...days };
