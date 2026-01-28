@@ -1,10 +1,14 @@
 /**
- * FaveFit - Preference Learner Agent (Mastra形式)
+ * FaveFit - Preference Learner Agent
  * ユーザー嗜好学習エージェント
  */
 
-import { Agent } from "@mastra/core/agent";
 import { z } from "zod";
+import { runAgentWithSchema } from "../utils/agent-helpers";
+
+// ============================================
+// スキーマ定義
+// ============================================
 
 /**
  * 入力スキーマ（フィードバック分析用）
@@ -32,27 +36,33 @@ export const PreferenceLearnerInputSchema = z.object({
  */
 export const PreferenceLearnerOutputSchema = z.object({
   cuisineUpdates: z
-    .any()
+    .record(z.number())
     .describe("ジャンルごとのスコア変動 (例: { japanese: 5, korean: -2 })"),
   flavorUpdates: z
-    .any()
+    .record(z.number())
     .describe("味付けごとのスコア変動 (例: { spicy: 3, light: 1 })"),
   summary: z.string().describe("学習内容の要約"),
 });
 
-export type PreferenceLearnerInput = z.infer<typeof PreferenceLearnerInputSchema>;
-export type PreferenceLearnerOutput = z.infer<typeof PreferenceLearnerOutputSchema>;
+// ============================================
+// 型エクスポート
+// ============================================
+
+export type PreferenceLearnerInput = z.infer<
+  typeof PreferenceLearnerInputSchema
+>;
+export type PreferenceLearnerOutput = z.infer<
+  typeof PreferenceLearnerOutputSchema
+>;
 
 // 後方互換性のためのエイリアス
 export type PreferenceAnalysis = PreferenceLearnerOutput;
 
-/**
- * Preference Learner Agent
- */
-export const preferenceLearnerAgent = new Agent({
-  id: "preference_learner",
-  name: "Preference Learner",
-  instructions: `
+// ============================================
+// プロンプト
+// ============================================
+
+const INSTRUCTIONS = `
 あなたはユーザーの食の好みを分析するAIです。
 
 【入力】
@@ -67,6 +77,21 @@ export const preferenceLearnerAgent = new Agent({
 
 【出力形式】
 JSON形式で出力してください。cuisineUpdates と flavorUpdates はキー(文字列)と値(数値)のオブジェクトにしてください。
-`,
-  model: "google/gemini-flash-latest",
-});
+`;
+
+// ============================================
+// エージェント実行
+// ============================================
+
+/**
+ * Preference Learner を実行
+ */
+export async function runPreferenceLearner(
+  prompt: string
+): Promise<PreferenceLearnerOutput> {
+  return runAgentWithSchema(
+    INSTRUCTIONS,
+    prompt,
+    PreferenceLearnerOutputSchema
+  );
+}

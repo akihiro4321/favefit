@@ -1,47 +1,33 @@
 /**
- * FaveFit - Recipe Creator Agent (Mastra形式)
+ * FaveFit - Recipe Creator Agent
  * レシピ詳細生成エージェント
  */
 
-import { Agent } from "@mastra/core/agent";
 import { z } from "zod";
+import { runAgentWithSchema, formatArray, formatPreferences } from "../utils/agent-helpers";
+import { NutritionValuesSchema, IngredientItemSchema } from "../types/common";
 import { UserDocument } from "@/lib/db/firestore/userRepository";
 
-/**
- * レシピ生成エージェントの出力スキーマ
- */
+// ============================================
+// スキーマ定義
+// ============================================
+
 export const RecipeOutputSchema = z.object({
   title: z.string().describe("レシピの名前"),
   description: z.string().describe("レシピの短い魅力的な説明"),
-  ingredients: z
-    .array(
-      z.object({
-        name: z.string().describe("材料名"),
-        amount: z.string().describe("分量（例: 100g, 1/2個）"),
-      })
-    )
-    .describe("材料リスト"),
+  ingredients: z.array(IngredientItemSchema).describe("材料リスト"),
   instructions: z.array(z.string()).describe("調理手順（ステップ形式）"),
-  nutrition: z
-    .object({
-      calories: z.number().describe("カロリー (kcal)"),
-      protein: z.number().describe("タンパク質 (g)"),
-      fat: z.number().describe("脂質 (g)"),
-      carbs: z.number().describe("炭水化物 (g)"),
-    })
-    .describe("このレシピ1人分あたりの栄養価"),
+  nutrition: NutritionValuesSchema.describe("このレシピ1人分あたりの栄養価"),
   cookingTime: z.number().describe("推定調理時間（分）"),
 });
 
 export type Recipe = z.infer<typeof RecipeOutputSchema>;
 
-/**
- * Recipe Creator Agent
- */
-export const recipeCreatorAgent = new Agent({
-  id: "recipe_creator",
-  name: "Recipe Creator",
-  instructions: `あなたは一流のプロの管理栄養士兼シェフです。忙しい現代人が、健康的かつ継続的に自炊を楽しめるよう、**「手軽・時短・美味しい」**をモットーとしたレシピを提案してください。
+// ============================================
+// プロンプト
+// ============================================
+
+const INSTRUCTIONS = `あなたは一流のプロの管理栄養士兼シェフです。忙しい現代人が、健康的かつ継続的に自炊を楽しめるよう、**「手軽・時短・美味しい」**をモットーとしたレシピを提案してください。
 
 ユーザーから提供される「現在の気分」、「目標とする1食あたりの栄養素（カロリー、PFC）」、および「個人の好み（好き嫌い・アレルギー）」に基づき、最適なレシピを1つ提案してください。
 
@@ -70,44 +56,48 @@ export const recipeCreatorAgent = new Agent({
 9. **調味料・常備品の分量表現:** 一般的な調味料や常備品については、以下の表現を優先的に使用してください：
    「大さじ」「小さじ」「少々」「適量」「少量」「たっぷり」「ひとつまみ」
 
-出力は必ず指定されたJSONスキーマに従ってください。`,
-  model: "google/gemini-flash-latest",
-});
+出力は必ず指定されたJSONスキーマに従ってください。`;
+
+// ============================================
+// エージェント実行
+// ============================================
 
 /**
- * 学習済みプロファイルをフォーマットするヘルパー関数
+ * Recipe Creator を実行
  */
-const formatLearnedProfile = (
-  learnedPrefs: UserDocument["learnedPreferences"]
-) => {
-  const topCuisines = Object.entries(learnedPrefs.cuisines || {})
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 3)
-    .map(([k]) => k)
-    .join(", ");
+export async function runRecipeCreator(
+  prompt: string,
+  userId?: string
+): Promise<Recipe> {
+  return runAgentWithSchema(
+    INSTRUCTIONS,
+    prompt,
+    RecipeOutputSchema,
+    "flash",
+    "recipe-creator",
+    userId
+  );
+}
 
-  const topFlavors = Object.entries(learnedPrefs.flavorProfile || {})
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 3)
-    .map(([k]) => k)
-    .join(", ");
+// ============================================
+// プロンプト構築ヘルパー
+// ============================================
 
-  return `好みのジャンル: ${topCuisines || "データなし"}, 好みの味: ${topFlavors || "データなし"}`;
-};
+interface TargetNutrition {
+  calories: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+}
 
 /**
- * レシピ生成用のプロンプトを構築する関数
+ * レシピ生成用のプロンプトを構築
  */
-export const buildRecipePrompt = (
+export function buildRecipePrompt(
   userDoc: UserDocument | null,
   mood: string,
-  targetNutrition: {
-    calories: number;
-    protein: number;
-    fat: number;
-    carbs: number;
-  }
-) => {
+  targetNutrition: TargetNutrition
+): string {
   const basePrompt = `
 【リクエスト内容】
 - 今日の気分: ${mood}
@@ -122,22 +112,23 @@ export const buildRecipePrompt = (
   }
 
   const { profile, learnedPreferences } = userDoc;
+  const allergies = formatArray(profile.allergies, "なし");
 
   return (
     basePrompt +
     `
 【ユーザーの好み情報】
-- 好きな食材: ${(profile.favoriteIngredients || []).join(", ") || "特になし"}
-- 苦手な食材: ${(learnedPreferences.dislikedIngredients || []).join(", ") || "特になし"}
-- アレルギー: ${(profile.allergies || []).length > 0 ? profile.allergies!.join(", ") : "なし"}
+- 好きな食材: ${formatArray(profile.favoriteIngredients)}
+- 苦手な食材: ${formatArray(learnedPreferences.dislikedIngredients)}
+- アレルギー: ${allergies}
 - 料理スキル: ${profile.cookingSkillLevel || "intermediate"}
 - かけられる時間: ${profile.availableTime || "medium"}
-- 過去の傾向: ${formatLearnedProfile(learnedPreferences)}
+- 過去の傾向: ${formatPreferences(learnedPreferences.cuisines, learnedPreferences.flavorProfile)}
 
 【重要】
 1. **リクエストの最優先:** 「今日の気分」に具体的な料理名や食材（例: エスカルゴ、ステーキ等）が含まれる場合、入手難易度や調理時間を問わず、**必ずその食材を使用したレシピ**を提案してください。
-2. **安全性の確保:** アレルギー食材 (${(profile.allergies || []).join(", ")}) は絶対に使用しないでください。
+2. **安全性の確保:** アレルギー食材 (${allergies}) は絶対に使用しないでください。
 3. **好みの反映:** 苦手な食材も可能な限り避けてください。好きな食材を積極的に活用し、ユーザーのスキルレベルと時間に合ったレシピを考案してください。
 `
   );
-};
+}

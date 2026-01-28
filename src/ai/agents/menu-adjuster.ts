@@ -1,22 +1,26 @@
 /**
- * FaveFit - Menu Adjuster Agent (Mastra形式)
+ * FaveFit - Menu Adjuster Agent
  * 臨機応変なメニュー提案エージェント
  */
 
-import { Agent } from "@mastra/core/agent";
 import { z } from "zod";
+import { runAgentWithSchema } from "../utils/agent-helpers";
+import {
+  NutritionValuesSchema,
+  IngredientItemSchema,
+  PreferencesProfileSchema,
+} from "../types/common";
+
+// ============================================
+// スキーマ定義
+// ============================================
 
 /**
  * 入力スキーマ
  */
 export const MenuAdjusterInputSchema = z.object({
   availableIngredients: z.array(z.string()).describe("手元にある食材リスト"),
-  targetNutrition: z.object({
-    calories: z.number(),
-    protein: z.number(),
-    fat: z.number(),
-    carbs: z.number(),
-  }).describe("本日の残り目標栄養素"),
+  targetNutrition: NutritionValuesSchema.describe("本日の残り目標栄養素"),
   userComment: z
     .string()
     .optional()
@@ -25,35 +29,25 @@ export const MenuAdjusterInputSchema = z.object({
     .array(z.string())
     .optional()
     .describe("すでに提案して却下されたレシピ名"),
-  preferences: z
-    .object({
-      cuisines: z.record(z.number()).optional(),
-      flavorProfile: z.record(z.number()).optional(),
-      dislikedIngredients: z.array(z.string()).optional(),
-    })
-    .optional()
-    .describe("学習済み嗜好プロファイル"),
+  preferences: PreferencesProfileSchema.optional().describe(
+    "学習済み嗜好プロファイル"
+  ),
 });
 
 /**
- * 出力スキーマ（1レシピ）
+ * 提案レシピスキーマ
  */
 const SuggestedRecipeSchema = z.object({
   recipeId: z.string(),
   title: z.string(),
   description: z.string().describe("なぜこのレシピを提案したか"),
   tags: z.array(z.string()),
-  ingredients: z.array(z.object({ name: z.string(), amount: z.string() })),
+  ingredients: z.array(IngredientItemSchema),
   additionalIngredients: z
     .array(z.string())
     .describe("追加で必要な食材（手元にないもの）"),
   steps: z.array(z.string()),
-  nutrition: z.object({
-    calories: z.number(),
-    protein: z.number(),
-    fat: z.number(),
-    carbs: z.number(),
-  }),
+  nutrition: NutritionValuesSchema,
 });
 
 /**
@@ -64,16 +58,18 @@ export const MenuAdjusterOutputSchema = z.object({
   message: z.string().describe("ユーザーへの一言メッセージ"),
 });
 
+// ============================================
+// 型エクスポート
+// ============================================
+
 export type MenuAdjusterInput = z.infer<typeof MenuAdjusterInputSchema>;
 export type MenuAdjusterOutput = z.infer<typeof MenuAdjusterOutputSchema>;
 
-/**
- * Menu Adjuster Agent
- */
-export const menuAdjusterAgent = new Agent({
-  id: "menu_adjuster",
-  name: "Menu Adjuster",
-  instructions: `
+// ============================================
+// プロンプト
+// ============================================
+
+const INSTRUCTIONS = `
 あなたは「今あるもので何とかする」料理の達人です。
 ユーザーの手元にある食材と、本日の残り栄養目標から、最適なレシピを3つ提案してください。
 
@@ -100,6 +96,17 @@ export const menuAdjusterAgent = new Agent({
 【message の例】
 - 「冷蔵庫の食材だけで3品ご用意しました！今日の気分はどれですか？」
 - 「辛めのレシピを集めました。お好みに合うものを選んでくださいね！」
-`,
-  model: "google/gemini-flash-latest",
-});
+`;
+
+// ============================================
+// エージェント実行
+// ============================================
+
+/**
+ * Menu Adjuster を実行
+ */
+export async function runMenuAdjuster(
+  prompt: string
+): Promise<MenuAdjusterOutput> {
+  return runAgentWithSchema(INSTRUCTIONS, prompt, MenuAdjusterOutputSchema);
+}

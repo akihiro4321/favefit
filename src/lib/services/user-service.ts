@@ -3,8 +3,7 @@
  * ユーザー関連のビジネスロジック（栄養目標計算、好み学習）
  */
 
-import { mastra } from "@/mastra";
-import { PreferenceAnalysis } from "@/mastra/agents/preference-learner";
+import { runPreferenceLearner, PreferenceLearnerOutput } from "@/ai/agents/preference-learner";
 import { updateLearnedPreferences, updateUserNutrition, updateUserNutritionPreferences } from "@/lib/db/firestore/userRepository";
 import { db } from "@/lib/db/firestore/client";
 import { doc, getDoc } from "firebase/firestore";
@@ -37,7 +36,7 @@ export interface CalculateNutritionResponse {
 }
 
 export interface LearnPreferenceResponse {
-  analysis: PreferenceAnalysis;
+  analysis: PreferenceLearnerOutput;
 }
 
 /**
@@ -89,8 +88,6 @@ export async function learnPreference(
 
   const recipe = recipeSnap.data();
 
-  const agent = mastra.getAgent("preferenceLearner");
-
   const messageText = `
 【分析対象データ】
 ■ レシピ
@@ -103,19 +100,7 @@ export async function learnPreference(
 コメント: "${feedback.comment || "なし"}"
 `;
 
-  const result = await agent.generate(messageText);
-
-  // 構造化出力が有効な場合は直接取得、そうでない場合はJSONをパース
-  let analysis: PreferenceAnalysis;
-  if (result.text) {
-    const jsonMatch = result.text.match(/\{[\s\S]*\}/);
-    const jsonString = jsonMatch ? jsonMatch[0] : result.text;
-    analysis = JSON.parse(jsonString);
-  } else if (result.object) {
-    analysis = result.object as PreferenceAnalysis;
-  } else {
-    throw new Error("AI応答が無効です");
-  }
+  const analysis = await runPreferenceLearner(messageText);
 
   await updateLearnedPreferences(
     userId,

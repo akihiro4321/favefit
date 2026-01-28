@@ -3,15 +3,24 @@
  * プラン生成・リフレッシュに関するビジネスロジック
  */
 
-import { mastra } from "@/mastra";
 import { z } from "zod";
-import { PlanGeneratorInput, PartialPlanOutputSchema } from "@/mastra/agents/plan-generator";
+import {
+  PlanGeneratorInput,
+  runPartialPlanGenerator,
+  PLAN_GENERATOR_INSTRUCTIONS,
+  generateMealPlan,
+  runExplorationAnalysis,
+  runSimpleBoredomAnalysis,
+  geminiFlash,
+  getTelemetryConfig,
+} from "@/ai";
+import { generateObject } from "ai";
+import { buildRecipePrompt, runRecipeCreator } from "@/ai/agents/recipe-creator";
 import { getOrCreateUser, setPlanCreating, setPlanCreated } from "@/lib/db/firestore/userRepository";
 import { createPlan, updatePlanStatus, getActivePlan, updatePlanDays, getPlan, updateMealSlot } from "@/lib/plan";
 import { createShoppingList } from "@/lib/shoppingList";
 import { getFavorites } from "@/lib/recipeHistory";
 import { DayPlan, MealSlot, ShoppingItem, IngredientItem } from "@/lib/schema";
-import { buildRecipePrompt } from "@/mastra/agents/recipe-creator";
 import { calculatePersonalizedMacroGoals } from "@/lib/tools/calculateMacroGoals";
 import { calculateMealTargets } from "@/lib/tools/mealNutritionCalculator";
 
@@ -180,23 +189,20 @@ async function generatePlanBackground(
       startDate,
     };
 
-    // Mastra ワークフローを実行
-    const workflow = mastra.getWorkflow("mealPlanGeneration");
-    const run = await workflow.createRun();
-    const result = await run.start({
-      inputData: {
-        input,
-        feedbackText: userDoc.planRejectionFeedback || "",
-        mealTargets,
-        dislikedIngredients: userDoc.learnedPreferences.dislikedIngredients,
-      },
+    // Vercel AI SDK ワークフローを実行
+    const result = await generateMealPlan({
+      input,
+      feedbackText: userDoc.planRejectionFeedback || "",
+      mealTargets,
+      dislikedIngredients: userDoc.learnedPreferences.dislikedIngredients,
+      userId,
     });
 
-    if (result.status !== "success") {
-      throw new Error(`プラン生成ワークフローが失敗したか中断されました: ${result.status}`);
+    if (!result.isValid && result.invalidMealsCount > 0) {
+      console.warn(`[generatePlanBackground] ${result.invalidMealsCount} meals had fallback applied`);
     }
 
-    const days = result.result as Record<string, DayPlan>;
+    const days = result.days;
 
     // 保存
     await createPlan(userId, startDate, days, "pending");
@@ -316,8 +322,6 @@ export async function refreshPlan(
   let datesToRefresh: string[] = forceDates || [];
 
   if (!forceDates || forceDates.length === 0) {
-    const analyzerAgent = mastra.getAgent("boredomAnalyzer");
-
     const analyzerMessageText = `以下の食事履歴を分析して、飽き率と改善提案を教えてください。JSON形式で出力してください。
 
 【食事履歴】
@@ -326,21 +330,10 @@ ${JSON.stringify(recentMeals, null, 2)}
 【ユーザー嗜好】
 ${JSON.stringify(userDoc.learnedPreferences, null, 2)}`;
 
-    const analyzerResult = await analyzerAgent.generate(analyzerMessageText, {
-      structuredOutput: {
-        schema: z.object({
-          boredomScore: z.number(),
-          shouldRefresh: z.boolean(),
-          refreshDates: z.array(z.string()).optional(),
-          analysis: z.string().optional(),
-        }),
-      }
-    });
-
-    if (!analyzerResult.object) {
-      throw new Error("Boredom analysis failed to return structured data");
-    }
-    const analysisResult = analyzerResult.object;
+    const analysisResult = await runSimpleBoredomAnalysis(
+      analyzerMessageText,
+      userId
+    );
 
     if (analysisResult.boredomScore >= 60 || analysisResult.shouldRefresh) {
       datesToRefresh = analysisResult.refreshDates || [];
@@ -402,8 +395,6 @@ export async function refreshPlanWithFeedback(
     throw new Error("アクティブなプランがありません");
   }
 
-  const analyzerAgent = mastra.getAgent("boredomAnalyzer");
-
   const analyzerMessageText = `以下のgood/bad選択結果から、ユーザーの現在の気分・好みを解析し、新しい探索プロファイルを提案してください。
 
 【good と選ばれたレシピ】
@@ -415,19 +406,10 @@ ${JSON.stringify(badRecipes, null, 2)}
 【現在の嗜好プロファイル】
 ${JSON.stringify(userDoc.learnedPreferences, null, 2)}`;
 
-  const analyzerResult = await analyzerAgent.generate(analyzerMessageText, {
-    structuredOutput: {
-      schema: z.object({
-        explorationProfile: z.any(),
-        message: z.string().optional(),
-      }),
-    }
-  });
-
-  if (!analyzerResult.object) {
-    throw new Error("Feedback analysis failed to return structured data");
-  }
-  const analysisResult = analyzerResult.object;
+  const analysisResult = await runExplorationAnalysis(
+    analyzerMessageText,
+    userId
+  );
 
   const today = new Date().toISOString().split("T")[0];
   const futureDates = Object.keys(activePlan.days)
@@ -485,8 +467,6 @@ export async function suggestBoredomRecipes(
     }
   }
 
-  const planAgent = mastra.getAgent("planGenerator");
-
   const messageText = `飽き防止のため、既存のプランとは異なる新ジャンル・新テイストのレシピを5つ提案してください。
 既存のレシピとは全く異なる方向性のものを選んでください。
 
@@ -500,50 +480,30 @@ export async function suggestBoredomRecipes(
 ${userDoc.learnedPreferences.dislikedIngredients.join(", ") || "なし"}
 
 【既存のレシピ（これらとは異なるものを提案）】
-${Array.from(existingTitles).slice(0, 20).join(", ")}
+${Array.from(existingTitles).slice(0, 20).join(", ")}`;
 
-【出力形式】
-以下のJSON形式で5つのレシピを出力してください：
-{
-  "recipes": [
-    {
-      "recipeId": "recipe-1",
-      "title": "レシピ名",
-      "description": "なぜこのレシピを提案したか（新ジャンル・新テイストの説明）",
-      "tags": ["タグ1", "タグ2"],
-      "nutrition": {
-        "calories": 500,
-        "protein": 30,
-        "fat": 15,
-        "carbs": 50
-      }
-    }
-  ]
-}`;
-
-  const result = await planAgent.generate(messageText, {
-    structuredOutput: {
-      schema: z.object({
-        recipes: z.array(z.object({
-          recipeId: z.string(),
-          title: z.string(),
-          description: z.string(),
-          tags: z.array(z.string()),
-          nutrition: z.object({
-            calories: z.number(),
-            protein: z.number(),
-            fat: z.number(),
-            carbs: z.number(),
-          }),
-        })),
+  const suggestRecipesSchema = z.object({
+    recipes: z.array(z.object({
+      recipeId: z.string(),
+      title: z.string(),
+      description: z.string(),
+      tags: z.array(z.string()),
+      nutrition: z.object({
+        calories: z.number(),
+        protein: z.number(),
+        fat: z.number(),
+        carbs: z.number(),
       }),
-    }
+    })),
   });
 
-  if (!result.object) {
-    throw new Error("Recipe suggestions failed to return structured data");
-  }
-  const parsedResult = result.object;
+  const { object: parsedResult } = await generateObject({
+    model: geminiFlash,
+    system: PLAN_GENERATOR_INSTRUCTIONS,
+    prompt: messageText,
+    schema: suggestRecipesSchema,
+    experimental_telemetry: getTelemetryConfig("suggest-boredom-recipes", userId),
+  });
 
   const recipes = (parsedResult.recipes || []).slice(0, 5);
 
@@ -559,8 +519,6 @@ async function generatePlanDays(
   dates: string[],
   existingTitles: string[]
 ): Promise<Record<string, DayPlan>> {
-  const planAgent = mastra.getAgent("planGenerator");
-
   const planMessageText = `以下の日付の食事プランを新しく生成してください。既存のメニューとは異なるものにしてください。
 
 【対象日】
@@ -579,19 +537,9 @@ ${userDoc.learnedPreferences.dislikedIngredients.join(", ") || "なし"}
 ${existingTitles.join(", ")}`;
 
   // 構造化出力を使用してスキーマに準拠したデータを取得（可変長の日付配列用）
-  const planResult1 = await planAgent.generate(planMessageText, {
-    structuredOutput: {
-      schema: PartialPlanOutputSchema,
-      jsonPromptInjection: true,
-    },
-  });
+  const planResult1 = await runPartialPlanGenerator(planMessageText, userId);
 
-  if (!planResult1.object) {
-    console.error("[generatePlanDays] Structured output failed:", planResult1.text?.substring(0, 500));
-    throw new Error("プラン日付の生成に失敗しました");
-  }
-
-  return convertPlanResultToDays(planResult1.object);
+  return convertPlanResultToDays(planResult1);
 }
 
 /**
@@ -607,8 +555,6 @@ async function generatePlanDaysWithProfile(
     avoidCuisines?: string[];
   }
 ): Promise<Record<string, DayPlan>> {
-  const planAgent = mastra.getAgent("planGenerator");
-
   const planMessageText = `以下の日付の食事プランを、新しい探索プロファイルに基づいて生成してください。
 
 【対象日】
@@ -631,19 +577,9 @@ ${explorationProfile?.avoidCuisines?.join(", ") || "なし"}
 ${userDoc.learnedPreferences.dislikedIngredients.join(", ") || "なし"}`;
 
   // 構造化出力を使用してスキーマに準拠したデータを取得（可変長の日付配列用）
-  const planResult2 = await planAgent.generate(planMessageText, {
-    structuredOutput: {
-      schema: PartialPlanOutputSchema,
-      jsonPromptInjection: true,
-    },
-  });
+  const planResult2 = await runPartialPlanGenerator(planMessageText, userId);
 
-  if (!planResult2.object) {
-    console.error("[generatePlanDaysWithProfile] Structured output failed:", planResult2.text?.substring(0, 500));
-    throw new Error("探索プロファイルに基づくプラン生成に失敗しました");
-  }
-
-  return convertPlanResultToDays(planResult2.object);
+  return convertPlanResultToDays(planResult2);
 }
 
 /**
@@ -781,28 +717,12 @@ async function generateSingleRecipeDetail(
   const userDoc = await getOrCreateUser(userId);
   const prompt = buildRecipePrompt(userDoc, meal.title, meal.nutrition);
 
-  const agent = mastra.getAgent("recipeCreator");
-
-  const result = await agent.generate(prompt);
-
-  // 構造化出力が有効な場合は直接取得、そうでない場合はJSONをパース
-  let aiResult;
-  if (result.text) {
-    const jsonMatch = result.text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("AI応答からレシピ詳細JSONを抽出できませんでした");
-    }
-    aiResult = JSON.parse(jsonMatch[0]);
-  } else if (result.object) {
-    aiResult = result.object;
-  } else {
-    throw new Error("AI応答が無効です");
-  }
+  const aiResult = await runRecipeCreator(prompt, userId);
 
   const ingredients = aiResult.ingredients.map(
     (i: { name: string; amount: string }) => ({ name: i.name, amount: i.amount })
   );
-  const steps = aiResult.instructions || aiResult.steps;
+  const steps = aiResult.instructions;
 
   const updates = {
     ingredients,
@@ -821,22 +741,13 @@ async function generateRecipeDetailsBatch(
   planId: string,
   days: Record<string, DayPlan>
 ): Promise<void> {
-  // すべてのレシピをキューに追加
-  const recipeQueue: Array<{
-    date: string;
-    mealType: "breakfast" | "lunch" | "dinner";
-    meal: MealSlot;
-  }> = [];
-
-  for (const [date, dayPlan] of Object.entries(days)) {
-    for (const mealType of ["breakfast", "lunch", "dinner"] as const) {
-      const meal = dayPlan.meals[mealType];
-      // 既に詳細がある場合はスキップ
-      if (!meal.ingredients || meal.ingredients.length === 0) {
-        recipeQueue.push({ date, mealType, meal });
-      }
-    }
-  }
+  const mealTypes = ["breakfast", "lunch", "dinner"] as const;
+  
+  const recipeQueue = Object.entries(days).flatMap(([date, dayPlan]) =>
+    mealTypes
+      .map((mealType) => ({ date, mealType, meal: dayPlan.meals[mealType] }))
+      .filter(({ meal }) => !meal.ingredients || meal.ingredients.length === 0)
+  );
 
   if (recipeQueue.length === 0) {
     return;
@@ -1019,9 +930,6 @@ export async function approvePlan(
   if (plan.status !== "pending") {
     throw new Error("このプランは承認可能な状態ではありません");
   }
-
-  // プラン承認前に（簡易的な）買い物リストを作成
-  await generateShoppingListFromRecipes(planId, plan.days);
 
   // プランのステータスをactiveに変更
   await updatePlanStatus(planId, "active");

@@ -69,7 +69,6 @@ export const getPlanGenerationPrompt = ({
   user_info,
   feedback_text,
 }: PlanGenerationPromptArgs): string => {
-  // ここにプロンプトの内容を貼り付けてください
   return `
 以下の情報に基づいて${duration}日間の食事プランを生成してください。
 
@@ -79,6 +78,7 @@ ${user_info}
 ${feedback_text}
 `;
 };
+
 /**
  * 単体の食事修正用プロンプトを生成します。
  */

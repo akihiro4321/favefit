@@ -3,8 +3,7 @@
  * レシピ詳細取得・生成・差し替えに関するビジネスロジック
  */
 
-import { mastra } from "@/mastra";
-import { buildRecipePrompt } from "@/mastra/agents/recipe-creator";
+import { buildRecipePrompt, runRecipeCreator } from "@/ai/agents/recipe-creator";
 import { getOrCreateUser } from "@/lib/db/firestore/userRepository";
 import { getPlan, updateMealSlot, swapMeal } from "@/lib/plan";
 import { MealSlot } from "@/lib/schema";
@@ -61,26 +60,10 @@ export async function getRecipeDetail(
   const userDoc = await getOrCreateUser(userId);
   const prompt = buildRecipePrompt(userDoc, currentMeal.title, currentMeal.nutrition);
 
-  const agent = mastra.getAgent("recipeCreator");
-
-  const result = await agent.generate(prompt);
-
-  // 構造化出力が有効な場合は直接取得、そうでない場合はJSONをパース
-  let aiResult;
-  if (result.text) {
-    const jsonMatch = result.text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("AI応答からレシピ詳細JSONを抽出できませんでした");
-    }
-    aiResult = JSON.parse(jsonMatch[0]);
-  } else if (result.object) {
-    aiResult = result.object;
-  } else {
-    throw new Error("AI応答が無効です");
-  }
+  const aiResult = await runRecipeCreator(prompt);
 
   const ingredients = aiResult.ingredients;
-  const steps = aiResult.instructions || aiResult.steps;
+  const steps = aiResult.instructions;
 
   const updates = {
     ingredients,
