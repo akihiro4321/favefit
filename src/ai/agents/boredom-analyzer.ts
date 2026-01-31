@@ -27,7 +27,7 @@ const MealHistoryItemSchema = z.object({
 export const BoredomAnalyzerInputSchema = z.object({
   recentMeals: z
     .array(MealHistoryItemSchema)
-    .describe("直近14日間の食事履歴"),
+    .describe("直近の食事履歴"),
   preferences: PreferencesProfileSchema.optional().describe(
     "ユーザーの嗜好プロファイル"
   ),

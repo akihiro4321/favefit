@@ -3,7 +3,7 @@
 import { useAuth } from "@/components/auth-provider";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -14,9 +14,8 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { getActivePlan } from "@/lib/plan";
-import { getItemsByCategory, getShoppingList } from "@/lib/shoppingList";
+import { getItemsByCategory, getShoppingList, toggleItemCheck } from "@/lib/shoppingList";
 import { ShoppingItem } from "@/lib/schema";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function ShoppingPage() {
   const { user, loading } = useAuth();
@@ -25,16 +24,10 @@ export default function ShoppingPage() {
   const [itemsByCategory, setItemsByCategory] = useState<
     Record<string, ShoppingItem[]>
   >({});
-  const [itemsByWeek, setItemsByWeek] = useState<
-    Record<string, Record<string, ShoppingItem[]>>
-  >({});
   const [planId, setPlanId] = useState<string | null>(null);
+  const [planDuration, setPlanDuration] = useState<number>(0);
   const [fetching, setFetching] = useState(true);
-  const [viewMode, setViewMode] = useState<"category" | "week">("category");
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-    new Set()
-  );
-  const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(
     new Set()
   );
 
@@ -51,64 +44,13 @@ export default function ShoppingPage() {
         const plan = await getActivePlan(user.uid);
         if (plan) {
           setPlanId(plan.id);
+          const daysCount = Object.keys(plan.days || {}).length;
+          setPlanDuration(daysCount);
           
-          // カテゴリ別表示
+          // カテゴリ別表示用のアイテム取得
           const items = await getItemsByCategory(plan.id);
           setItemsByCategory(items);
           setExpandedCategories(new Set(Object.keys(items)));
-
-          // 週単位表示
-          const shoppingList = await getShoppingList(plan.id);
-          if (shoppingList && plan.days) {
-            const weekItems: Record<string, Record<string, ShoppingItem[]>> = {};
-            
-            // プランの日付をソート
-            const sortedDates = Object.keys(plan.days).sort();
-            
-            // 各日付を週に分類
-            sortedDates.forEach((dateStr, index) => {
-              const weekNumber = Math.floor(index / 7) + 1;
-              const weekKey = `week${weekNumber}`;
-              
-              if (!weekItems[weekKey]) {
-                weekItems[weekKey] = {};
-              }
-              
-              // その日のレシピから食材を抽出
-              const dayPlan = plan.days[dateStr];
-              const dayIngredients = new Set<string>();
-              
-              Object.values(dayPlan.meals).forEach((meal) => {
-                if (meal.ingredients && Array.isArray(meal.ingredients)) {
-                  meal.ingredients.forEach((ing) => {
-                    // 食材名をそのまま利用（既に構造化されているため）
-                    dayIngredients.add(ing.name.trim());
-                  });
-                }
-              });
-              
-              // 買い物リストから該当週の食材を抽出
-              shoppingList.items.forEach((item) => {
-                const normalizedItemIng = item.ingredient.split(/\s+/)[0].trim();
-                if (dayIngredients.has(normalizedItemIng)) {
-                  const category = item.category || "その他";
-                  if (!weekItems[weekKey][category]) {
-                    weekItems[weekKey][category] = [];
-                  }
-                  // 重複チェック（同じ食材が既に追加されていないか）
-                  const exists = weekItems[weekKey][category].some(
-                    (i) => i.ingredient === item.ingredient
-                  );
-                  if (!exists) {
-                    weekItems[weekKey][category].push(item);
-                  }
-                }
-              });
-            });
-            
-            setItemsByWeek(weekItems);
-            setExpandedWeeks(new Set(Object.keys(weekItems)));
-          }
         }
       } catch (error) {
         console.error("Error fetching shopping list:", error);
@@ -123,7 +65,7 @@ export default function ShoppingPage() {
 
   const handleToggle = async (
     category: string,
-    index: number,
+    indexInItems: number,
     checked: boolean
   ) => {
     if (!planId) return;
@@ -132,12 +74,29 @@ export default function ShoppingPage() {
     setItemsByCategory((prev) => {
       const updated = { ...prev };
       updated[category] = [...updated[category]];
-      updated[category][index] = { ...updated[category][index], checked };
+      updated[category][indexInItems] = { ...updated[category][indexInItems], checked };
       return updated;
     });
 
-    // TODO: 実際のインデックスを計算してtoggleItemCheckを呼び出す
-    // 現在は楽観的UIのみ
+    try {
+      // getShoppingList を使用して、全アイテムの中での正しいインデックスを見つける必要がある
+      // もしくは toggleItemCheck をカテゴリベースのAPIにアップグレードするのが理想的だが、
+      // ここでは既存のAPIに合わせて、全アイテム内のインデックスを計算する
+      const list = await getShoppingList(planId);
+      if (list) {
+        const itemToUpdate = itemsByCategory[category][indexInItems];
+        const globalIndex = list.items.findIndex(
+          (i) => i.ingredient === itemToUpdate.ingredient && i.amount === itemToUpdate.amount
+        );
+        
+        if (globalIndex !== -1) {
+          await toggleItemCheck(planId, globalIndex, checked);
+        }
+      }
+    } catch (error) {
+      console.error("Error updating item status:", error);
+      // エラー時は元の状態に戻す（シンプルにするため今回は省略）
+    }
   };
 
   const toggleCategory = (category: string) => {
@@ -177,10 +136,9 @@ export default function ShoppingPage() {
     );
   }
 
-  const totalItems = Object.values(itemsByCategory).flat().length;
-  const checkedItems = Object.values(itemsByCategory)
-    .flat()
-    .filter((i) => i.checked).length;
+  const allItemsList = Object.values(itemsByCategory).flat();
+  const totalItemsCount = allItemsList.length;
+  const checkedItemsCount = allItemsList.filter((i) => i.checked).length;
 
   return (
     <div className="container max-w-2xl mx-auto py-8 px-4 space-y-6 pb-24">
@@ -190,12 +148,15 @@ export default function ShoppingPage() {
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <ShoppingCart className="w-6 h-6 text-primary" />
             買い物リスト
+            <Badge variant="secondary" className="ml-2">
+              {planDuration}日分
+            </Badge>
           </h1>
-          <p className="text-sm text-muted-foreground">
-            {checkedItems}/{totalItems} アイテム購入済み
+          <p className="text-sm text-muted-foreground mt-1">
+            {checkedItemsCount}/{totalItemsCount} アイテム購入済み
           </p>
         </div>
-        {checkedItems === totalItems && totalItems > 0 && (
+        {checkedItemsCount === totalItemsCount && totalItemsCount > 0 && (
           <Badge variant="default" className="gap-1">
             <Check className="w-3 h-3" />
             Complete!
@@ -203,230 +164,91 @@ export default function ShoppingPage() {
         )}
       </div>
 
-      {/* 表示モード切り替え */}
-      <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "category" | "week")}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="category">カテゴリ別</TabsTrigger>
-          <TabsTrigger value="week">週単位</TabsTrigger>
-        </TabsList>
-
-        {/* カテゴリ別表示 */}
-        <TabsContent value="category" className="space-y-4 mt-4">
-        {Object.entries(itemsByCategory)
-          .sort(([catA], [catB]) => {
-            const CATEGORY_ORDER = [
-              "主食・穀類",
-              "肉類",
-              "魚介類",
-              "野菜・ハーブ類",
-              "果実類",
-              "卵・乳製品",
-              "大豆製品",
-              "加工食品・その他",
-              "その他",
-              "調味料・甘味料",
-              "基本調味料・常備品 (お家にあれば購入不要)",
-            ];
-            const indexA = CATEGORY_ORDER.indexOf(catA);
-            const indexB = CATEGORY_ORDER.indexOf(catB);
-            
-            // 定義されていないカテゴリは最後に回す
-            const orderA = indexA === -1 ? 999 : indexA;
-            const orderB = indexB === -1 ? 999 : indexB;
-            
-            return orderA - orderB;
-          })
-          .map(([category, items]) => {
-          const isExpanded = expandedCategories.has(category);
-          const categoryChecked = items.filter((i) => i.checked).length;
-
-          return (
-            <Card key={category} className="overflow-hidden">
-              <CardHeader
-                className="pb-2 cursor-pointer select-none"
-                onClick={() => toggleCategory(category)}
-              >
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    {category}
-                    <span className="text-xs text-muted-foreground font-normal">
-                      ({categoryChecked}/{items.length})
-                    </span>
-                  </CardTitle>
-                  {isExpanded ? (
-                    <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                  )}
-                </div>
-              </CardHeader>
-
-              {isExpanded && (
-                <CardContent className="pt-0 pb-4">
-                  <ul className="space-y-2">
-                    {items.map((item, idx) => (
-                      <li
-                        key={idx}
-                        className="flex items-center gap-3 py-2 border-b last:border-0"
-                      >
-                        <Checkbox
-                          checked={item.checked}
-                          onCheckedChange={(checked) =>
-                            handleToggle(category, idx, checked as boolean)
-                          }
-                        />
-                        <span
-                          className={`flex-1 ${
-                            item.checked
-                              ? "line-through text-muted-foreground"
-                              : ""
-                          }`}
-                        >
-                          {item.ingredient}
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                          {item.amount}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              )}
-            </Card>
-          );
-        })}
-        </TabsContent>
-
-        {/* 週単位表示 */}
-        <TabsContent value="week" className="space-y-4 mt-4">
-          {Object.keys(itemsByWeek).length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <p>週単位のデータがありません</p>
-            </div>
-          ) : (
-            Object.entries(itemsByWeek).map(([weekKey, categories]) => {
-              const weekNumber = weekKey.replace("week", "");
-              const isExpanded = expandedWeeks.has(weekKey);
-              const weekTotalItems = Object.values(categories).flat().length;
-              const weekCheckedItems = Object.values(categories)
-                .flat()
-                .filter((i) => i.checked).length;
+      {/* 買い物リスト メインコンテンツ */}
+      <Card className="overflow-hidden animate-slide-up animation-delay-100">
+        <CardContent className="p-4 space-y-4">
+          {Object.entries(itemsByCategory)
+            .sort(([catA], [catB]) => {
+              const CATEGORY_ORDER = [
+                "主食・穀類",
+                "肉類",
+                "魚介類",
+                "野菜・ハーブ類",
+                "果実類",
+                "卵・乳製品",
+                "大豆製品",
+                "加工食品・その他",
+                "その他",
+                "調味料・甘味料",
+                "基本調味料・常備品 (お家にあれば購入不要)",
+              ];
+              const indexA = CATEGORY_ORDER.indexOf(catA);
+              const indexB = CATEGORY_ORDER.indexOf(catB);
+              const orderA = indexA === -1 ? 999 : indexA;
+              const orderB = indexB === -1 ? 999 : indexB;
+              return orderA - orderB;
+            })
+            .map(([category, items]) => {
+              const isExpanded = expandedCategories.has(category);
+              const categoryChecked = items.filter((i) => i.checked).length;
 
               return (
-                <Card key={weekKey} className="overflow-hidden">
-                  <CardHeader
-                    className="pb-2 cursor-pointer select-none"
-                    onClick={() => {
-                      setExpandedWeeks((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(weekKey)) {
-                          next.delete(weekKey);
-                        } else {
-                          next.add(weekKey);
-                        }
-                        return next;
-                      });
-                    }}
+                <div key={category} className="border-l-2 border-primary/20 pl-4 py-1">
+                  <div
+                    className="flex items-center justify-between cursor-pointer select-none py-2"
+                    onClick={() => toggleCategory(category)}
                   >
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        第{weekNumber}週
-                        <span className="text-xs text-muted-foreground font-normal">
-                          ({weekCheckedItems}/{weekTotalItems})
-                        </span>
-                      </CardTitle>
-                      {isExpanded ? (
-                        <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                      )}
-                    </div>
-                  </CardHeader>
+                    <span className="font-medium">
+                      {category}
+                      <span className="text-xs text-muted-foreground ml-2 font-normal">
+                        ({categoryChecked}/{items.length})
+                      </span>
+                    </span>
+                    {isExpanded ? (
+                      <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                    )}
+                  </div>
 
                   {isExpanded && (
-                    <CardContent className="pt-0 pb-4 space-y-4">
-                      {Object.entries(categories).map(([category, items]) => {
-                        const categoryChecked = items.filter((i) => i.checked).length;
-                        const isCategoryExpanded = expandedCategories.has(category);
-
-                        return (
-                          <div key={category} className="border-l-2 border-primary/20 pl-4">
-                            <div
-                              className="flex items-center justify-between cursor-pointer select-none py-2"
-                              onClick={() => {
-                                setExpandedCategories((prev) => {
-                                  const next = new Set(prev);
-                                  if (next.has(category)) {
-                                    next.delete(category);
-                                  } else {
-                                    next.add(category);
-                                  }
-                                  return next;
-                                });
-                              }}
-                            >
-                              <span className="text-sm font-medium">
-                                {category}
-                                <span className="text-xs text-muted-foreground ml-2">
-                                  ({categoryChecked}/{items.length})
-                                </span>
-                              </span>
-                              {isCategoryExpanded ? (
-                                <ChevronUp className="w-3 h-3 text-muted-foreground" />
-                              ) : (
-                                <ChevronDown className="w-3 h-3 text-muted-foreground" />
-                              )}
-                            </div>
-
-                            {isCategoryExpanded && (
-                              <ul className="space-y-2 mt-2">
-                                {items.map((item, idx) => {
-                                  // グローバルインデックスを計算
-                                  const globalIndex = Object.values(itemsByCategory)
-                                    .flat()
-                                    .findIndex((i) => i.ingredient === item.ingredient);
-
-                                  return (
-                                    <li
-                                      key={idx}
-                                      className="flex items-center gap-3 py-1 text-sm"
-                                    >
-                                      <Checkbox
-                                        checked={item.checked}
-                                        onCheckedChange={(checked) => {
-                                          if (globalIndex >= 0) {
-                                            handleToggle(category, globalIndex, checked as boolean);
-                                          }
-                                        }}
-                                      />
-                                      <span
-                                        className={`flex-1 ${
-                                          item.checked
-                                            ? "line-through text-muted-foreground"
-                                            : ""
-                                        }`}
-                                      >
-                                        {item.ingredient}
-                                      </span>
-                                      <span className="text-xs text-muted-foreground">
-                                        {item.amount}
-                                      </span>
-                                    </li>
-                                  );
-                                })}
-                              </ul>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </CardContent>
+                    <ul className="space-y-3 mt-2 mb-4 animate-in fade-in slide-in-from-top-1 duration-200">
+                      {items.map((item, idx) => (
+                        <li
+                          key={idx}
+                          className="flex items-center gap-3 py-1 group"
+                        >
+                          <Checkbox
+                            id={`item-${category}-${idx}`}
+                            checked={item.checked}
+                            onCheckedChange={(checked) =>
+                              handleToggle(category, idx, checked as boolean)
+                            }
+                            className="w-5 h-5"
+                          />
+                          <label
+                            htmlFor={`item-${category}-${idx}`}
+                            className={`flex-1 text-sm cursor-pointer ${
+                              item.checked
+                                ? "line-through text-muted-foreground"
+                                : "text-foreground group-hover:text-primary transition-colors"
+                            }`}
+                          >
+                            {item.ingredient}
+                          </label>
+                          <span className="text-xs text-muted-foreground bg-secondary/30 px-2 py-1 rounded">
+                            {item.amount}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
                   )}
-                </Card>
+                </div>
               );
-            })
-          )}
-        </TabsContent>
-      </Tabs>
+            })}
+        </CardContent>
+      </Card>
     </div>
   );
 }
+

@@ -1,6 +1,6 @@
 /**
  * FaveFit v2 - プランサービス
- * 14日間プランの作成・取得・更新
+ * 7日間プランの作成・取得・更新
  */
 
 import { db } from "@/lib/db/firestore/client";

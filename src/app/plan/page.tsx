@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { getActivePlan, getPendingPlan } from "@/lib/plan";
 import { PlanDocument, DayPlan } from "@/lib/schema";
-import { BoredomRefreshDialog } from "@/components/boredom-refresh-dialog";
 import { PlanSummary } from "@/components/plan-summary";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -33,7 +32,6 @@ export default function PlanPage() {
     (PlanDocument & { id: string }) | null
   >(null);
   const [fetching, setFetching] = useState(true);
-  const [showBoredomDialog, setShowBoredomDialog] = useState(false);
   const [approving, setApproving] = useState(false);
   const [targetMacros, setTargetMacros] = useState<{ protein: number; fat: number; carbs: number } | undefined>();
 
@@ -246,20 +244,8 @@ export default function PlanPage() {
               {planToDisplay.startDate} 〜 7日間のプラン内容
             </p>
           </div>
-          {!isPending && (
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-full gap-2 border-[#edf2f7]"
-                onClick={() => setShowBoredomDialog(true)}
-                disabled={fetching}
-              >
-                <Sparkles className="w-4 h-4 text-primary" />
-                飽きた
-              </Button>
             </div>
-          )}
         </div>
       </div>
 
@@ -300,16 +286,6 @@ export default function PlanPage() {
         </div>
       )}
 
-      {showBoredomDialog && user && (
-        <BoredomRefreshDialog
-          userId={user.uid}
-          onComplete={() => {
-            setShowBoredomDialog(false);
-            getActivePlan(user.uid).then((plan) => setActivePlan(plan));
-          }}
-          onClose={() => setShowBoredomDialog(false)}
-        />
-      )}
 
       {/* 日別カード */}
       <div className="space-y-4">

@@ -50,6 +50,8 @@ const ONBOARDING_STEP = {
 // セレクトボックス共通のTailwindクラス
 const SELECT_CLASS_NAME = "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm";
 
+const DEFAULT_DURATION = 7; // 将来的に可変にするためのデフォルト値
+
 /**
  * オンボーディングで収集するフォームデータの型定義
  * 各ステップで入力される情報をまとめて管理
@@ -484,6 +486,7 @@ export default function OnboardingPage() {
       <PlanCreatingScreen
         showBackButton={true}
         onBack={() => router.push("/home")}
+        duration={DEFAULT_DURATION}
       />
     );
   }
@@ -1066,7 +1069,7 @@ export default function OnboardingPage() {
               <div className="space-y-2">
                 <h2 className="text-2xl font-bold">準備完了！</h2>
                 <p className="text-muted-foreground">
-                  さっそく14日間の食事プランを作成しましょう
+                  さっそく{DEFAULT_DURATION}日間の食事プランを作成しましょう
                 </p>
               </div>
               <div className="p-4 bg-white/50 rounded-xl border-dashed border-2">

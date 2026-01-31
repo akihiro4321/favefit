@@ -1,7 +1,7 @@
 /**
  * FaveFit - Meal Plan Generation Workflow (Vercel AI SDK形式)
  * 
- * 7日間食事プラン生成ワークフロー
+ * 食事プラン生成ワークフロー
  * MastraのcreateWorkflow/createStepを標準的な非同期関数チェーンに変換
  */
 
@@ -325,7 +325,7 @@ function applyFinalFallback(
 }
 
 /**
- * 7日間食事プラン生成ワークフロー (メイン)
+ * 食事プラン生成ワークフロー (メイン)
  *
  * シンプルな4ステップフロー:
  * 1. generateInitialPlan - 初回プラン生成

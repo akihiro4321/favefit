@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 interface PlanCreatingScreenProps {
   showBackButton?: boolean;
   onBack?: () => void;
+  duration?: number;
 }
 
 /**
@@ -14,6 +15,7 @@ interface PlanCreatingScreenProps {
 export function PlanCreatingScreen({
   showBackButton = false,
   onBack,
+  duration = 7,
 }: PlanCreatingScreenProps) {
   return (
     <div className="container max-w-2xl mx-auto py-8 px-4 space-y-8">
@@ -23,7 +25,7 @@ export function PlanCreatingScreen({
         </div>
         <h1 className="text-2xl font-bold">プラン作成中...</h1>
         <p className="text-muted-foreground">
-          AIが14日間の食事プランを生成しています。
+          AIが{duration}日間の食事プランを生成しています。
           <br />
           作成には1〜2分かかります。
         </p>
