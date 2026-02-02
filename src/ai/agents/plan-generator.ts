@@ -1,52 +1,58 @@
-/**
- * FaveFit - Plan Generator Agent
- * 献立プラン生成エージェント
- */
-
 import { z } from "zod";
-import { runAgentWithSchema } from "../utils/agent-helpers";
-import {
-  NutritionValuesSchema,
-  SingleMealSchema,
-} from "../types/common";
-import { PLAN_GENERATOR_INSTRUCTIONS } from "./prompts/plan-generator";
-
-// ============================================
-// 定数
-// ============================================
-
-export const DEFAULT_PLAN_DURATION_DAYS = 7;
-
-// ============================================
-// スキーマ定義
-// ============================================
 
 /**
- * 入力スキーマ
+ * 食事プラン生成エージェントの入力スキーマ
  */
-export const PlanGeneratorInputSchema = z.object({
-  targetCalories: z.number().describe("1日の目標カロリー"),
-  pfc: z.object({
+
+export const MealSkeletonSchema = z.object({
+  recipeId: z.string().optional(),
+  title: z.string().describe("料理名"),
+  nutrition: z.object({
+    calories: z.number(),
     protein: z.number(),
     fat: z.number(),
     carbs: z.number(),
   }),
+  tags: z.array(z.string()).describe("タグ（和食、低脂質、等）"),
+});
+
+export type MealSkeleton = z.infer<typeof MealSkeletonSchema>;
+
+export const PlanGeneratorInputSchema = z.object({
+  targetCalories: z.number().describe("1日の目標摂取カロリー"),
+  pfc: z.object({
+    protein: z.number().describe("目標タンパク質(g)"),
+    fat: z.number().describe("目標脂質(g)"),
+    carbs: z.number().describe("目標炭水化物(g)"),
+  }),
   mealTargets: z
     .object({
-      breakfast: NutritionValuesSchema.describe("朝食の目標栄養素（20%）"),
-      lunch: NutritionValuesSchema.describe("昼食の目標栄養素（40%）"),
-      dinner: NutritionValuesSchema.describe("夕食の目標栄養素（40%）"),
+      breakfast: z.object({
+        calories: z.number(),
+        protein: z.number(),
+        fat: z.number(),
+        carbs: z.number(),
+      }),
+      lunch: z.object({
+        calories: z.number(),
+        protein: z.number(),
+        fat: z.number(),
+        carbs: z.number(),
+      }),
+      dinner: z.object({
+        calories: z.number(),
+        protein: z.number(),
+        fat: z.number(),
+        carbs: z.number(),
+      }),
     })
     .optional()
-    .describe("各食事の目標栄養素（事前計算済み）"),
-  preferences: z
-    .object({
-      cuisines: z.record(z.number()).optional(),
-      flavorProfile: z.record(z.number()).optional(),
-      dislikedIngredients: z.array(z.string()).optional(),
-    })
-    .optional()
-    .describe("学習済み嗜好プロファイル"),
+    .describe("各食事ごとの栄養目安"),
+  preferences: z.object({
+    cuisines: z.record(z.number()).describe("好きな料理ジャンルのスコア"),
+    flavorProfile: z.record(z.number()).describe("好きな味付けのスコア"),
+    dislikedIngredients: z.array(z.string()).describe("苦手・アレルギー食材"),
+  }),
   favoriteRecipes: z
     .array(
       z.object({
@@ -55,71 +61,131 @@ export const PlanGeneratorInputSchema = z.object({
         tags: z.array(z.string()),
       })
     )
-    .optional()
-    .describe("お気に入りレシピ一覧"),
-  cheapIngredients: z
-    .array(z.string())
-    .optional()
-    .describe("現在安価な食材リスト"),
+    .describe("お気に入りレシピのリスト（これを参考にプランに組み込む）"),
+  cheapIngredients: z.array(z.string()).describe("現在安価な食材（低コストプラン用）"),
   cheatDayFrequency: z
     .enum(["weekly", "biweekly"])
     .describe("チートデイ頻度"),
   startDate: z.string().describe("プラン開始日 (YYYY-MM-DD)"),
+  
+  // 汎用的な食事固定設定
+  fixedMeals: z
+    .object({
+      breakfast: MealSkeletonSchema.optional(),
+      lunch: MealSkeletonSchema.optional(),
+      dinner: MealSkeletonSchema.optional(),
+    })
+    .optional()
+    .describe("特定の時間枠で毎日同じものを食べる場合のレシピ"),
+
+  // 食事スロットごとの個別制約
+  mealConstraints: z
+    .object({
+      breakfast: z.string().optional(),
+      lunch: z.string().optional(),
+      dinner: z.string().optional(),
+    })
+    .optional()
+    .describe("食事ごとの特別な要望（例：「夕食は軽めのサラダのみ」など）"),
+
+  mealPrep: z
+    .object({
+      prepDay: z.string().describe("作り置きを行う日 (YYYY-MM-DD)"),
+      servings: z.number().describe("メイン料理を何食分まとめて作るか"),
+    })
+    .optional()
+    .describe("作り置き（バルク調理）の設定"),
+  
+  fridgeIngredients: z
+    .array(z.string())
+    .optional()
+    .describe("冷蔵庫にある使い切りたい食材リスト"),
+
+  lifestyle: z
+    .object({
+      availableTime: z.enum(["short", "medium", "long"]).optional(),
+      maxCookingTime: z.number().optional().describe("最大許容調理時間(分)"),
+      timeSavingPriority: z
+        .enum(["breakfast", "lunch", "dinner"])
+        .optional()
+        .describe("特に手間を減らしたい食事"),
+    })
+    .optional()
+    .describe("生活スタイル設定"),
 });
 
-/**
- * 1日分のプランスキーマ
- */
-const DayPlanSchema = z.object({
-  date: z.string().describe("日付 (YYYY-MM-DD)"),
-  isCheatDay: z.boolean().describe("チートデイかどうか"),
-  breakfast: SingleMealSchema,
-  lunch: SingleMealSchema,
-  dinner: SingleMealSchema,
-});
+export type PlanGeneratorInput = z.infer<typeof PlanGeneratorInputSchema>;
 
 /**
  * 出力スキーマ
  */
+const MealSlotOutputSchema = z.object({
+  title: z.string().describe("料理名"),
+  nutrition: z.object({
+    calories: z.number().describe("推定カロリー(kcal)"),
+    protein: z.number().describe("推定タンパク質(g)"),
+    fat: z.number().describe("推定脂質(g)"),
+    carbs: z.number().describe("推定炭水化物(g)"),
+  }),
+  tags: z.array(z.string()).describe("料理の特徴を表すタグ"),
+});
+
 export const PlanGeneratorOutputSchema = z.object({
-  days: z
-    .array(DayPlanSchema)
-    .describe(`${DEFAULT_PLAN_DURATION_DAYS}日間のプラン`),
+  days: z.record(
+    z.string().describe("日付 (YYYY-MM-DD)"),
+    z.object({
+      isCheatDay: z.boolean().describe("この日がチートデイかどうか"),
+      meals: z.object({
+        breakfast: MealSlotOutputSchema,
+        lunch: MealSlotOutputSchema,
+        dinner: MealSlotOutputSchema,
+      }),
+      totalNutrition: z.object({
+        calories: z.number(),
+        protein: z.number(),
+        fat: z.number(),
+        carbs: z.number(),
+      }),
+    })
+  ),
 });
 
-/**
- * 部分プラン出力スキーマ（リフレッシュ用）
- */
-export const PartialPlanOutputSchema = z.object({
-  days: z.array(DayPlanSchema),
-});
-
-// ============================================
-// 型エクスポート
-// ============================================
-
-export type PlanGeneratorInput = z.infer<typeof PlanGeneratorInputSchema>;
 export type PlanGeneratorOutput = z.infer<typeof PlanGeneratorOutputSchema>;
 
-// 共通型の再エクスポート
-export { IngredientItemSchema, SingleMealSchema } from "../types/common";
+/**
+ * 部分修正用の出力スキーマ
+ */
+export const PartialPlanOutputSchema = z.object({
+  meals: z.record(
+    z.string().describe("食事キー (YYYY-MM-DD_mealType)"),
+    MealSlotOutputSchema
+  ),
+});
+
+// ============================================
+// 定数
+// ============================================
+
+export const DEFAULT_PLAN_DURATION_DAYS = 7;
 
 // ============================================
 // エージェント実行
 // ============================================
 
+import { runAgentWithSchema } from "../utils/agent-helpers";
+import { PLAN_GENERATOR_INSTRUCTIONS } from "./prompts/plan-generator";
+
 /**
- * Plan Generator を実行
+ * 全日程の食事プランを生成
  */
 export async function runPlanGenerator(
   prompt: string,
-  userId?: string,
-  schema: z.ZodType = PlanGeneratorOutputSchema
-): Promise<z.infer<typeof schema>> {
+  userId?: string
+): Promise<PlanGeneratorOutput> {
   return runAgentWithSchema(
     PLAN_GENERATOR_INSTRUCTIONS,
     prompt,
-    schema,
+    PlanGeneratorOutputSchema,
     "flash",
     "plan-generator",
     userId
@@ -127,7 +193,7 @@ export async function runPlanGenerator(
 }
 
 /**
- * 部分プランを生成（リフレッシュ用）
+ * 特定の食事スロットのみを修正・再生成
  */
 export async function runPartialPlanGenerator(
   prompt: string,

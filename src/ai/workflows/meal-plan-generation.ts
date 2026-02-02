@@ -8,12 +8,14 @@
 import { z } from "zod";
 import { runAgentWithSchema } from "../utils/agent-helpers";
 import {
-  SingleMealSchema,
   DEFAULT_PLAN_DURATION_DAYS,
   runPlanGenerator,
   type PlanGeneratorInput,
   type PlanGeneratorOutput,
 } from "../agents/plan-generator";
+import {
+  SingleMealSchema,
+} from "../types/common";
 import { 
   PLAN_GENERATOR_INSTRUCTIONS,
   getPlanGenerationPrompt, 
@@ -93,7 +95,7 @@ function convertToInternalFormat(
 ): Record<string, DayPlan> {
   const days: Record<string, DayPlan> = {};
 
-  for (const day of generatedPlan.days) {
+  for (const [date, dayData] of Object.entries(generatedPlan.days)) {
     const convertMeal = (meal: {
       recipeId?: string;
       title: string;
@@ -118,12 +120,12 @@ function convertToInternalFormat(
       steps: meal.steps || [],
     });
 
-    const breakfast = convertMeal(day.breakfast);
-    const lunch = convertMeal(day.lunch);
-    const dinner = convertMeal(day.dinner);
+    const breakfast = convertMeal(dayData.meals.breakfast);
+    const lunch = convertMeal(dayData.meals.lunch);
+    const dinner = convertMeal(dayData.meals.dinner);
 
-    days[day.date] = {
-      isCheatDay: !!day.isCheatDay,
+    days[date] = {
+      isCheatDay: !!dayData.isCheatDay,
       meals: { breakfast, lunch, dinner },
       totalNutrition: {
         calories:
@@ -272,8 +274,8 @@ async function fixInvalidMeals(
           status: "planned",
           nutrition: fixedMeal.recipe.nutrition,
           tags: fixedMeal.recipe.tags,
-          ingredients: fixedMeal.recipe.ingredients,
-          steps: fixedMeal.recipe.steps,
+          ingredients: fixedMeal.recipe.ingredients || [],
+          steps: fixedMeal.recipe.steps || [],
         };
         updatedDays[date].meals[mealType as "breakfast" | "lunch" | "dinner"] =
           mealSlot;
