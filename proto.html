@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FaveFit - Settings Prototype</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4CAF50;
+            --primary-light: #E8F5E9;
+            --secondary: #673AB7;
+            --secondary-light: #F3E5F5;
+            --dark: #2d3436;
+            --gray: #636e72;
+            --light-gray: #f1f3f5;
+            --white: #ffffff;
+            --shadow: 0 10px 30px rgba(0,0,0,0.05);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f8fafc;
+            color: var(--dark);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        h1, h2, h3 {
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        header {
+            margin-bottom: 40px;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 12px;
+        }
+
+        .badge-green { background: var(--primary-light); color: var(--primary); }
+        .badge-purple { background: var(--secondary-light); color: var(--secondary); }
+
+        h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--dark);
+            margin-bottom: 8px;
+            letter-spacing: -0.02em;
+        }
+
+        header p {
+            color: var(--gray);
+            font-size: 1rem;
+        }
+
+        /* Sections */
+        .section {
+            background: var(--white);
+            border-radius: 24px;
+            padding: 32px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(0,0,0,0.02);
+            transition: var(--transition);
+        }
+
+        .section:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .section-header .icon {
+            width: 40px;
+            height: 40px;
+            background: var(--light-gray);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .section-header h2 {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        /* Groups */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--gray);
+            margin-bottom: 8px;
+        }
+
+        input[type="text"], 
+        input[type="number"], 
+        select, 
+        textarea {
+            width: 100%;
+            padding: 14px 18px;
+            border-radius: 14px;
+            border: 2px solid var(--light-gray);
+            background: #fff;
+            color: var(--dark);
+            font-size: 0.95rem;
+            font-family: inherit;
+            transition: var(--transition);
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: #fdfdfd;
+        }
+
+        /* Fixed Meal Card */
+        .meal-card {
+            background: #fbfbfc;
+            border: 1px dashed #d1d8e0;
+            border-radius: 18px;
+            padding: 20px;
+            margin-bottom: 16px;
+            position: relative;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .meal-card:hover {
+            background: var(--white);
+            border-color: var(--primary);
+            border-style: solid;
+        }
+
+        .meal-card.active {
+            border-color: var(--primary);
+            border-style: solid;
+            background: var(--primary-light);
+        }
+
+        .meal-card .title {
+            font-weight: 700;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .meal-card .desc {
+            font-size: 0.8rem;
+            color: var(--gray);
+            margin-top: 4px;
+        }
+
+        .meal-card .add-link {
+            font-size: 0.8rem;
+            color: var(--primary);
+            font-weight: 700;
+            margin-top: 8px;
+            display: block;
+        }
+
+        /* Tags */
+        .tag-cloud {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .tag-item {
+            padding: 6px 14px;
+            background: var(--light-gray);
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .tag-item.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Constraints */
+        .constraint-input {
+            margin-top: 12px;
+        }
+
+        .constraint-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .constraint-row .time {
+            padding: 6px 10px;
+            background: var(--dark);
+            color: white;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            min-width: 50px;
+            text-align: center;
+            margin-top: 14px;
+        }
+
+        /* Actions */
+        .actions {
+            margin-top: 40px;
+            display: flex;
+            gap: 16px;
+        }
+
+        .btn {
+            padding: 16px 32px;
+            border-radius: 16px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            transition: var(--transition);
+            flex: 1;
+        }
+
+        .btn-primary {
+            background: var(--dark);
+            color: var(--white);
+        }
+
+        .btn-primary:hover {
+            background: #1a1e20;
+            transform: scale(1.02);
+        }
+
+        .btn-secondary {
+            background: var(--light-gray);
+            color: var(--gray);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Animation for cards */
+        .section {
+            animation: fadeIn 0.6s ease-out both;
+        }
+        .section:nth-child(2) { animation-delay: 0.1s; }
+        .section:nth-child(3) { animation-delay: 0.2s; }
+        .section:nth-child(4) { animation-delay: 0.3s; }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <span class="badge badge-green">Flexible Planning</span>
+            <h1>パーソナライズ設定</h1>
+            <p>あなたのライフスタイルと好みを詳細に設定し、AIが最適な2週間のプランを作成します。</p>
+        </header>
+
+        <!-- 物理情報 -->
+        <div class="section">
+            <div class="section-header">
+                <div class="icon">⚖️</div>
+                <h2>物理・健康情報</h2>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div class="form-group">
+                    <label>年齢</label>
+                    <input type="number" value="28" placeholder="歳">
+                </div>
+                <div class="form-group">
+                    <label>身長</label>
+                    <input type="number" value="172" placeholder="cm">
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div class="form-group">
+                    <label>現在の体重</label>
+                    <input type="number" value="70.5" step="0.1" placeholder="kg">
+                </div>
+                <div class="form-group">
+                    <label>目標の体重</label>
+                    <input type="number" value="65.0" step="0.1" placeholder="kg">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>目標の方向性</label>
+                <select>
+                    <option value="lose" selected>減量 (健康的に体重を落とす)</option>
+                    <option value="maintain">維持 (体型と健康をキープ)</option>
+                    <option value="gain">増量 (筋肉量を増やす)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- ライフスタイル / 固定枠 -->
+        <div class="section">
+            <div class="section-header">
+                <div class="icon">🔄</div>
+                <h2>毎日の固定メニュー</h2>
+            </div>
+            <p style="font-size: 0.85rem; color: var(--gray); margin-bottom: 20px;">
+                「朝食は毎日これを食べる」といった固定メニューがある場合に設定してください。
+            </p>
+            
+            <div class="meal-card active">
+                <div class="title">
+                    <span>🍳</span> 朝食
+                    <span style="font-size: 0.65rem; background: var(--primary); color: white; padding: 2px 6px; border-radius: 4px; margin-left: auto;">設定済み</span>
+                </div>
+                <div class="desc">プロテインスムージー、オートミール、バナナ</div>
+                <div class="add-link">変更する</div>
+            </div>
+
+            <div class="meal-card">
+                <div class="title"><span>🍱</span> 昼食</div>
+                <div class="desc">固定メニューなし（AIにおまかせ）</div>
+                <div class="add-link">レシピを固定する +</div>
+            </div>
+
+            <div class="meal-card">
+                <div class="title"><span>🍽️</span> 夕食</div>
+                <div class="desc">固定メニューなし（AIにおまかせ）</div>
+                <div class="add-link">レシピを固定する +</div>
+            </div>
+        </div>
+
+        <!-- 個別制約 -->
+        <div class="section">
+            <div class="section-header">
+                <div class="icon">📝</div>
+                <h2>時間帯ごとの個別制約</h2>
+            </div>
+            <p style="font-size: 0.85rem; color: var(--gray); margin-bottom: 20px;">
+                「夜は軽くしたい」「昼は外で食べる」などの具体的な要望を入力。
+            </p>
+
+            <div class="constraint-row">
+                <div class="time">朝食</div>
+                <div class="constraint-input" style="flex: 1;">
+                    <textarea placeholder="例：コーヒーと軽食のみ" rows="1">-</textarea>
+                </div>
+            </div>
+
+            <div class="constraint-row">
+                <div class="time">昼食</div>
+                <div class="constraint-input" style="flex: 1;">
+                    <textarea placeholder="例：オフィスで食べるのでお弁当にできるもの" rows="1">-</textarea>
+                </div>
+            </div>
+
+            <div class="constraint-row">
+                <div class="time">夕食</div>
+                <div class="constraint-input" style="flex: 1;">
+                    <textarea placeholder="例：20時以降になるので、サラダとフルーツだけで軽く" rows="2">20時以降になるので、サラダとフルーツだけで軽くし、200kcal以内に抑えたい。その分、お昼をしっかり食べたい。</textarea>
+                </div>
+            </div>
+
+            <div style="background: var(--secondary-light); padding: 16px; border-radius: 16px; margin-top: 8px;">
+                <p style="font-size: 0.75rem; color: var(--secondary); font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                    <span>✨</span> AIのアドバイス
+                </p>
+                <p style="font-size: 0.8rem; color: var(--secondary); margin-top: 4px;">
+                    夕食を200kcalに抑える場合、1日の目標値を達成するために昼食の目標を+400kcal程度に自動調整します。
+                </p>
+            </div>
+        </div>
+
+        <!-- 調理設定 -->
+        <div class="section">
+            <div class="section-header">
+                <div class="icon">🔪</div>
+                <h2>調理設定</h2>
+            </div>
+            <div class="form-group">
+                <label>1食あたりの最大調理時間 (夕食)</label>
+                <select>
+                    <option value="15">15分以内 (超時短)</option>
+                    <option value="30" selected>30分以内 (標準)</option>
+                    <option value="45">45分以内 (じっくり)</option>
+                    <option value="60">時間制限なし</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>優先したいこと</label>
+                <div class="tag-cloud">
+                    <div class="tag-item active">時短中心</div>
+                    <div class="tag-item">栄養バランス</div>
+                    <div class="tag-item">コスト重視</div>
+                    <div class="tag-item">味・バラエティ</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-secondary">キャンセル</button>
+            <button class="btn btn-primary">設定を保存してプラン更新</button>
+        </div>
+    </div>
+
+    <script>
+        // インタラクティブな動作のシミュレーション
+        document.querySelectorAll('.tag-item').forEach(tag => {
+            tag.addEventListener('click', () => {
+                tag.parentElement.querySelectorAll('.tag-item').forEach(t => t.classList.remove('active'));
+                tag.classList.add('active');
+            });
+        });
+    </script>
+
+</body>
+</html>
