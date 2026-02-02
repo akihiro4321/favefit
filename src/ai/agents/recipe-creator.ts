@@ -55,6 +55,7 @@ const INSTRUCTIONS = `あなたは一流のプロの管理栄養士兼シェフ�
        { "name": "酒", "amount": "小さじ1" }
 9. **調味料・常備品の分量表現:** 一般的な調味料や常備品については、以下の表現を優先的に使用してください：
    「大さじ」「小さじ」「少々」「適量」「少量」「たっぷり」「ひとつまみ」
+10. **食材名の汎用化 (重要):** 食材名（name）には「薄切り」「みじん切り」といった切り方や状態の情報を含めず、汎用的な名称（例：×「豚肉（薄切り）」→ ○「豚肉」）にしてください。
 
 出力は必ず指定されたJSONスキーマに従ってください。`;
 
@@ -105,24 +106,21 @@ export function buildRecipePrompt(
 `;
 
   if (!userDoc) {
-    return (
-      basePrompt +
-      "\n※ユーザーの好みデータはありません。一般的なレシピを提案してください。"
-    );
+    return basePrompt;
   }
 
   const { profile, learnedPreferences } = userDoc;
-  const allergies = formatArray(profile.allergies, "なし");
+  const allergies = formatArray(profile.physical.allergies, "なし");
 
   return (
     basePrompt +
     `
 【ユーザーの好み情報】
-- 好きな食材: ${formatArray(profile.favoriteIngredients)}
+- 好きな食材: ${formatArray(profile.physical.favoriteIngredients)}
 - 苦手な食材: ${formatArray(learnedPreferences.dislikedIngredients)}
 - アレルギー: ${allergies}
-- 料理スキル: ${profile.cookingSkillLevel || "intermediate"}
-- かけられる時間: ${profile.availableTime || "medium"}
+- 料理スキル: ${profile.lifestyle.cookingSkillLevel || "intermediate"}
+- かけられる時間: ${profile.lifestyle.availableTime || "medium"}
 - 過去の傾向: ${formatPreferences(learnedPreferences.cuisines, learnedPreferences.flavorProfile)}
 
 【重要】
