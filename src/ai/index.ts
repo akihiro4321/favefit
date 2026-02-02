@@ -51,21 +51,8 @@ export {
 } from "./utils/agent-helpers";
 
 // ============================================
-// Tools
-// ============================================
-export {
-  nutritionCalculatorTool,
-  CalculateMacroGoalsOutputSchema,
-} from "./tools/nutrition-calculator";
-
-// ============================================
 // Agents
 // ============================================
-export {
-  runNutritionPlanner,
-  NutritionOutputSchema,
-  type NutritionOutput,
-} from "./agents/nutrition-planner";
 
 export {
   runPlanGenerator,
@@ -101,20 +88,6 @@ export {
   type PreferenceLearnerOutput,
   type PreferenceAnalysis,
 } from "./agents/preference-learner";
-
-export {
-  runBoredomAnalyzer,
-  runSimpleBoredomAnalysis,
-  runExplorationAnalysis,
-  BoredomAnalyzerInputSchema,
-  BoredomAnalyzerOutputSchema,
-  SimpleBoredomAnalysisSchema,
-  ExplorationProfileSchema,
-  type BoredomAnalyzerInput,
-  type BoredomAnalyzerOutput,
-  type SimpleBoredomAnalysis,
-  type ExplorationProfile,
-} from "./agents/boredom-analyzer";
 
 // ============================================
 // Prompts

@@ -12,7 +12,7 @@ import { getOrCreateUser, setPlanCreating, setPlanCreated } from "@/lib/db/fires
 import { createPlan, updatePlanStatus, getActivePlan, getPlan, updateMealSlot } from "@/lib/plan";
 import { createShoppingList } from "@/lib/shoppingList";
 import { getFavorites } from "@/lib/recipeHistory";
-import { DayPlan, MealSlot, ShoppingItem, IngredientItem } from "@/lib/schema";
+import { DayPlan, MealSlot, ShoppingItem } from "@/lib/schema";
 import { calculatePersonalizedMacroGoals } from "@/lib/tools/calculateMacroGoals";
 import { calculateMealTargets } from "@/lib/tools/mealNutritionCalculator";
 
@@ -128,8 +128,21 @@ async function generatePlanBackground(
       },
       favoriteRecipes,
       cheapIngredients,
-      cheatDayFrequency: userDoc.profile.cheatDayFrequency || "weekly",
+      cheatDayFrequency: userDoc.profile.lifestyle.cheatDayFrequency || "weekly",
       startDate,
+      fixedMeals: userDoc.profile.lifestyle.fixedMeals,
+      mealConstraints: userDoc.profile.lifestyle.mealConstraints,
+      mealPrep: userDoc.profile.lifestyle.mealPrepConfig
+        ? {
+            prepDay: startDate,
+            servings: userDoc.profile.lifestyle.mealPrepConfig.servings,
+          }
+        : undefined,
+      fridgeIngredients: userDoc.profile.lifestyle.fridgeIngredients,
+      lifestyle: {
+        availableTime: userDoc.profile.lifestyle.availableTime,
+        maxCookingTime: userDoc.profile.lifestyle.maxCookingTimePerMeal?.lunch,
+      },
     };
 
     // Vercel AI SDK ワークフローを実行
@@ -163,15 +176,15 @@ async function generatePlanBackground(
  * ユーザーのプロファイルから栄養目標（マクロ）を計算
  */
 function calculateUserMacroGoals(userDoc: NonNullable<Awaited<ReturnType<typeof getOrCreateUser>>>) {
-  const profile = userDoc.profile;
+  const { physical, lifestyle } = userDoc.profile;
   const hasRequiredProfileData =
-    profile.age &&
-    profile.gender &&
-    (profile.gender === "male" || profile.gender === "female") &&
-    profile.height_cm &&
-    profile.currentWeight &&
-    profile.activity_level &&
-    profile.goal;
+    physical.age &&
+    physical.gender &&
+    (physical.gender === "male" || physical.gender === "female") &&
+    physical.height_cm &&
+    physical.currentWeight &&
+    lifestyle.activityLevel &&
+    physical.goal;
 
   if (!hasRequiredProfileData) {
     return {
@@ -183,12 +196,12 @@ function calculateUserMacroGoals(userDoc: NonNullable<Awaited<ReturnType<typeof 
   // preferences がある場合は決定論の計算を優先
   if (userDoc.nutrition?.preferences) {
     return calculatePersonalizedMacroGoals({
-      age: profile.age!,
-      gender: profile.gender as "male" | "female",
-      height_cm: profile.height_cm!,
-      weight_kg: profile.currentWeight,
-      activity_level: profile.activity_level!,
-      goal: profile.goal!,
+      age: physical.age!,
+      gender: physical.gender as "male" | "female",
+      height_cm: physical.height_cm!,
+      weight_kg: physical.currentWeight,
+      activity_level: lifestyle.activityLevel!,
+      goal: physical.goal!,
       preferences: userDoc.nutrition.preferences,
     });
   }
@@ -208,12 +221,12 @@ function calculateUserMacroGoals(userDoc: NonNullable<Awaited<ReturnType<typeof 
 
   // プロファイル情報から標準計算
   return calculatePersonalizedMacroGoals({
-    age: profile.age!,
-    gender: profile.gender as "male" | "female",
-    height_cm: profile.height_cm!,
-    weight_kg: profile.currentWeight,
-    activity_level: profile.activity_level!,
-    goal: profile.goal!,
+    age: physical.age!,
+    gender: physical.gender as "male" | "female",
+    height_cm: physical.height_cm!,
+    weight_kg: physical.currentWeight,
+    activity_level: lifestyle.activityLevel!,
+    goal: physical.goal!,
   });
 }
 
