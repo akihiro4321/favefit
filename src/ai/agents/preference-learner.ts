@@ -62,7 +62,7 @@ export type PreferenceAnalysis = PreferenceLearnerOutput;
 // プロンプト
 // ============================================
 
-import { PREFERENCE_LEARNER_INSTRUCTIONS } from "./prompts/agents";
+import { PREFERENCE_LEARNER_INSTRUCTIONS } from "./prompts/preference-learner";
 
 // ============================================
 // エージェント実行

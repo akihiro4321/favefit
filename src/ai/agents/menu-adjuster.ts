@@ -69,7 +69,7 @@ export type MenuAdjusterOutput = z.infer<typeof MenuAdjusterOutputSchema>;
 // プロンプト
 // ============================================
 
-import { MENU_ADJUSTER_INSTRUCTIONS } from "./prompts/agents";
+import { MENU_ADJUSTER_INSTRUCTIONS } from "./prompts/menu-adjuster";
 
 // ============================================
 // エージェント実行

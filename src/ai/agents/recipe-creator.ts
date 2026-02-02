@@ -27,7 +27,7 @@ export type Recipe = z.infer<typeof RecipeOutputSchema>;
 // プロンプト
 // ============================================
 
-import { RECIPE_CREATOR_INSTRUCTIONS } from "./prompts/agents";
+import { RECIPE_CREATOR_INSTRUCTIONS } from "./prompts/recipe-creator";
 
 // ============================================
 // エージェント実行
