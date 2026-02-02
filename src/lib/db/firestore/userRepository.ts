@@ -41,15 +41,21 @@ export const getOrCreateUser = async (
       return userSnap.data() as UserDocument;
     }
 
-    // 初期ドキュメントの作成
+    // 初期ドキュメントの作成 (構造化されたスキーマに対応)
     const initialProfile: UserProfile = {
-      displayName: isGuest ? "ゲストユーザー" : "",
-      currentWeight: 0,
-      targetWeight: 0,
-      deadline: serverTimestamp() as unknown as Timestamp,
-      cheatDayFrequency: "weekly",
-      isGuest,
-      createdAt: serverTimestamp(),
+      identity: {
+        displayName: isGuest ? "ゲストユーザー" : "",
+        isGuest,
+        createdAt: serverTimestamp(),
+      },
+      physical: {
+        currentWeight: 0,
+        targetWeight: 0,
+        deadline: serverTimestamp() as unknown as Timestamp,
+      },
+      lifestyle: {
+        cheatDayFrequency: "weekly",
+      },
     };
 
     const initialNutrition: UserNutrition = {
@@ -81,6 +87,7 @@ export const getOrCreateUser = async (
 
 /**
  * ユーザープロファイルを更新
+ * profile.{sub}.{key} の形式で深度に応じた更新を行う
  */
 export const updateUserProfile = async (
   uid: string,
@@ -93,10 +100,22 @@ export const updateUserProfile = async (
       updatedAt: serverTimestamp(),
     };
 
-    // profile.* の形式でフラット化
-    Object.entries(profileData).forEach(([key, value]) => {
-      updates[`profile.${key}`] = value;
-    });
+    // profile の各カテゴリ（identity, physical, lifestyle）を処理
+    if (profileData.identity) {
+      Object.entries(profileData.identity).forEach(([key, value]) => {
+        updates[`profile.identity.${key}`] = value;
+      });
+    }
+    if (profileData.physical) {
+      Object.entries(profileData.physical).forEach(([key, value]) => {
+        updates[`profile.physical.${key}`] = value;
+      });
+    }
+    if (profileData.lifestyle) {
+      Object.entries(profileData.lifestyle).forEach(([key, value]) => {
+        updates[`profile.lifestyle.${key}`] = value;
+      });
+    }
 
     await updateDoc(userRef, updates);
   } catch (error) {

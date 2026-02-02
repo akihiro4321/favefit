@@ -10,29 +10,61 @@ import { Timestamp, FieldValue } from "firebase/firestore";
 // ========================================
 
 export interface UserProfile {
-  displayName: string;
-  currentWeight: number;
-  targetWeight: number;
-  deadline: Timestamp;
-  cheatDayFrequency: "weekly" | "biweekly";
-  isGuest: boolean;
-  createdAt: Timestamp | FieldValue;
+  // アイデンティティ（基本情報）
+  identity: {
+    displayName: string;
+    isGuest: boolean;
+    createdAt: Timestamp | FieldValue;
+  };
 
-  // 追加の身体情報
-  age?: number;
-  gender?: "male" | "female" | "other";
-  height_cm?: number;
-  activity_level?: "sedentary" | "light" | "moderate" | "active" | "very_active";
-  goal?: "lose" | "maintain" | "gain";
-  allergies?: string[];
-  favoriteIngredients?: string[];
-  cookingSkillLevel?: "beginner" | "intermediate" | "advanced";
-  availableTime?: "short" | "medium" | "long";
+  // フィジカル（身体・健康情報）
+  physical: {
+    age?: number;
+    gender?: "male" | "female" | "other";
+    height_cm?: number;
+    currentWeight: number;
+    targetWeight: number;
+    deadline: Timestamp;
+    goal?: "lose" | "maintain" | "gain";
+    allergies?: string[];
+    favoriteIngredients?: string[];
+  };
+
+  // ライフスタイル（生活習慣・設定）
+  lifestyle: {
+    activityLevel?: "sedentary" | "light" | "moderate" | "active" | "very_active";
+    cookingSkillLevel?: "beginner" | "intermediate" | "advanced";
+    availableTime?: "short" | "medium" | "long";
+    cheatDayFrequency: "weekly" | "biweekly";
+    maxCookingTimePerMeal?: {
+      breakfast?: number;
+      lunch?: number;
+      dinner?: number;
+    };
+    timeSavingPriority?: "breakfast" | "lunch" | "dinner";
+    // 汎用的な食事固定設定
+    fixedMeals?: {
+      breakfast?: MealSlot;
+      lunch?: MealSlot;
+      dinner?: MealSlot;
+    };
+    // 食事スロットごとの個別制約（例：「夕食はサラダとフルーツのみで軽く」など）
+    mealConstraints?: {
+      breakfast?: string;
+      lunch?: string;
+      dinner?: string;
+    };
+    fridgeIngredients?: string[];
+    mealPrepConfig?: {
+      dayOfWeek: number; // 0-6 (Sunday to Saturday)
+      servings: number; // 何食分作るか
+    };
+  };
 }
 
 export interface UserNutrition {
-  bmr?: number; // 基礎代謝 (Basal Metabolic Rate)
-  tdee?: number; // 総消費カロリー (Total Daily Energy Expenditure)
+  bmr?: number;
+  tdee?: number;
   dailyCalories: number;
   pfc: {
     protein: number;
@@ -50,8 +82,8 @@ export interface UserNutrition {
 }
 
 export interface LearnedPreferences {
-  cuisines: Record<string, number>; // { japanese: 25, korean: 10 }
-  flavorProfile: Record<string, number>; // { light: 15, heavy: 2 }
+  cuisines: Record<string, number>;
+  flavorProfile: Record<string, number>;
   dislikedIngredients: string[];
 }
 
@@ -60,10 +92,8 @@ export interface UserDocument {
   nutrition: UserNutrition;
   learnedPreferences: LearnedPreferences;
   onboardingCompleted: boolean;
-  // プラン作成状態: creating=作成中, null/undefined=未作成or完了
   planCreationStatus?: "creating" | null;
   planCreationStartedAt?: Timestamp | FieldValue;
-  // プラン拒否時のフィードバック（次のプラン生成時に使用）
   planRejectionFeedback?: string;
   updatedAt: Timestamp | FieldValue;
 }
@@ -81,7 +111,7 @@ export interface IngredientItem {
 }
 
 export interface MealSlot {
-  recipeId: string;
+  recipeId?: string;
   title: string;
   status: MealStatus;
   nutrition: {
@@ -90,7 +120,7 @@ export interface MealSlot {
     fat: number;
     carbs: number;
   };
-  tags?: string[];
+  tags: string[];
   imageUrl?: string;
   ingredients?: IngredientItem[];
   steps?: string[];
@@ -115,15 +145,12 @@ export interface PlanDocument {
   userId: string;
   startDate: string; // YYYY-MM-DD
   status: PlanStatus;
-  days: Record<string, DayPlan>; // key: "YYYY-MM-DD"
+  days: Record<string, DayPlan>;
   createdAt: Timestamp | FieldValue;
   updatedAt: Timestamp | FieldValue;
 }
 
-// ========================================
-// Recipe History: recipeHistory/{userId}/recipes/{recipeId}
-// ========================================
-
+// ... 以降の型定義（RecipeHistoryItemなど）は変更なしのため省略または維持
 export interface RecipeHistoryItem {
   id: string;
   title: string;
@@ -138,13 +165,9 @@ export interface RecipeHistoryItem {
     carbs: number;
   };
   proposedAt: Timestamp;
-  cookedAt: Timestamp | null; // null = 未作成
+  cookedAt: Timestamp | null;
   isFavorite: boolean;
 }
-
-// ========================================
-// Favorite Recipes: favoriteRecipes/{userId}/recipes/{recipeId}
-// ========================================
 
 export interface FavoriteRecipe {
   id: string;
@@ -154,14 +177,10 @@ export interface FavoriteRecipe {
   cookedCount: number;
 }
 
-// ========================================
-// Shopping Lists: shoppingLists/{planId}
-// ========================================
-
 export interface ShoppingItem {
   ingredient: string;
   amount: string;
-  category: string; // 野菜, 肉, 調味料 etc.
+  category: string;
   checked: boolean;
 }
 
@@ -172,12 +191,8 @@ export interface ShoppingListDocument {
   updatedAt: Timestamp | FieldValue;
 }
 
-// ========================================
-// Market Prices: marketPrices/latest (Global)
-// ========================================
-
 export interface MarketPriceEntry {
-  priceScore: number; // 1-10 (1=安価, 10=高価)
+  priceScore: number;
   updatedAt: Timestamp;
 }
 
