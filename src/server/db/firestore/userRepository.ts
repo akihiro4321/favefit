@@ -3,15 +3,14 @@
  * 設計書 v2 に基づくユーザー関連操作
  */
 
-import { db } from "./client";
 import {
-  doc,
   getDoc,
   setDoc,
   updateDoc,
   serverTimestamp,
   Timestamp,
 } from "firebase/firestore";
+import { docRefs } from "./collections";
 import {
   UserDocument,
   UserProfile,
@@ -34,11 +33,11 @@ export const getOrCreateUser = async (
   isGuest: boolean = false
 ): Promise<UserDocument | null> => {
   try {
-    const userRef = doc(db, "users", uid);
+    const userRef = docRefs.user(uid);
     const userSnap = await getDoc(userRef);
 
     if (userSnap.exists()) {
-      return userSnap.data() as UserDocument;
+      return userSnap.data();
     }
 
     // 初期ドキュメントの作成 (構造化されたスキーマに対応)
@@ -94,7 +93,7 @@ export const updateUserProfile = async (
   profileData: Partial<UserProfile>
 ): Promise<void> => {
   try {
-    const userRef = doc(db, "users", uid);
+    const userRef = docRefs.user(uid);
     const updates: Record<string, unknown> = {
       updatedAt: serverTimestamp(),
     };
@@ -116,7 +115,8 @@ export const updateUserProfile = async (
       });
     }
 
-    await updateDoc(userRef, updates);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await updateDoc(userRef, updates as any);
   } catch (error) {
     console.error("Error updating user profile:", error);
     throw error;
@@ -131,7 +131,7 @@ export const updateUserNutrition = async (
   nutritionData: UserNutrition
 ): Promise<void> => {
   try {
-    const userRef = doc(db, "users", uid);
+    const userRef = docRefs.user(uid);
     await updateDoc(userRef, {
       nutrition: nutritionData,
       updatedAt: serverTimestamp(),
@@ -150,7 +150,7 @@ export const updateUserNutritionPreferences = async (
   preferences: NonNullable<UserNutrition["preferences"]>
 ): Promise<void> => {
   try {
-    const userRef = doc(db, "users", uid);
+    const userRef = docRefs.user(uid);
     await updateDoc(userRef, {
       "nutrition.preferences": preferences,
       updatedAt: serverTimestamp(),
@@ -166,7 +166,7 @@ export const updateUserNutritionPreferences = async (
  */
 export const completeOnboarding = async (uid: string): Promise<void> => {
   try {
-    const userRef = doc(db, "users", uid);
+    const userRef = docRefs.user(uid);
     await updateDoc(userRef, {
       onboardingCompleted: true,
       updatedAt: serverTimestamp(),
@@ -182,7 +182,7 @@ export const completeOnboarding = async (uid: string): Promise<void> => {
  */
 export const setPlanCreating = async (uid: string): Promise<void> => {
   try {
-    const userRef = doc(db, "users", uid);
+    const userRef = docRefs.user(uid);
     await updateDoc(userRef, {
       planCreationStatus: "creating",
       planCreationStartedAt: serverTimestamp(),
@@ -199,7 +199,7 @@ export const setPlanCreating = async (uid: string): Promise<void> => {
  */
 export const setPlanCreated = async (uid: string): Promise<void> => {
   try {
-    const userRef = doc(db, "users", uid);
+    const userRef = docRefs.user(uid);
     await updateDoc(userRef, {
       planCreationStatus: null,
       updatedAt: serverTimestamp(),
@@ -224,14 +224,14 @@ export const updateLearnedPreferences = async (
   newDisliked?: string[]
 ): Promise<void> => {
   try {
-    const userRef = doc(db, "users", uid);
+    const userRef = docRefs.user(uid);
     const userSnap = await getDoc(userRef);
 
     if (!userSnap.exists()) {
       throw new Error("User not found");
     }
 
-    const currentPrefs = (userSnap.data() as UserDocument).learnedPreferences;
+    const currentPrefs = userSnap.data().learnedPreferences;
 
     // cuisines スコアを加算
     const updatedCuisines = { ...currentPrefs.cuisines };
@@ -275,14 +275,14 @@ export const getLearnedPreferences = async (
   uid: string
 ): Promise<LearnedPreferences | null> => {
   try {
-    const userRef = doc(db, "users", uid);
+    const userRef = docRefs.user(uid);
     const userSnap = await getDoc(userRef);
 
     if (!userSnap.exists()) {
       return null;
     }
 
-    return (userSnap.data() as UserDocument).learnedPreferences;
+    return userSnap.data().learnedPreferences;
   } catch (error) {
     console.error("Error getting learned preferences:", error);
     return null;

@@ -2,7 +2,7 @@
 
 ## Overview
 
-FaveFitは、AIパワーを活用した食事プランニングアプリケーションです。Vercel AI SDKとGoogle Geminiを使用して、パーソナライズされた最大14日間の食事プラン（現在は7日間がデフォルト）を生成します。ユーザーの栄養目標、味の好み、市場価格を最適化し、時間枠ごとの個別制約への対応やマクロの自動バランス調整、冷蔵庫活用などの機能を備えています。
+FaveFitは、AIパワーを活用した食事プランニングアプリケーションです。Vercel AI SDKとGoogle Geminiを使用して、パーソナライズされた最大14日間の食事プラン（期間は指定可能、デフォルトは7日間）を生成します。ユーザーの栄養目標、味の好み、市場価格を最適化し、時間枠ごとの個別制約への対応やマクロの自動バランス調整、冷蔵庫活用などの機能を備えています。
 
 ## Tech Stack
 
@@ -43,9 +43,22 @@ Repositories (src/server/db/firestore/)
 Database (Firestore)
 ```
 
-### AI Agents
+### AI Architecture (Agents & Workflows)
 
-コアとなるAIロジックは `src/server/ai/` に集約されており、特定のタスクごとにエージェントが定義されています。
+AIロジックは**Agents（単一タスク）**と**Workflows（複合フロー）**の2層で構成されています。
+
+#### AI Workflows
+ビジネスロジック（Service層）からは主にワークフローを呼び出します。ワークフローは複数のエージェントを調整し、バリデーションやリトライ処理を担当します。
+
+| Workflow Name | Role | Defined In |
+| --- | --- | --- |
+| **Meal Plan Generation** | プラン生成、バリデーション、自動修正を含む一連のフロー | `src/server/ai/workflows/meal-plan-generation.ts` |
+| **Recipe Generation** | レシピ生成と形式チェック | `src/server/ai/workflows/recipe-generation.ts` |
+| **Menu Adjustment** | 代替メニュー提案フロー | `src/server/ai/workflows/menu-adjustment.ts` |
+| **Preference Learning** | フィードバックからの嗜好学習フロー | `src/server/ai/workflows/preference-learning.ts` |
+
+#### AI Agents
+特定のタスクを実行するアトミックな単位です。
 
 | Agent Name | Role | Defined In |
 | --- | --- | --- |
@@ -58,11 +71,11 @@ Database (Firestore)
 
 1. **User Input:** フロントエンド（React Components）からユーザーの目標と嗜好を入力。
 2. **API Routes:** `/api/plan/generate` などのエンドポイントでリクエストを受付。
-3. **Services:** `plan-service.ts` がビジネスロジックを実行し、`src/server/ai/workflows/meal-plan-generation.ts` を呼び出し。
-4. **AI Workflow:** 各エージェントを順次呼び出し、バリデーションと修正を行ってJSONデータを生成。
-5. **Repositories:** `planRepository.ts` などがFirestoreへのデータ保存を担当。
-6. **Firestore:** ユーザープロファイル (`users/{userId}`)、プラン (`plans/{planId}`)、履歴を保存。
-7. **Langfuse:** エージェントの実行とツール使用のトレース。
+3. **Services:** `plan-service.ts` がビジネスロジックを実行し、`src/server/ai/workflows/` 内の適切なワークフローを呼び出し。
+4. **AI Workflow:** ワークフローが各エージェント (`src/server/ai/agents/`) を順次呼び出し、バリデーションと修正を行って結果を返す。
+5. **Repositories:** `planRepository.ts` などが `collections.ts` で定義された型安全な参照を使用してFirestoreへのデータ保存を担当。
+6. **Firestore:** ユーザープロファイル (`users/{userId}`)、プラン (`plans/{planId}`)、履歴を保存。型定義は `collections.ts` で一元管理。
+7. **Langfuse:** ワークフローとエージェントの実行トレース。
 
 ## Directory Structure
 
@@ -102,6 +115,7 @@ src/
 │   │   └── feedback-service.ts
 │   ├── db/firestore/        # Repository層（データアクセス）
 │   │   ├── client.ts        # Firestore クライアント
+│   │   ├── collections.ts   # コレクション定義・型安全なヘルパー (No Magic Strings)
 │   │   ├── userRepository.ts
 │   │   ├── planRepository.ts
 │   │   └── ...
@@ -115,6 +129,8 @@ src/
 
 ### Coding Rules
 
+- **Language:**
+  - ドキュメント、コードコメント、およびAI応答は**日本語**で記述します。
 - **Formatting:** Prettierの設定に従い、ESLintで構文チェックを行います。
 - **Naming:**
   - 変数・関数名: `camelCase`
@@ -132,8 +148,9 @@ src/
   - UIコンポーネントは `src/components/ui` (shadcn/ui互換) を優先的に使用します。
 - **AI Logic:**
   - 関心の分離を維持するため、AIロジック（プロンプト等）は `src/server/ai` 内に集約します。
-  - エージェント実行時は `runAgentWithSchema`（ヘルパー）を通じ、一貫したエラーハンドリングとトレースを行います。
-  - AIエージェントはService層から呼び出され、直接フロントエンドやAPI Routesから呼び出すことはありません。
+  - 複雑な処理は **Workflows** (`src/server/ai/workflows`) として実装し、バリデーションやリトライを含めます。
+  - 単一のタスクは **Agents** (`src/server/ai/agents`) として実装します。
+  - Service層からは原則として Workflows を呼び出してAI機能を利用します。
 - **State Management:**
   - 可能な限り React Server Components (RSC) を使用し、サーバーサイドでのデータ取得を優先。
   - 対話性やローカル状態管理が必要な場合のみ `use client` を宣言した Client Components を使用します。
@@ -143,10 +160,11 @@ src/
   - API Routes (Controller層) は入力バリデーションとエラーハンドリングを担当し、ビジネスロジックはService層に委譲します。
   - Service層は複数のRepositoryを組み合わせたビジネスロジックを実装します。
   - Repository層のみがFirestoreへの直接アクセスを行います。
-- **Database:**
-  - Firestoreへの直接アクセスはRepository層（`src/server/db/firestore`）に限定します。
-  - Service層（`src/server/services`）からRepositoryを呼び出してビジネスロジックを実装します。
-  - フロントエンドはAPI Routes（`src/app/api`）経由でのみデータにアクセスします。
+- **Database & Firestore:**
+  - **Access Control:** Firestoreへの直接アクセスはRepository層（`src/server/db/firestore`）に限定します。
+  - **No Magic Strings:** コレクション名やパスの直書きは禁止。必ず `src/server/db/firestore/collections.ts` の `collections` や `docRefs` ヘルパーを使用し、一元管理された定義を参照します。
+  - **Type Safety:** Firestore Converters (`withConverter`) を使用し、`zod` スキーマに基づいた厳格な型安全性を確保します。
+  - Service層はRepositoryを呼び出してビジネスロジックを実装し、フロントエンドはAPI Routes経由でのみデータにアクセスします。
 
 ## API Endpoints
 

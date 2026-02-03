@@ -3,9 +3,7 @@
  * 7日間プランの作成・取得・更新
  */
 
-import { db } from './client';
 import {
-  collection,
   doc,
   getDoc,
   setDoc,
@@ -17,6 +15,7 @@ import {
   orderBy,
   limit,
 } from "firebase/firestore";
+import { collections, docRefs } from "./collections";
 import {
   PlanDocument,
   DayPlan,
@@ -40,8 +39,8 @@ export const createPlan = async (
 ): Promise<string> => {
   try {
     console.log(`[createPlan] Starting plan creation for user ${userId}, status: ${status}, days count: ${Object.keys(days).length}`);
-    const plansRef = collection(db, "plans");
-    const planDoc = doc(plansRef);
+    const plansRef = collections.plans;
+    const planDoc = docRefs.plan(doc(plansRef).id); // 既存の doc(plansRef) で ID 生成するロジックを docRefs に合わせる
     const planId = planDoc.id;
     console.log(`[createPlan] Generated plan document ID: ${planId}`);
 
@@ -91,16 +90,16 @@ export const createPlan = async (
 /**
  * プランを取得
  */
-export const getPlan = async (planId: string): Promise<PlanDocument | null> => {
+export const getPlan = async (planId: string): Promise<(PlanDocument & { id: string }) | null> => {
   try {
-    const planRef = doc(db, "plans", planId);
+    const planRef = docRefs.plan(planId);
     const planSnap = await getDoc(planRef);
 
     if (!planSnap.exists()) {
       return null;
     }
 
-    return { ...planSnap.data(), id: planId } as PlanDocument & { id: string };
+    return { ...planSnap.data(), id: planId };
   } catch (error) {
     console.error("Error getting plan:", error);
     return null;
@@ -114,7 +113,7 @@ export const getActivePlan = async (
   userId: string
 ): Promise<(PlanDocument & { id: string }) | null> => {
   try {
-    const plansRef = collection(db, "plans");
+    const plansRef = collections.plans;
     const q = query(
       plansRef,
       where("userId", "==", userId),
@@ -129,8 +128,8 @@ export const getActivePlan = async (
       return null;
     }
 
-    const doc = querySnapshot.docs[0];
-    return { ...doc.data(), id: doc.id } as PlanDocument & { id: string };
+    const docSnap = querySnapshot.docs[0];
+    return { ...docSnap.data(), id: docSnap.id };
   } catch (error) {
     console.error("Error getting active plan:", error);
     return null;
@@ -144,7 +143,7 @@ export const getPendingPlan = async (
   userId: string
 ): Promise<(PlanDocument & { id: string }) | null> => {
   try {
-    const plansRef = collection(db, "plans");
+    const plansRef = collections.plans;
     const q = query(
       plansRef,
       where("userId", "==", userId),
@@ -159,8 +158,8 @@ export const getPendingPlan = async (
       return null;
     }
 
-    const doc = querySnapshot.docs[0];
-    return { ...doc.data(), id: doc.id } as PlanDocument & { id: string };
+    const docSnap = querySnapshot.docs[0];
+    return { ...docSnap.data(), id: docSnap.id };
   } catch (error) {
     console.error("Error getting pending plan:", error);
     return null;
@@ -177,11 +176,12 @@ export const updateMealStatus = async (
   status: MealStatus
 ): Promise<void> => {
   try {
-    const planRef = doc(db, "plans", planId);
+    const planRef = docRefs.plan(planId);
     await updateDoc(planRef, {
       [`days.${date}.meals.${mealType}.status`]: status,
       updatedAt: serverTimestamp(),
-    });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
   } catch (error) {
     console.error("Error updating meal status:", error);
     throw error;
@@ -198,7 +198,7 @@ export const updateMealSlot = async (
   updates: Partial<MealSlot>
 ): Promise<void> => {
   try {
-    const planRef = doc(db, "plans", planId);
+    const planRef = docRefs.plan(planId);
     
     // ネストされたオブジェクトの個別フィールドを更新
     const firebaseUpdates: Record<string, unknown> = {
@@ -209,7 +209,8 @@ export const updateMealSlot = async (
       firebaseUpdates[`days.${date}.meals.${mealType}.${key}`] = value;
     });
 
-    await updateDoc(planRef, firebaseUpdates);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await updateDoc(planRef, firebaseUpdates as any);
   } catch (error) {
     console.error("Error updating meal slot:", error);
     throw error;
@@ -226,14 +227,15 @@ export const swapMeal = async (
   newMeal: MealSlot
 ): Promise<void> => {
   try {
-    const planRef = doc(db, "plans", planId);
+    const planRef = docRefs.plan(planId);
     await updateDoc(planRef, {
       [`days.${date}.meals.${mealType}`]: {
         ...newMeal,
         status: "swapped",
       },
       updatedAt: serverTimestamp(),
-    });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
   } catch (error) {
     console.error("Error swapping meal:", error);
     throw error;
@@ -248,7 +250,7 @@ export const updatePlanStatus = async (
   status: PlanStatus
 ): Promise<void> => {
   try {
-    const planRef = doc(db, "plans", planId);
+    const planRef = docRefs.plan(planId);
     await updateDoc(planRef, {
       status,
       updatedAt: serverTimestamp(),
@@ -267,7 +269,7 @@ export const updatePlanDays = async (
   daysToUpdate: Record<string, DayPlan>
 ): Promise<void> => {
   try {
-    const planRef = doc(db, "plans", planId);
+    const planRef = docRefs.plan(planId);
     const updates: Record<string, unknown> = {
       updatedAt: serverTimestamp(),
     };
@@ -276,7 +278,8 @@ export const updatePlanDays = async (
       updates[`days.${date}`] = dayPlan;
     });
 
-    await updateDoc(planRef, updates);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await updateDoc(planRef, updates as any);
   } catch (error) {
     console.error("Error updating plan days:", error);
     throw error;

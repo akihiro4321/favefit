@@ -3,14 +3,13 @@
  * プランに連動した買い物リスト管理
  */
 
-import { db } from "./client";
 import {
-  doc,
   getDoc,
   setDoc,
   updateDoc,
   serverTimestamp,
 } from "firebase/firestore";
+import { docRefs } from "./collections";
 import { ShoppingListDocument, ShoppingItem } from "@/lib/schema";
 
 // ========================================
@@ -25,7 +24,7 @@ export const createShoppingList = async (
   items: ShoppingItem[]
 ): Promise<void> => {
   try {
-    const listRef = doc(db, "shoppingLists", planId);
+    const listRef = docRefs.shoppingList(planId);
 
     const shoppingList: ShoppingListDocument = {
       planId,
@@ -48,14 +47,14 @@ export const getShoppingList = async (
   planId: string
 ): Promise<ShoppingListDocument | null> => {
   try {
-    const listRef = doc(db, "shoppingLists", planId);
+    const listRef = docRefs.shoppingList(planId);
     const listSnap = await getDoc(listRef);
 
     if (!listSnap.exists()) {
       return null;
     }
 
-    return listSnap.data() as ShoppingListDocument;
+    return listSnap.data();
   } catch (error) {
     console.error("Error getting shopping list:", error);
     return null;
@@ -71,14 +70,14 @@ export const toggleItemCheck = async (
   checked: boolean
 ): Promise<void> => {
   try {
-    const listRef = doc(db, "shoppingLists", planId);
+    const listRef = docRefs.shoppingList(planId);
     const listSnap = await getDoc(listRef);
 
     if (!listSnap.exists()) {
       throw new Error("Shopping list not found");
     }
 
-    const currentList = listSnap.data() as ShoppingListDocument;
+    const currentList = listSnap.data();
     const updatedItems = [...currentList.items];
     updatedItems[itemIndex] = {
       ...updatedItems[itemIndex],
@@ -100,14 +99,14 @@ export const toggleItemCheck = async (
  */
 export const checkAllItems = async (planId: string): Promise<void> => {
   try {
-    const listRef = doc(db, "shoppingLists", planId);
+    const listRef = docRefs.shoppingList(planId);
     const listSnap = await getDoc(listRef);
 
     if (!listSnap.exists()) {
       throw new Error("Shopping list not found");
     }
 
-    const currentList = listSnap.data() as ShoppingListDocument;
+    const currentList = listSnap.data();
     const updatedItems = currentList.items.map((item) => ({
       ...item,
       checked: true,

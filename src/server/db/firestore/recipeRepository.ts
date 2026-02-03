@@ -1,25 +1,38 @@
-import { db } from './client';
-import { collection, addDoc, doc, updateDoc, query, orderBy, getDocs, getDoc, serverTimestamp, Timestamp, limit, startAfter, DocumentSnapshot } from 'firebase/firestore';
-import { Recipe } from '@/server/ai/agents/recipe-creator';
+/**
+ * FaveFit v2 - 保存済みレシピリポジトリ
+ */
 
-export interface SavedRecipe extends Recipe {
-  id: string;
-  userId: string;
-  createdAt: Timestamp;
-  feedbackId?: string;
-}
+import {
+  addDoc,
+  updateDoc,
+  query,
+  orderBy,
+  getDocs,
+  getDoc,
+  serverTimestamp,
+  limit,
+  startAfter,
+  DocumentSnapshot,
+} from "firebase/firestore";
+import { collections, docRefs, SavedRecipe } from "./collections";
+import { Recipe } from "@/server/ai/agents/recipe-creator";
 
-export const saveRecipe = async (userId: string, recipeData: Recipe): Promise<string> => {
+export type { SavedRecipe };
+
+export const saveRecipe = async (
+  userId: string,
+  recipeData: Recipe
+): Promise<string> => {
   try {
-    const recipesRef = collection(db, 'users', userId, 'recipes');
+    const recipesRef = collections.userRecipes(userId);
     const docRef = await addDoc(recipesRef, {
       ...recipeData,
       userId,
       createdAt: serverTimestamp(),
-    });
+    } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
     return docRef.id;
   } catch (error) {
-    console.error('Error saving recipe:', error);
+    console.error("Error saving recipe:", error);
     throw error;
   }
 };
@@ -36,64 +49,77 @@ export const getSavedRecipes = async (
   lastVisibleDoc?: DocumentSnapshot
 ): Promise<PaginatedRecipes> => {
   try {
-    const recipesRef = collection(db, 'users', userId, 'recipes');
-    let q = query(recipesRef, orderBy('createdAt', 'desc'), limit(pageSize));
+    const recipesRef = collections.userRecipes(userId);
+    let q = query(recipesRef, orderBy("createdAt", "desc"), limit(pageSize));
 
     if (lastVisibleDoc) {
-      q = query(recipesRef, orderBy('createdAt', 'desc'), startAfter(lastVisibleDoc), limit(pageSize));
+      q = query(
+        recipesRef,
+        orderBy("createdAt", "desc"),
+        startAfter(lastVisibleDoc),
+        limit(pageSize)
+      );
     }
 
     const querySnapshot = await getDocs(q);
 
-    const recipes = querySnapshot.docs.map(doc => ({
+    const recipes = querySnapshot.docs.map((doc) => ({
+      ...doc.data(),
       id: doc.id,
-      ...doc.data()
-    } as SavedRecipe));
+    }));
 
-    const lastVisible = querySnapshot.docs[querySnapshot.docs.length - 1] || null;
+    const lastVisible =
+      querySnapshot.docs[querySnapshot.docs.length - 1] || null;
     const hasMore = querySnapshot.docs.length === pageSize;
 
     return {
       recipes,
       lastVisible,
-      hasMore
+      hasMore,
     };
   } catch (error) {
-    console.error('Error fetching recipes:', error);
+    console.error("Error fetching recipes:", error);
     return {
       recipes: [],
       lastVisible: null,
-      hasMore: false
+      hasMore: false,
     };
   }
 };
 
-export const getRecipe = async (userId: string, recipeId: string): Promise<SavedRecipe | null> => {
+export const getRecipe = async (
+  userId: string,
+  recipeId: string
+): Promise<SavedRecipe | null> => {
   try {
-    const recipeRef = doc(db, 'users', userId, 'recipes', recipeId);
+    const recipeRef = docRefs.userRecipe(userId, recipeId);
     const docSnap = await getDoc(recipeRef);
-    
+
     if (docSnap.exists()) {
       return {
+        ...docSnap.data(),
         id: docSnap.id,
-        ...docSnap.data()
-      } as SavedRecipe;
+      };
     }
     return null;
   } catch (error) {
-    console.error('Error fetching recipe:', error);
+    console.error("Error fetching recipe:", error);
     return null;
   }
 };
 
-export const updateRecipeFeedbackId = async (userId: string, recipeId: string, feedbackId: string): Promise<void> => {
+export const updateRecipeFeedbackId = async (
+  userId: string,
+  recipeId: string,
+  feedbackId: string
+): Promise<void> => {
   try {
-    const recipeRef = doc(db, 'users', userId, 'recipes', recipeId);
+    const recipeRef = docRefs.userRecipe(userId, recipeId);
     await updateDoc(recipeRef, {
       feedbackId,
     });
   } catch (error) {
-    console.error('Error updating recipe with feedbackId:', error);
+    console.error("Error updating recipe with feedbackId:", error);
     throw error;
   }
 };
