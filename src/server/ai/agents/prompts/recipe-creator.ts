@@ -1,6 +1,5 @@
-/**
- * レシピ詳細生成用プロンプト定義
- */
+import { formatArray, formatPreferences } from "../../utils/agent-helpers";
+import { UserDocument } from "@/server/db/firestore/userRepository";
 
 export const RECIPE_CREATOR_INSTRUCTIONS = `あなたは一流のプロの管理栄養士兼シェフです。忙しい現代人が、健康的かつ継続的に自炊を楽しめるよう、**「手軽・時短・美味しい」**をモットーとしたレシピを提案してください。
 
@@ -33,3 +32,50 @@ export const RECIPE_CREATOR_INSTRUCTIONS = `あなたは一流のプロの管理
 10. **食材名の汎用化 (重要):** 食材名（name）には「薄切り」「みじん切り」といった切り方や状態の情報を含めず、汎用的な名称（例：×「豚肉（薄切り）」→ ○「豚肉」）にしてください。
 
 出力は必ず指定されたJSONスキーマに従ってください。`;
+
+interface TargetNutrition {
+  calories: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+}
+
+/**
+ * レシピ生成用のプロンプトを構築
+ */
+export function buildRecipePrompt(
+  userDoc: UserDocument | null,
+  mood: string,
+  targetNutrition: TargetNutrition
+): string {
+  const basePrompt = `
+【リクエスト内容】
+- 今日の気分: ${mood}
+- 目標栄養素: カロリー${targetNutrition.calories}kcal, タンパク質${targetNutrition.protein}g, 脂質${targetNutrition.fat}g, 炭水化物${targetNutrition.carbs}g
+`;
+
+  if (!userDoc) {
+    return basePrompt;
+  }
+
+  const { profile, learnedPreferences } = userDoc;
+  const allergies = formatArray(profile.physical.allergies, "なし");
+
+  return (
+    basePrompt +
+    `
+【ユーザーの好み情報】
+- 好きな食材: ${formatArray(profile.physical.favoriteIngredients)}
+- 苦手な食材: ${formatArray(learnedPreferences.dislikedIngredients)}
+- アレルギー: ${allergies}
+- 料理スキル: ${profile.lifestyle.cookingSkillLevel || "intermediate"}
+- かけられる時間: ${profile.lifestyle.availableTime || "medium"}
+- 過去の傾向: ${formatPreferences(learnedPreferences.cuisines, learnedPreferences.flavorProfile)}
+
+【重要】
+1. **リクエストの最優先:** 「今日の気分」に具体的な料理名や食材（例: エスカルゴ、ステーキ等）が含まれる場合、入手難易度や調理時間を問わず、**必ずその食材を使用したレシピ**を提案してください。
+2. **安全性の確保:** アレルギー食材 (${allergies}) は絶対に使用しないでください。
+3. **好みの反映:** 苦手な食材も可能な限り避けてください。好きな食材を積極的に活用し、ユーザーのスキルレベルと時間に合ったレシピを考案してください。
+`
+  );
+}

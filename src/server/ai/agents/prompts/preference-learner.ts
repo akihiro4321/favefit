@@ -1,6 +1,4 @@
-/**
- * ユーザー嗜好学習用プロンプト定義
- */
+import { PreferenceLearnerInput } from "../preference-learner";
 
 export const PREFERENCE_LEARNER_INSTRUCTIONS = `
 あなたはユーザーの食の好みを分析するAIです。
@@ -18,3 +16,21 @@ export const PREFERENCE_LEARNER_INSTRUCTIONS = `
 【出力形式】
 JSON形式で出力してください。cuisineUpdates と flavorUpdates はキー(文字列)と値(数値)のオブジェクトにしてください。
 `;
+
+/**
+ * 嗜好学習用プロンプトを構築
+ */
+export function getPreferenceLearningPrompt(input: PreferenceLearnerInput): string {
+  const { recipe, feedback } = input;
+  return `
+【分析対象データ】
+■ レシピ
+タイトル: ${recipe.title}
+タグ: ${JSON.stringify(recipe.tags || [])}
+材料: ${JSON.stringify(recipe.ingredients || [])}
+
+■ ユーザーフィードバック
+また作りたいか: ${feedback.wantToMakeAgain ? "はい" : "いいえ"}
+コメント: "${feedback.comment || "なし"}"
+`;
+}

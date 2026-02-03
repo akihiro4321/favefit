@@ -68,7 +68,6 @@ export {
 export {
   runRecipeCreator,
   RecipeOutputSchema,
-  buildRecipePrompt,
   type Recipe,
 } from "./agents/recipe-creator";
 
@@ -98,6 +97,21 @@ export {
   getSingleMealFixPrompt,
   getBatchMealFixPrompt,
 } from "./agents/prompts/plan-generator";
+
+export {
+  RECIPE_CREATOR_INSTRUCTIONS,
+  buildRecipePrompt,
+} from "./agents/prompts/recipe-creator";
+
+export {
+  MENU_ADJUSTER_INSTRUCTIONS,
+  getMenuAdjustmentPrompt,
+} from "./agents/prompts/menu-adjuster";
+
+export {
+  PREFERENCE_LEARNER_INSTRUCTIONS,
+  getPreferenceLearningPrompt,
+} from "./agents/prompts/preference-learner";
 
 // ============================================
 // Workflows

@@ -1,6 +1,4 @@
-/**
- * メニュー調整用プロンプト定義
- */
+import { MenuAdjusterInput } from "../menu-adjuster";
 
 export const MENU_ADJUSTER_INSTRUCTIONS = `
 あなたは「今あるもので何とかする」料理の達人です。
@@ -28,5 +26,15 @@ export const MENU_ADJUSTER_INSTRUCTIONS = `
 
 【message の例】
 - 「冷蔵庫の食材だけで3品ご用意しました！今日の気分はどれですか？」
-- 「辛めのレシピを集めました。お好みに合うものを選んでくださいね！」
+- 「辛めのレシピを集めました。お好みに合うものを選んでくださいね！による提案です」
 `;
+
+/**
+ * メニュー調整用プロンプトを構築
+ */
+export function getMenuAdjustmentPrompt(input: MenuAdjusterInput): string {
+  return `以下の条件でメニューを3つ提案してください。必ずJSON形式で出力してください。
+
+【条件】
+${JSON.stringify(input, null, 2)}`;
+}
