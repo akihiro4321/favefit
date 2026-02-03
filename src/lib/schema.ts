@@ -6,6 +6,18 @@
 import { Timestamp, FieldValue } from "firebase/firestore";
 
 // ========================================
+// Mood & Cuisine Types
+// ========================================
+
+export type CuisineGenre = '和食' | '洋食' | '中華' | 'イタリアン' | 'エスニック' | 'その他';
+
+export interface Mood {
+  genre: CuisineGenre;
+  tasteBalance: number; // 0: さっぱり, 100: こってり
+  freeText?: string;
+}
+
+// ========================================
 // Users Collection: users/{userId}
 // ========================================
 

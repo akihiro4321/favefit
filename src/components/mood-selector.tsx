@@ -6,7 +6,7 @@ import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Mood, CuisineGenre } from '@/types';
+import { Mood, CuisineGenre } from '@/lib/schema';
 import { cn } from '@/lib/utils';
 import { RecommendedTags } from './recommended-tags';
 

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Clock, Flame, Dumbbell, Droplets, Wheat } from 'lucide-react';
-import { Recipe } from '@/ai/agents/recipe-creator';
+import { Recipe } from '@/server/ai/agents/recipe-creator';
 
 interface RecipeDisplayProps {
   recipe: Recipe;
