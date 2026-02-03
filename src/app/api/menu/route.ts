@@ -3,8 +3,8 @@
  * POST /api/menu
  */
 
-import { suggestMenu } from "@/lib/services/menu-service";
-import { HttpError, successResponse, withValidation } from "@/lib/api-utils";
+import { suggestMenu } from "@/server/services/menu-service";
+import { HttpError, successResponse, withValidation } from "@/server/api-utils";
 import { z } from "zod";
 
 const SuggestMenuRequestSchema = z.object({

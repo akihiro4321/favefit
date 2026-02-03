@@ -4,9 +4,9 @@
  */
 
 import { z } from "zod";
-import { db } from "../firebase";
+import { db } from "@/server/firebase";
 import { doc, getDoc } from "firebase/firestore";
-import { MarketPriceDocument } from "../schema";
+import { MarketPriceDocument } from "@/lib/schema";
 
 // 入力スキーマ
 export const GetMarketPriceInputSchema = z.object({
