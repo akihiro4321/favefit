@@ -121,3 +121,21 @@ export {
   type MealPlanWorkflowInput,
   type MealPlanWorkflowResult,
 } from "./workflows/meal-plan-generation";
+
+export {
+  generateRecipe,
+  type RecipeGenerationWorkflowInput,
+  type RecipeGenerationWorkflowResult,
+} from "./workflows/recipe-generation";
+
+export {
+  learnPreferences,
+  type PreferenceLearningWorkflowInput,
+  type PreferenceLearningWorkflowResult,
+} from "./workflows/preference-learning";
+
+export {
+  adjustMenu,
+  type MenuAdjustmentWorkflowInput,
+  type MenuAdjustmentWorkflowResult,
+} from "./workflows/menu-adjustment";

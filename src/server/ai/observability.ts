@@ -27,7 +27,7 @@ export function getTelemetryConfig(
   userId?: string,
   metadata?: Record<string, string | number | boolean>
 ) {
-  const metadataParams: Record<string, string | number | boolean | null | undefined> = {
+  const metadataParams: Record<string, string | number | boolean> = {
     agent: agentName,
     ...metadata,
   };
@@ -40,7 +40,7 @@ export function getTelemetryConfig(
   return {
     isEnabled: isLangfuseEnabled,
     functionId: `favefit-${agentName}`,
-    metadata: metadataParams as Record<string, any>,
+    metadata: metadataParams,
   };
 }
 

@@ -258,9 +258,8 @@ async function fixInvalidMeals(
         continue;
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const target = (mealTargets as any)[mealType];
-      if (!target) continue;
+      if (mealType !== "breakfast" && mealType !== "lunch" && mealType !== "dinner") continue;
+      const target = mealTargets[mealType];
 
       // カロリー差が15%以内かチェック
       const diff =
