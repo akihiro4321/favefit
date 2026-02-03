@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { UserProfile, updateUserProfile } from "@/lib/db/firestore/userRepository";
+import { UserProfile } from "@/lib/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -80,11 +80,26 @@ export function ProfileForm({ userId, profile, nutritionPreferences, onUpdate }:
       if (result.error) throw new Error(result.error);
 
       // 2. プロファイルを更新（栄養情報はAPIで保存済み）
-      const updatedProfile: Partial<UserProfile> = {
-        ...formData,
-      };
-
-      await updateUserProfile(userId, updatedProfile);
+      await fetch('/api/user/update-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          profileData: {
+            physical: {
+              age: formData.age,
+              gender: formData.gender,
+              height_cm: formData.height_cm,
+              currentWeight: formData.currentWeight,
+              targetWeight: formData.targetWeight,
+              goal: formData.goal,
+            },
+            lifestyle: {
+              activityLevel: formData.activity_level,
+            },
+          },
+        }),
+      });
 
       setSuccess(true);
       onUpdate();

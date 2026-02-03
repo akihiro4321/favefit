@@ -2,8 +2,8 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { signInAnonymously, onAuthStateChanged, User, signInWithPopup, linkWithPopup } from 'firebase/auth';
-import { auth, googleProvider } from '@/lib/db/firestore/client';
-import { getOrCreateUser, UserDocument } from '@/lib/db/firestore/userRepository';
+import { auth, googleProvider } from '@/lib/firebase-client';
+import { UserDocument } from '@/lib/schema';
 
 export interface AuthContextType {
   user: User | null;
@@ -34,8 +34,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const refreshProfile = async () => {
     if (auth.currentUser) {
-      const userProfile = await getOrCreateUser(auth.currentUser.uid);
-      setProfile(userProfile);
+      try {
+        const response = await fetch('/api/user/get-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: auth.currentUser.uid }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch user profile');
+        }
+
+        const result = await response.json();
+        setProfile(result.data.user);
+      } catch (error) {
+        console.error('Error refreshing profile:', error);
+      }
     }
   };
 
@@ -64,10 +78,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // 連携成功後、ユーザー情報をリロードしてisAnonymousの状態を更新する
       await auth.currentUser.reload();
       setUser({ ...auth.currentUser });
-      
+
       // プロファイル情報も再取得
-      const userProfile = await getOrCreateUser(auth.currentUser.uid);
-      setProfile(userProfile);
+      await refreshProfile();
     } catch (error) {
       console.error('Account linking failed:', error);
       throw error;
@@ -77,10 +90,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
-      
+
       if (currentUser) {
-        const userProfile = await getOrCreateUser(currentUser.uid);
-        setProfile(userProfile);
+        try {
+          const response = await fetch('/api/user/get-profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: currentUser.uid }),
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            setProfile(result.data.user);
+          }
+        } catch (error) {
+          console.error('Error fetching user profile:', error);
+        }
       } else {
         setProfile(null);
       }

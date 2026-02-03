@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/components/auth-provider';
-import { getOrCreateUser } from '@/lib/db/firestore/userRepository';
 import { Badge } from '@/components/ui/badge';
 import { Sparkles } from 'lucide-react';
 
@@ -18,7 +17,13 @@ export function RecommendedTags({ onSelect }: RecommendedTagsProps) {
     if (!user) return;
 
     const fetchTags = async () => {
-      const userDoc = await getOrCreateUser(user.uid);
+      const res = await fetch('/api/user/get-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.uid }),
+      });
+      const data = await res.json();
+      const userDoc = data.data?.user;
       if (!userDoc) return;
 
       const prefs = userDoc.learnedPreferences;

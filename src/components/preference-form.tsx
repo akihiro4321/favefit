@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { UserProfile, updateUserProfile } from "@/lib/db/firestore/userRepository";
+import { UserProfile } from "@/lib/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,11 +40,22 @@ export function PreferenceForm({
     setSuccess(false);
 
     try {
-      await updateUserProfile(userId, {
-        favoriteIngredients: localProfile.favoriteIngredients || [],
-        allergies: localProfile.allergies || [],
-        cookingSkillLevel: localProfile.cookingSkillLevel || "intermediate",
-        availableTime: localProfile.availableTime || "medium",
+      await fetch('/api/user/update-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          profileData: {
+            physical: {
+              favoriteIngredients: localProfile.physical?.favoriteIngredients || [],
+              allergies: localProfile.physical?.allergies || [],
+            },
+            lifestyle: {
+              cookingSkillLevel: localProfile.lifestyle?.cookingSkillLevel || "intermediate",
+              availableTime: localProfile.lifestyle?.availableTime || "medium",
+            },
+          },
+        }),
       });
 
       setSuccess(true);

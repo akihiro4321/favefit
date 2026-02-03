@@ -1,9 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { saveFeedback, FeedbackRatings } from '@/lib/feedback';
-import { updateRecipeFeedbackId } from '@/lib/recipe';
 import { Button } from '@/components/ui/button';
+
+interface FeedbackRatings {
+  overall: number;
+  taste: number;
+  ease: number;
+  satisfaction: number;
+}
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,25 +44,33 @@ export function FeedbackForm({ userId, recipeId, onComplete }: FeedbackFormProps
     }
     setLoading(true);
     try {
-      const feedbackId = await saveFeedback(userId, {
-        recipeId,
-        cooked,
-        ratings,
-        repeatPreference,
-        comment,
+      const res = await fetch('/api/feedback/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          recipeId,
+          cooked,
+          ratings,
+          repeatPreference,
+          comment,
+        }),
       });
 
-      await updateRecipeFeedbackId(userId, recipeId, feedbackId);
+      const data = await res.json();
+      const feedbackId = data.data?.feedbackId;
 
       // AI学習のトリガー
-      try {
-        await fetch('/api/user/learn-preference', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, recipeId, feedbackId }),
-        });
-      } catch (e) {
-        console.error('Learning request failed', e);
+      if (feedbackId) {
+        try {
+          await fetch('/api/user/learn-preference', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, recipeId, feedbackId }),
+          });
+        } catch (e) {
+          console.error('Learning request failed', e);
+        }
       }
 
       setSuccess(true);
