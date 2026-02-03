@@ -1,1 +1,1 @@
-export { auth, db, googleProvider } from "@/server/db/firestore/client";
+export { db } from "@/server/db/firestore/client";

@@ -268,8 +268,7 @@ export const updatePlanDays = async (
 ): Promise<void> => {
   try {
     const planRef = doc(db, "plans", planId);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const updates: Record<string, any> = {
+    const updates: Record<string, unknown> = {
       updatedAt: serverTimestamp(),
     };
 

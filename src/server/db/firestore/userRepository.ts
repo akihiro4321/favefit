@@ -95,8 +95,7 @@ export const updateUserProfile = async (
 ): Promise<void> => {
   try {
     const userRef = doc(db, "users", uid);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const updates: Record<string, any> = {
+    const updates: Record<string, unknown> = {
       updatedAt: serverTimestamp(),
     };
 
