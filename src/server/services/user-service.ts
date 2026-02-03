@@ -3,7 +3,7 @@
  * ユーザー関連のビジネスロジック（栄養目標計算、好み学習）
  */
 
-import { runPreferenceLearner, PreferenceLearnerOutput, getPreferenceLearningPrompt } from "@/server/ai";
+import { learnPreferences, PreferenceLearnerOutput } from "@/server/ai";
 import {
   updateLearnedPreferences,
   updateUserNutrition,
@@ -76,6 +76,9 @@ export async function getUserProfile(
 ): Promise<GetUserProfileResponse> {
   const { userId } = request;
   const user = await getOrCreateUser(userId);
+  if (!user) {
+    throw new Error("Failed to get or create user");
+  }
   return { user };
 }
 
@@ -154,7 +157,8 @@ export async function learnPreference(
     throw new Error("Recipe not found");
   }
 
-  const messageText = getPreferenceLearningPrompt({
+  const workflowResult = await learnPreferences({
+    userId,
     recipe: {
       title: recipe.title,
       tags: recipe.tags || [],
@@ -166,7 +170,7 @@ export async function learnPreference(
     },
   });
 
-  const analysis = await runPreferenceLearner(messageText);
+  const analysis = workflowResult.analysis;
 
   await updateLearnedPreferences(
     userId,

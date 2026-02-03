@@ -153,9 +153,9 @@ async function generatePlanBackground(
     const startDate = new Date().toISOString().split("T")[0];
 
     // 既存のプランをアーカイブ
-    const existingPlan = await getActivePlan(userId);
-    if (existingPlan) {
-      await updatePlanStatus(existingPlan.id, "archived");
+    const existingPlanResult = await getActivePlanRepo(userId);
+    if (existingPlanResult) {
+      await updatePlanStatus(existingPlanResult.id!, "archived");
     }
 
     // 栄養目標の計算

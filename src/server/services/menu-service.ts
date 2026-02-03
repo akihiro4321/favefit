@@ -3,7 +3,7 @@
  * メニュー提案に関するビジネスロジック
  */
 
-import { runMenuAdjuster, MenuAdjusterInput, getMenuAdjustmentPrompt } from "@/server/ai";
+import { adjustMenu } from "@/server/ai";
 import { getOrCreateUser } from "@/server/db/firestore/userRepository";
 
 export interface SuggestMenuRequest {
@@ -57,10 +57,11 @@ export async function suggestMenu(
     carbs: Math.round(pfc.carbs / 3),
   };
 
-  const input: MenuAdjusterInput = {
+  const workflowResult = await adjustMenu({
+    userId,
     availableIngredients: ingredients,
     targetNutrition,
-    userComment: comment || undefined,
+    userComment: comment,
     previousSuggestions: previousSuggestions
       ? (previousSuggestions.filter((s): s is string => typeof s === "string"))
       : undefined,
@@ -69,13 +70,9 @@ export async function suggestMenu(
       flavorProfile: userDoc.learnedPreferences.flavorProfile,
       dislikedIngredients: userDoc.learnedPreferences.dislikedIngredients,
     },
-  };
+  });
 
-  const messageText = getMenuAdjustmentPrompt(input);
-
-  const parsedResult = await runMenuAdjuster(messageText);
-
-  const suggestions = (parsedResult.suggestions || []).map(
+  const suggestions = workflowResult.suggestions.map(
     (s: {
       recipeId?: string;
       title: string;
@@ -100,6 +97,6 @@ export async function suggestMenu(
 
   return {
     suggestions,
-    message: parsedResult.message || "レシピを提案しました！",
+    message: workflowResult.message,
   };
 }
