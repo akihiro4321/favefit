@@ -14,7 +14,7 @@ import {
   CheckCircle2,
   Flame,
 } from "lucide-react";
-import { MealSlot } from "@/lib/schema";
+import { DayPlan, MealSlot } from "@/lib/schema";
 import { FeedbackForm } from "@/components/feedback-form";
 import { Star } from "lucide-react";
 
@@ -51,7 +51,7 @@ export default function RecipePage() {
 
         if (plan) {
           // プランから該当レシピを検索
-          for (const [date, dayPlan] of Object.entries(plan.days)) {
+          for (const [date, dayPlan] of Object.entries(plan.days as Record<string, DayPlan>)) {
             for (const [slot, meal] of Object.entries(dayPlan.meals)) {
               if ((meal as MealSlot).recipeId === recipeId) {
                 const currentRecipe = meal as MealSlot;

@@ -32,13 +32,13 @@ export function ProfileForm({ userId, profile, nutritionPreferences, onUpdate }:
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [formData, setFormData] = useState({
-    age: profile.age || 30,
-    gender: profile.gender || "male",
-    height_cm: profile.height_cm || 170,
-    currentWeight: profile.currentWeight || 65,
-    targetWeight: profile.targetWeight || 60,
-    activity_level: profile.activity_level || "moderate",
-    goal: profile.goal || "lose",
+    age: profile.physical.age || 30,
+    gender: profile.physical.gender || "male",
+    height_cm: profile.physical.height_cm || 170,
+    currentWeight: profile.physical.currentWeight || 65,
+    targetWeight: profile.physical.targetWeight || 60,
+    activity_level: profile.lifestyle.activityLevel || "moderate",
+    goal: profile.physical.goal || "lose",
     lossPaceKgPerMonth: nutritionPreferences?.lossPaceKgPerMonth ?? 1,
     maintenanceAdjustKcalPerDay: nutritionPreferences?.maintenanceAdjustKcalPerDay ?? 0,
     gainPaceKgPerMonth: nutritionPreferences?.gainPaceKgPerMonth ?? 0.5,

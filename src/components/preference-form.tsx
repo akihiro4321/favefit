@@ -75,8 +75,8 @@ export function PreferenceForm({
 
     const currentList =
       type === "favorite"
-        ? localProfile.favoriteIngredients || []
-        : localProfile.allergies || [];
+        ? localProfile.physical.favoriteIngredients || []
+        : localProfile.physical.allergies || [];
 
     if (currentList.includes(cleanValue)) {
       setter("");
@@ -85,10 +85,13 @@ export function PreferenceForm({
 
     setLocalProfile((prev) => ({
       ...prev,
-      [type === "favorite" ? "favoriteIngredients" : "allergies"]: [
-        ...currentList,
-        cleanValue,
-      ],
+      physical: {
+        ...prev.physical,
+        [type === "favorite" ? "favoriteIngredients" : "allergies"]: [
+          ...currentList,
+          cleanValue,
+        ],
+      },
     }));
     setter("");
   };
@@ -96,14 +99,17 @@ export function PreferenceForm({
   const removeTag = (type: "favorite" | "allergy", index: number) => {
     const currentList =
       type === "favorite"
-        ? localProfile.favoriteIngredients || []
-        : localProfile.allergies || [];
+        ? localProfile.physical.favoriteIngredients || []
+        : localProfile.physical.allergies || [];
 
     setLocalProfile((prev) => ({
       ...prev,
-      [type === "favorite" ? "favoriteIngredients" : "allergies"]: currentList.filter(
-        (_, i) => i !== index
-      ),
+      physical: {
+        ...prev.physical,
+        [type === "favorite" ? "favoriteIngredients" : "allergies"]: currentList.filter(
+          (_: string, i: number) => i !== index
+        ),
+      },
     }));
   };
 
@@ -140,7 +146,7 @@ export function PreferenceForm({
             </Button>
           </div>
           <div className="flex flex-wrap gap-2 min-h-[24px]">
-            {(localProfile.favoriteIngredients || []).map((tag, i) => (
+            {(localProfile.physical.favoriteIngredients || []).map((tag: string, i: number) => (
               <Badge
                 key={i}
                 variant="default"
@@ -185,7 +191,7 @@ export function PreferenceForm({
             </Button>
           </div>
           <div className="flex flex-wrap gap-2 min-h-[24px]">
-            {(localProfile.allergies || []).map((tag, i) => (
+            {(localProfile.physical.allergies || []).map((tag: string, i: number) => (
               <Badge key={i} variant="destructive" className="gap-1 pr-1">
                 {tag}
                 <button onClick={() => removeTag("allergy", i)}>
@@ -201,11 +207,14 @@ export function PreferenceForm({
             <Label>料理の腕前</Label>
             <select
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              value={localProfile.cookingSkillLevel || "intermediate"}
+              value={localProfile.lifestyle.cookingSkillLevel || "intermediate"}
               onChange={(e) =>
                 setLocalProfile({
                   ...localProfile,
-                  cookingSkillLevel: e.target.value as "beginner" | "intermediate" | "advanced",
+                  lifestyle: {
+                    ...localProfile.lifestyle,
+                    cookingSkillLevel: e.target.value as "beginner" | "intermediate" | "advanced",
+                  },
                 })
               }
             >
@@ -218,11 +227,14 @@ export function PreferenceForm({
             <Label>かけられる時間</Label>
             <select
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              value={localProfile.availableTime || "medium"}
+              value={localProfile.lifestyle.availableTime || "medium"}
               onChange={(e) =>
                 setLocalProfile({
                   ...localProfile,
-                  availableTime: e.target.value as "short" | "medium" | "long",
+                  lifestyle: {
+                    ...localProfile.lifestyle,
+                    availableTime: e.target.value as "short" | "medium" | "long",
+                  },
                 })
               }
             >
