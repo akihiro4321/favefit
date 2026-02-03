@@ -3,28 +3,46 @@
 import { useAuth } from '@/components/auth-provider';
 import { RecipeCard } from '@/components/recipe-card';
 import { Button } from '@/components/ui/button';
-import { getSavedRecipes, SavedRecipe } from '@/lib/recipe';
 import { ChevronLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { DocumentSnapshot } from 'firebase/firestore';
+
+interface SavedRecipe {
+  id: string;
+  title: string;
+  description: string;
+  cookingTime: number;
+  nutrition: {
+    calories: number;
+    protein: number;
+    fat: number;
+    carbs: number;
+  };
+  ingredients: Array<{ name: string; amount: string }>;
+  instructions: string[];
+}
 
 export default function RecipesPage() {
   const { user, loading: authLoading } = useAuth();
   const [recipes, setRecipes] = useState<SavedRecipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [lastVisible, setLastVisible] = useState<DocumentSnapshot | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
 
   useEffect(() => {
     async function loadRecipes() {
       if (user) {
         setLoading(true);
-        const data = await getSavedRecipes(user.uid, 20);
-        setRecipes(data.recipes);
-        setLastVisible(data.lastVisible);
-        setHasMore(data.hasMore);
+        const res = await fetch('/api/recipe/get-saved-list', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.uid, pageSize: 20, page: 1 }),
+        });
+        const data = await res.json();
+        setRecipes(data.data?.recipes || []);
+        setHasMore(data.data?.hasMore || false);
+        setCurrentPage(1);
         setLoading(false);
       }
     }
@@ -34,13 +52,19 @@ export default function RecipesPage() {
   }, [user, authLoading]);
 
   async function loadMoreRecipes() {
-    if (!user || !lastVisible || !hasMore) return;
+    if (!user || !hasMore) return;
 
     setLoadingMore(true);
-    const data = await getSavedRecipes(user.uid, 20, lastVisible);
-    setRecipes([...recipes, ...data.recipes]);
-    setLastVisible(data.lastVisible);
-    setHasMore(data.hasMore);
+    const nextPage = currentPage + 1;
+    const res = await fetch('/api/recipe/get-saved-list', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user.uid, pageSize: 20, page: nextPage }),
+    });
+    const data = await res.json();
+    setRecipes([...recipes, ...(data.data?.recipes || [])]);
+    setHasMore(data.data?.hasMore || false);
+    setCurrentPage(nextPage);
     setLoadingMore(false);
   }
 

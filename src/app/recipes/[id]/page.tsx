@@ -4,11 +4,25 @@ import { useAuth } from '@/components/auth-provider';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
-import { getRecipe, SavedRecipe } from '@/lib/recipe';
 import { ChevronLeft, Clock, Flame, Loader2, UtensilsCrossed } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+
+interface SavedRecipe {
+  id: string;
+  title: string;
+  description: string;
+  cookingTime: number;
+  nutrition: {
+    calories: number;
+    protein: number;
+    fat: number;
+    carbs: number;
+  };
+  ingredients: Array<{ name: string; amount: string }>;
+  instructions: string[];
+}
 
 export default function RecipeDetailPage() {
   const { id } = useParams() as { id: string };
@@ -22,9 +36,25 @@ export default function RecipeDetailPage() {
     async function loadRecipe() {
       if (user && id) {
         setLoading(true);
-        const data = await getRecipe(user.uid, id);
-        setRecipe(data);
-        setLoading(false);
+        try {
+          const response = await fetch('/api/recipe/get-saved', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.uid, recipeId: id }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to fetch recipe');
+          }
+
+          const result = await response.json();
+          setRecipe(result.data.recipe);
+        } catch (error) {
+          console.error('Error loading recipe:', error);
+          setRecipe(null);
+        } finally {
+          setLoading(false);
+        }
       }
     }
     if (!authLoading) {

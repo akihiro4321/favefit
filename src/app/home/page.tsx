@@ -14,7 +14,6 @@ import {
   Sparkles,
   PartyPopper,
 } from "lucide-react";
-import { getActivePlan, getPendingPlan } from "@/lib/plan";
 import { DayPlan, PlanDocument } from "@/lib/schema";
 import Link from "next/link";
 import { PlanCreatingScreen } from "@/components/plan-creating-screen";
@@ -45,13 +44,28 @@ export default function HomePage() {
     const fetchData = async () => {
       if (!user) return;
       try {
-        const [active, pending] = await Promise.all([
-          getActivePlan(user.uid),
-          getPendingPlan(user.uid),
+        const [activeRes, pendingRes] = await Promise.all([
+          fetch('/api/plan/get-active', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.uid }),
+          }),
+          fetch('/api/plan/get-pending', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.uid }),
+          }),
         ]);
+
+        const activeData = await activeRes.json();
+        const pendingData = await pendingRes.json();
+
+        const active = activeData.data?.plan || null;
+        const pending = pendingData.data?.plan || null;
+
         setActivePlan(active);
         setPendingPlan(pending);
-        
+
         // Activeプランがある場合は今日のメニューを設定
         if (active) {
           const today = new Date().toISOString().split("T")[0];

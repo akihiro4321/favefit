@@ -13,7 +13,6 @@ import {
   IceCream,
   Beef,
 } from "lucide-react";
-import { getActivePlan } from "@/lib/plan";
 import { DayPlan } from "@/lib/schema";
 import confetti from "canvas-confetti";
 
@@ -34,7 +33,13 @@ export default function CheatDayPage() {
     const fetchData = async () => {
       if (!user) return;
       try {
-        const plan = await getActivePlan(user.uid);
+        const res = await fetch('/api/plan/get-active', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.uid }),
+        });
+        const data = await res.json();
+        const plan = data.data?.plan;
         if (plan) {
           const today = new Date().toISOString().split("T")[0];
           setTodaysMeals(plan.days[today] || null);

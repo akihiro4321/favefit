@@ -13,8 +13,6 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { getActivePlan } from "@/lib/plan";
-import { getItemsByCategory, getShoppingList, toggleItemCheck } from "@/lib/shoppingList";
 import { ShoppingItem } from "@/lib/schema";
 
 export default function ShoppingPage() {
@@ -41,14 +39,27 @@ export default function ShoppingPage() {
     const fetchData = async () => {
       if (!user) return;
       try {
-        const plan = await getActivePlan(user.uid);
+        const planRes = await fetch('/api/plan/get-active', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.uid }),
+        });
+        const planData = await planRes.json();
+        const plan = planData.data?.plan;
+
         if (plan) {
           setPlanId(plan.id);
           const daysCount = Object.keys(plan.days || {}).length;
           setPlanDuration(daysCount);
-          
+
           // カテゴリ別表示用のアイテム取得
-          const items = await getItemsByCategory(plan.id);
+          const itemsRes = await fetch('/api/shopping/get-by-category', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ planId: plan.id }),
+          });
+          const itemsData = await itemsRes.json();
+          const items = itemsData.data?.items || {};
           setItemsByCategory(items);
           setExpandedCategories(new Set(Object.keys(items)));
         }
@@ -82,15 +93,26 @@ export default function ShoppingPage() {
       // getShoppingList を使用して、全アイテムの中での正しいインデックスを見つける必要がある
       // もしくは toggleItemCheck をカテゴリベースのAPIにアップグレードするのが理想的だが、
       // ここでは既存のAPIに合わせて、全アイテム内のインデックスを計算する
-      const list = await getShoppingList(planId);
+      const listRes = await fetch('/api/shopping/get-list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId }),
+      });
+      const listData = await listRes.json();
+      const list = listData.data?.shoppingList;
+
       if (list) {
         const itemToUpdate = itemsByCategory[category][indexInItems];
         const globalIndex = list.items.findIndex(
-          (i) => i.ingredient === itemToUpdate.ingredient && i.amount === itemToUpdate.amount
+          (i: ShoppingItem) => i.ingredient === itemToUpdate.ingredient && i.amount === itemToUpdate.amount
         );
-        
+
         if (globalIndex !== -1) {
-          await toggleItemCheck(planId, globalIndex, checked);
+          await fetch('/api/shopping/toggle-item', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ planId, itemIndex: globalIndex, checked }),
+          });
         }
       }
     } catch (error) {

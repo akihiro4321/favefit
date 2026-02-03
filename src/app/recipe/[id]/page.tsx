@@ -14,8 +14,6 @@ import {
   CheckCircle2,
   Flame,
 } from "lucide-react";
-import { getActivePlan } from "@/lib/plan";
-import { addToFavorites, markAsCooked } from "@/lib/recipeHistory";
 import { MealSlot } from "@/lib/schema";
 import { FeedbackForm } from "@/components/feedback-form";
 import { Star } from "lucide-react";
@@ -43,7 +41,14 @@ export default function RecipePage() {
     const fetchRecipe = async () => {
       if (!user) return;
       try {
-        const plan = await getActivePlan(user.uid);
+        const planRes = await fetch('/api/plan/get-active', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.uid }),
+        });
+        const planData = await planRes.json();
+        const plan = planData.data?.plan;
+
         if (plan) {
           // プランから該当レシピを検索
           for (const [date, dayPlan] of Object.entries(plan.days)) {
@@ -95,7 +100,11 @@ export default function RecipePage() {
     if (!user || !recipe) return;
     setCompleting(true);
     try {
-      await markAsCooked(user.uid, recipeId);
+      await fetch('/api/history/mark-as-cooked', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.uid, recipeId }),
+      });
       setRecipe((prev) => (prev ? { ...prev, status: "completed" } : null));
       // 評価フォームを表示
       setShowFeedback(true);
@@ -110,7 +119,11 @@ export default function RecipePage() {
     if (!user) return;
     setFavoriting(true);
     try {
-      await addToFavorites(user.uid, recipeId);
+      await fetch('/api/history/add-to-favorites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.uid, recipeId }),
+      });
       alert("また作りたいリストに追加しました！");
     } catch (error) {
       console.error(error);

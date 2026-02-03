@@ -15,7 +15,6 @@ import {
   ChevronRight,
   Repeat,
 } from "lucide-react";
-import { getRecipeHistory, getFavorites, addToFavorites } from "@/lib/recipeHistory";
 import { RecipeHistoryItem, FavoriteRecipe } from "@/lib/schema";
 import Link from "next/link";
 
@@ -37,12 +36,24 @@ export default function HistoryPage() {
     const fetchData = async () => {
       if (!user) return;
       try {
-        const [historyData, favoritesData] = await Promise.all([
-          getRecipeHistory(user.uid),
-          getFavorites(user.uid),
+        const [historyRes, favoritesRes] = await Promise.all([
+          fetch('/api/history/get-history', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.uid }),
+          }),
+          fetch('/api/history/get-favorites', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.uid }),
+          }),
         ]);
-        setHistory(historyData);
-        setFavorites(favoritesData);
+
+        const historyData = await historyRes.json();
+        const favoritesData = await favoritesRes.json();
+
+        setHistory(historyData.data?.history || []);
+        setFavorites(favoritesData.data?.favorites || []);
       } catch (error) {
         console.error("Error fetching history:", error);
       } finally {
@@ -123,7 +134,11 @@ function RecipeCard({ recipe }: { recipe: RecipeHistoryItem }) {
     
     setAdding(true);
     try {
-      await addToFavorites(user.uid, recipe.id);
+      await fetch('/api/history/add-to-favorites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.uid, recipeId: recipe.id }),
+      });
       // 状態を更新するためにページをリロード
       window.location.reload();
     } catch (error) {

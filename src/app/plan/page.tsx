@@ -14,7 +14,6 @@ import {
   RotateCw,
   CheckCircle,
 } from "lucide-react";
-import { getActivePlan, getPendingPlan } from "@/lib/plan";
 import { PlanDocument, DayPlan } from "@/lib/schema";
 import { PlanSummary } from "@/components/plan-summary";
 import Link from "next/link";
@@ -48,12 +47,24 @@ export default function PlanPage() {
     const fetchData = async () => {
       if (!user) return;
       try {
-        const [active, pending] = await Promise.all([
-          getActivePlan(user.uid),
-          getPendingPlan(user.uid),
+        const [activeRes, pendingRes] = await Promise.all([
+          fetch('/api/plan/get-active', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.uid }),
+          }),
+          fetch('/api/plan/get-pending', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.uid }),
+          }),
         ]);
-        setActivePlan(active);
-        setPendingPlan(pending);
+
+        const activeData = await activeRes.json();
+        const pendingData = await pendingRes.json();
+
+        setActivePlan(activeData.data?.plan || null);
+        setPendingPlan(pendingData.data?.plan || null);
       } catch (error) {
         console.error("Error fetching plan:", error);
       } finally {
@@ -68,13 +79,18 @@ export default function PlanPage() {
   // ユーザーの目標カロリーを取得（プラン概要表示用）
   useEffect(() => {
     if (user) {
-      import("@/lib/db/firestore/userRepository").then(({ getOrCreateUser }) => {
-        getOrCreateUser(user.uid).then((userDoc) => {
-          if (userDoc) {
-            setTargetMacros(userDoc.nutrition.pfc);
+      fetch('/api/user/get-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.uid }),
+      })
+        .then(res => res.json())
+        .then(result => {
+          if (result.data?.user) {
+            setTargetMacros(result.data.user.nutrition.pfc);
           }
-        });
-      });
+        })
+        .catch(err => console.error('Error fetching user profile:', err));
     }
   }, [user]);
 
@@ -84,12 +100,24 @@ export default function PlanPage() {
       const interval = setInterval(async () => {
         await refreshProfile();
         // プランも再取得
-        const [active, pending] = await Promise.all([
-          getActivePlan(user.uid),
-          getPendingPlan(user.uid),
+        const [activeRes, pendingRes] = await Promise.all([
+          fetch('/api/plan/get-active', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.uid }),
+          }),
+          fetch('/api/plan/get-pending', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.uid }),
+          }),
         ]);
-        setActivePlan(active);
-        setPendingPlan(pending);
+
+        const activeData = await activeRes.json();
+        const pendingData = await pendingRes.json();
+
+        setActivePlan(activeData.data?.plan || null);
+        setPendingPlan(pendingData.data?.plan || null);
       }, 5000);
       return () => clearInterval(interval);
     }
@@ -146,12 +174,24 @@ export default function PlanPage() {
       if (!res.ok) {
         throw new Error(result.error || "プラン承認に失敗しました");
       }
-      const [active, pending] = await Promise.all([
-        getActivePlan(user.uid),
-        getPendingPlan(user.uid),
+      const [activeRes, pendingRes] = await Promise.all([
+        fetch('/api/plan/get-active', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.uid }),
+        }),
+        fetch('/api/plan/get-pending', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.uid }),
+        }),
       ]);
-      setActivePlan(active);
-      setPendingPlan(pending);
+
+      const activeData = await activeRes.json();
+      const pendingData = await pendingRes.json();
+
+      setActivePlan(activeData.data?.plan || null);
+      setPendingPlan(pendingData.data?.plan || null);
       toast.success("プランを承認しました。レシピ詳細を生成中です。");
     } catch (error) {
       console.error("Approve plan error:", error);
@@ -177,8 +217,13 @@ export default function PlanPage() {
       if (!res.ok) {
         throw new Error(result.error || "プラン拒否に失敗しました");
       }
-      const pending = await getPendingPlan(user.uid);
-      setPendingPlan(pending);
+      const pendingRes = await fetch('/api/plan/get-pending', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.uid }),
+      });
+      const pendingData = await pendingRes.json();
+      setPendingPlan(pendingData.data?.plan || null);
       toast.success("プランを拒否しました。新しいプランを生成します。");
       await refreshProfile();
       await fetch("/api/plan/generate", {

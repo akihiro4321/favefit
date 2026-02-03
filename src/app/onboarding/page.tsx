@@ -27,10 +27,8 @@ import {
   Sparkles,
   CalendarDays,
 } from "lucide-react";
-import { updateUserProfile, completeOnboarding } from "@/lib/db/firestore/userRepository";
-import type { LearnedPreferences, UserDocument, UserProfile } from "@/lib/schema";
-import { db } from "@/lib/db/firestore/client";
-import { doc, updateDoc, serverTimestamp, Timestamp } from "firebase/firestore";
+import type { LearnedPreferences, UserDocument } from "@/lib/schema";
+import { Timestamp } from "firebase/firestore";
 import { PlanCreatingScreen } from "@/components/plan-creating-screen";
 import { NutritionPreferencesForm } from "@/components/nutrition-preferences-form";
 import type { CalculateNutritionRequest } from "@/lib/schemas/user";
@@ -174,31 +172,31 @@ const getFlavorProfile = (learnedPreferences?: LearnedPreferences) => {
  */
 const buildProfileOverrides = (profile?: Partial<UserDocument> | null): Partial<OnboardingFormData> => {
   if (!profile?.profile) return {};
-  const base: Partial<UserProfile> = profile.profile;
+  const base = profile.profile;
   return {
-    displayName: base.displayName || DEFAULT_FORM_DATA.displayName,
-    currentWeight: base.currentWeight || DEFAULT_FORM_DATA.currentWeight,
-    targetWeight: base.targetWeight || DEFAULT_FORM_DATA.targetWeight,
-    deadline: getDeadlineInput(base.deadline ?? null),
-    cheatDayFrequency: base.cheatDayFrequency || DEFAULT_FORM_DATA.cheatDayFrequency,
-    age: base.age || DEFAULT_FORM_DATA.age,
-    gender: base.gender || DEFAULT_FORM_DATA.gender,
-    height_cm: base.height_cm || DEFAULT_FORM_DATA.height_cm,
+    displayName: base.identity?.displayName || DEFAULT_FORM_DATA.displayName,
+    currentWeight: base.physical?.currentWeight || DEFAULT_FORM_DATA.currentWeight,
+    targetWeight: base.physical?.targetWeight || DEFAULT_FORM_DATA.targetWeight,
+    deadline: getDeadlineInput(base.physical?.deadline ?? null),
+    cheatDayFrequency: base.lifestyle?.cheatDayFrequency || DEFAULT_FORM_DATA.cheatDayFrequency,
+    age: base.physical?.age || DEFAULT_FORM_DATA.age,
+    gender: base.physical?.gender || DEFAULT_FORM_DATA.gender,
+    height_cm: base.physical?.height_cm || DEFAULT_FORM_DATA.height_cm,
     activity_level:
-      base.activity_level || DEFAULT_FORM_DATA.activity_level,
-    goal: base.goal || DEFAULT_FORM_DATA.goal,
+      base.lifestyle?.activityLevel || DEFAULT_FORM_DATA.activity_level,
+    goal: base.physical?.goal || DEFAULT_FORM_DATA.goal,
     lossPaceKgPerMonth: profile.nutrition?.preferences?.lossPaceKgPerMonth ?? DEFAULT_FORM_DATA.lossPaceKgPerMonth,
     maintenanceAdjustKcalPerDay:
       profile.nutrition?.preferences?.maintenanceAdjustKcalPerDay ?? DEFAULT_FORM_DATA.maintenanceAdjustKcalPerDay,
     gainPaceKgPerMonth: profile.nutrition?.preferences?.gainPaceKgPerMonth ?? DEFAULT_FORM_DATA.gainPaceKgPerMonth,
     gainStrategy: profile.nutrition?.preferences?.gainStrategy || DEFAULT_FORM_DATA.gainStrategy,
     macroPreset: profile.nutrition?.preferences?.macroPreset || DEFAULT_FORM_DATA.macroPreset,
-    allergies: base.allergies || DEFAULT_FORM_DATA.allergies,
-    favoriteIngredients: base.favoriteIngredients || DEFAULT_FORM_DATA.favoriteIngredients,
+    allergies: base.physical?.allergies || DEFAULT_FORM_DATA.allergies,
+    favoriteIngredients: base.physical?.favoriteIngredients || DEFAULT_FORM_DATA.favoriteIngredients,
     preferredCuisines: getPreferredCuisines(profile.learnedPreferences),
     flavorProfile: getFlavorProfile(profile.learnedPreferences),
-    cookingSkillLevel: base.cookingSkillLevel || DEFAULT_FORM_DATA.cookingSkillLevel,
-    availableTime: base.availableTime || DEFAULT_FORM_DATA.availableTime,
+    cookingSkillLevel: base.lifestyle?.cookingSkillLevel || DEFAULT_FORM_DATA.cookingSkillLevel,
+    availableTime: base.lifestyle?.availableTime || DEFAULT_FORM_DATA.availableTime,
   };
 };
 
@@ -327,21 +325,35 @@ export default function OnboardingPage() {
       : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
     const deadlineTimestamp = Timestamp.fromDate(deadlineDate);
 
-    await updateUserProfile(user!.uid, {
-      displayName: formData.displayName || "ユーザー",
-      currentWeight: formData.currentWeight,
-      targetWeight: formData.targetWeight,
-      deadline: deadlineTimestamp,
-      cheatDayFrequency: formData.cheatDayFrequency,
-      age: formData.age,
-      gender: formData.gender,
-      height_cm: formData.height_cm,
-      activity_level: formData.activity_level,
-      goal: formData.goal,
-      allergies: formData.allergies,
-      favoriteIngredients: formData.favoriteIngredients,
-      cookingSkillLevel: formData.cookingSkillLevel,
-      availableTime: formData.availableTime,
+    await fetch('/api/user/update-profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: user!.uid,
+        profileData: {
+          identity: {
+            displayName: formData.displayName || "ユーザー",
+            isGuest: false,
+          },
+          physical: {
+            currentWeight: formData.currentWeight,
+            targetWeight: formData.targetWeight,
+            deadline: deadlineTimestamp,
+            age: formData.age,
+            gender: formData.gender,
+            height_cm: formData.height_cm,
+            goal: formData.goal,
+            allergies: formData.allergies,
+            favoriteIngredients: formData.favoriteIngredients,
+          },
+          lifestyle: {
+            activityLevel: formData.activity_level,
+            cheatDayFrequency: formData.cheatDayFrequency,
+            cookingSkillLevel: formData.cookingSkillLevel,
+            availableTime: formData.availableTime,
+          },
+        },
+      }),
     });
 
     if (formData.preferredCuisines.length > 0 || formData.flavorProfile) {
@@ -361,12 +373,10 @@ export default function OnboardingPage() {
         initialFlavorProfile["medium"] = 10;
       }
 
-      const userRef = doc(db, "users", user!.uid);
-      await updateDoc(userRef, {
-        "learnedPreferences.cuisines": initialCuisines,
-        "learnedPreferences.flavorProfile": initialFlavorProfile,
-        updatedAt: serverTimestamp(),
-      });
+      // learnedPreferencesを更新するためのAPIエンドポイントが必要
+      // 現状はprofileData内で扱えないため、一旦コメントアウト
+      // TODO: update-learned-preferencesエンドポイントを追加
+      console.log("TODO: Update learned preferences", { initialCuisines, initialFlavorProfile });
     }
 
     setCurrentStep(ONBOARDING_STEP.PLAN_CREATION);
@@ -422,7 +432,11 @@ export default function OnboardingPage() {
     setSubmitting(true);
     try {
       // 1. オンボーディング完了をマーク
-      await completeOnboarding(user!.uid);
+      await fetch('/api/user/complete-onboarding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user!.uid }),
+      });
 
       // 2. プラン生成をリクエスト（バックグラウンドで実行される）
       const response = await fetch("/api/plan/generate", {
