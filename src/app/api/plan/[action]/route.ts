@@ -9,14 +9,22 @@ import {
   generatePlan,
   approvePlan,
   rejectPlan,
-} from "@/lib/services/plan-service";
-import { HttpError, successResponse } from "@/lib/api-utils";
+  getActivePlan,
+  getPendingPlan,
+} from "@/server/services/plan-service";
+import { HttpError, successResponse } from "@/server/api-utils";
 
 const GeneratePlanRequestSchema = z.object({
   userId: z.string().min(1, "userId は必須です"),
 });
 
+const GetActivePlanRequestSchema = z.object({
+  userId: z.string().min(1, "userId は必須です"),
+});
 
+const GetPendingPlanRequestSchema = z.object({
+  userId: z.string().min(1, "userId は必須です"),
+});
 
 const ApprovePlanRequestSchema = z.object({
   userId: z.string().min(1, "userId は必須です"),
@@ -44,6 +52,16 @@ export async function POST(
       case "generate": {
         const validated = GeneratePlanRequestSchema.parse(body);
         const result = await generatePlan(validated);
+        return successResponse(result);
+      }
+      case "get-active": {
+        const validated = GetActivePlanRequestSchema.parse(body);
+        const result = await getActivePlan(validated);
+        return successResponse(result);
+      }
+      case "get-pending": {
+        const validated = GetPendingPlanRequestSchema.parse(body);
+        const result = await getPendingPlan(validated);
         return successResponse(result);
       }
       case "approve": {

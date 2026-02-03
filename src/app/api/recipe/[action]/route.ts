@@ -5,8 +5,13 @@
  */
 
 import { NextRequest } from "next/server";
-import { getRecipeDetail, swapMealRecipe } from "@/lib/services/recipe-service";
-import { HttpError, successResponse } from "@/lib/api-utils";
+import {
+  getRecipeDetail,
+  swapMealRecipe,
+  getSavedRecipe,
+  getSavedRecipes
+} from "@/server/services/recipe-service";
+import { HttpError, successResponse } from "@/server/api-utils";
 import { MealSlot } from "@/lib/schema";
 import { z } from "zod";
 
@@ -23,6 +28,17 @@ const SwapMealRequestSchema = z.object({
   mealType: z.string().min(1),
   newMeal: z.custom<MealSlot>(),
   userId: z.string().optional(),
+});
+
+const GetSavedRecipeRequestSchema = z.object({
+  userId: z.string().min(1),
+  recipeId: z.string().min(1),
+});
+
+const GetSavedRecipesRequestSchema = z.object({
+  userId: z.string().min(1),
+  pageSize: z.number().optional(),
+  page: z.number().optional(),
 });
 
 /**
@@ -46,6 +62,16 @@ export async function POST(
         const validated = SwapMealRequestSchema.parse(body);
         await swapMealRecipe(validated);
         return successResponse({ message: "レシピを差し替えました" });
+      }
+      case "get-saved": {
+        const validated = GetSavedRecipeRequestSchema.parse(body);
+        const result = await getSavedRecipe(validated);
+        return successResponse(result);
+      }
+      case "get-saved-list": {
+        const validated = GetSavedRecipesRequestSchema.parse(body);
+        const result = await getSavedRecipes(validated);
+        return successResponse(result);
       }
       default:
         return HttpError.badRequest(`Unknown action: ${action}`);

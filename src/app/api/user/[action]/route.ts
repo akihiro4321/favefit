@@ -6,13 +6,39 @@
 
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { calculateNutrition, learnPreference, updateNutritionPreferences } from "@/lib/services/user-service";
-import { HttpError, successResponse } from "@/lib/api-utils";
+import {
+  calculateNutrition,
+  learnPreference,
+  updateNutritionPreferences,
+  getUserProfile,
+  updateUserProfile,
+  completeOnboarding,
+  setPlanCreating
+} from "@/server/services/user-service";
+import { HttpError, successResponse } from "@/server/api-utils";
 import {
   CalculateNutritionRequestSchema,
   UpdateNutritionPreferencesSchema,
   LearnPreferenceRequestSchema,
 } from "@/lib/schemas/user";
+import { UserProfile } from "@/lib/schema";
+
+const GetUserProfileRequestSchema = z.object({
+  userId: z.string().min(1),
+});
+
+const UpdateUserProfileRequestSchema = z.object({
+  userId: z.string().min(1),
+  profileData: z.custom<Partial<UserProfile>>(),
+});
+
+const CompleteOnboardingRequestSchema = z.object({
+  userId: z.string().min(1),
+});
+
+const SetPlanCreatingRequestSchema = z.object({
+  userId: z.string().min(1),
+});
 
 /**
  * ユーザー関連API
@@ -26,6 +52,26 @@ export async function POST(
     const body = await req.json();
 
     switch (action) {
+      case "get-profile": {
+        const validated = GetUserProfileRequestSchema.parse(body);
+        const result = await getUserProfile(validated);
+        return successResponse(result);
+      }
+      case "update-profile": {
+        const validated = UpdateUserProfileRequestSchema.parse(body);
+        await updateUserProfile(validated);
+        return successResponse({ ok: true });
+      }
+      case "complete-onboarding": {
+        const validated = CompleteOnboardingRequestSchema.parse(body);
+        await completeOnboarding(validated);
+        return successResponse({ ok: true });
+      }
+      case "set-plan-creating": {
+        const validated = SetPlanCreatingRequestSchema.parse(body);
+        await setPlanCreating(validated);
+        return successResponse({ ok: true });
+      }
       case "calculate-nutrition": {
         const validated = CalculateNutritionRequestSchema.parse(body);
         const result = await calculateNutrition(validated);
