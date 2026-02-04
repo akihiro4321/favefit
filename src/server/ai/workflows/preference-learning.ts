@@ -81,12 +81,12 @@ async function executePreferenceLearning(
 function calculateScoreChanges(
   analysis: PreferenceLearnerOutput
 ): { totalCuisineChanges: number; totalFlavorChanges: number } {
-  const cuisineTotal = Object.values(analysis.cuisineUpdates).reduce(
-    (sum, val) => sum + Math.abs(val),
+  const cuisineTotal = analysis.cuisineUpdates.reduce(
+    (sum, update) => sum + Math.abs(update.score),
     0
   );
-  const flavorTotal = Object.values(analysis.flavorUpdates).reduce(
-    (sum, val) => sum + Math.abs(val),
+  const flavorTotal = analysis.flavorUpdates.reduce(
+    (sum, update) => sum + Math.abs(update.score),
     0
   );
 

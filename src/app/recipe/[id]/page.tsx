@@ -71,9 +71,10 @@ export default function RecipePage() {
                       mealType: slot,
                     }),
                   });
+                  if (!res.ok) throw new Error("レシピ詳細の取得に失敗しました");
                   const data = await res.json();
                   if (data.success) {
-                    setRecipe(data.recipe);
+                    setRecipe(data.data.recipe);
                   } else {
                     setRecipe(currentRecipe); // 生成失敗時は名目のみ表示
                   }

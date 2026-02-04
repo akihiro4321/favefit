@@ -131,9 +131,9 @@ const MealSlotOutputSchema = z.object({
 });
 
 export const PlanGeneratorOutputSchema = z.object({
-  days: z.record(
-    z.string().describe("日付 (YYYY-MM-DD)"),
+  days: z.array(
     z.object({
+      date: z.string().describe("日付 (YYYY-MM-DD)"),
       isCheatDay: z.boolean().describe("この日がチートデイかどうか"),
       meals: z.object({
         breakfast: MealSlotOutputSchema,
@@ -147,7 +147,7 @@ export const PlanGeneratorOutputSchema = z.object({
         carbs: z.number(),
       }),
     })
-  ),
+  ).describe("各日程の食事プラン"),
 });
 
 export type PlanGeneratorOutput = z.infer<typeof PlanGeneratorOutputSchema>;
@@ -156,9 +156,11 @@ export type PlanGeneratorOutput = z.infer<typeof PlanGeneratorOutputSchema>;
  * 部分修正用の出力スキーマ
  */
 export const PartialPlanOutputSchema = z.object({
-  meals: z.record(
-    z.string().describe("食事キー (YYYY-MM-DD_mealType)"),
-    MealSlotOutputSchema
+  meals: z.array(
+    z.object({
+      key: z.string().describe("食事キー (YYYY-MM-DD_mealType)"),
+      recipe: MealSlotOutputSchema,
+    })
   ),
 });
 

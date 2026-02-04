@@ -311,7 +311,7 @@ export default function OnboardingPage() {
     const result = await response.json();
     if (result.error) throw new Error(result.error);
 
-    setNutritionResult(result.nutrition);
+    setNutritionResult(result.data.nutrition);
     setCurrentStep(ONBOARDING_STEP.NUTRITION_REVIEW);
   };
 

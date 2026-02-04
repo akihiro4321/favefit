@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "arch -arm64 next dev",
-    "build": "arch -arm64 next build",
-    "start": "arch -arm64 next start",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
     "lint": "eslint",
     "type-check": "tsc --noEmit",
     "test": "vitest run"

@@ -71,7 +71,7 @@ function formatZodErrors(error: ZodError): Record<string, string[]> {
 // ========================================
 
 export function successResponse<T>(data: T): NextResponse {
-  return NextResponse.json({ success: true, ...data });
+  return NextResponse.json({ success: true, data });
 }
 
 // ========================================

@@ -95,7 +95,8 @@ function convertToInternalFormat(
 ): Record<string, DayPlan> {
   const days: Record<string, DayPlan> = {};
 
-  for (const [date, dayData] of Object.entries(generatedPlan.days)) {
+  for (const dayData of generatedPlan.days) {
+    const date = dayData.date;
     const convertMeal = (meal: {
       recipeId?: string;
       title: string;

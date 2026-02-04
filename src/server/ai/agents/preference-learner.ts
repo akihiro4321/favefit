@@ -36,11 +36,17 @@ export const PreferenceLearnerInputSchema = z.object({
  */
 export const PreferenceLearnerOutputSchema = z.object({
   cuisineUpdates: z
-    .record(z.number())
-    .describe("ジャンルごとのスコア変動 (例: { japanese: 5, korean: -2 })"),
+    .array(z.object({
+      category: z.string(),
+      score: z.number()
+    }))
+    .describe("ジャンルごとのスコア変動 (例: [{ category: 'japanese', score: 5 }])"),
   flavorUpdates: z
-    .record(z.number())
-    .describe("味付けごとのスコア変動 (例: { spicy: 3, light: 1 })"),
+    .array(z.object({
+      flavor: z.string(),
+      score: z.number()
+    }))
+    .describe("味付けごとのスコア変動 (例: [{ flavor: 'spicy', score: 3 }])"),
   summary: z.string().describe("学習内容の要約"),
 });
 

@@ -172,10 +172,21 @@ export async function learnPreference(
 
   const analysis = workflowResult.analysis;
 
+  // AIからの配列形式をRepositoryが期待するRecord形式に変換
+  const cuisineUpdates: Record<string, number> = {};
+  analysis.cuisineUpdates.forEach((update) => {
+    cuisineUpdates[update.category] = update.score;
+  });
+
+  const flavorUpdates: Record<string, number> = {};
+  analysis.flavorUpdates.forEach((update) => {
+    flavorUpdates[update.flavor] = update.score;
+  });
+
   await updateLearnedPreferences(
     userId,
-    analysis.cuisineUpdates,
-    analysis.flavorUpdates
+    cuisineUpdates,
+    flavorUpdates
   );
 
   return { analysis };

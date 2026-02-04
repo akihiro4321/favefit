@@ -87,7 +87,7 @@ function FridgePageContent() {
 
       if (!res.ok) throw new Error("提案に失敗しました");
       const data = await res.json();
-      setSuggestions(data.suggestions || []);
+      setSuggestions(data.data.suggestions || []);
       setComment("");
     } catch (error) {
       console.error(error);
