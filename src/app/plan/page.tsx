@@ -19,6 +19,8 @@ import { PlanSummary } from "@/components/plan-summary";
 import Link from "next/link";
 import { toast } from "sonner";
 import { PlanCreatingScreen } from "@/components/plan-creating-screen";
+import { Textarea } from "@/components/ui/textarea";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export default function PlanPage() {
   const { user, profile, loading, refreshProfile } = useAuth();
@@ -33,6 +35,8 @@ export default function PlanPage() {
   const [fetching, setFetching] = useState(true);
   const [approving, setApproving] = useState(false);
   const [targetMacros, setTargetMacros] = useState<{ protein: number; fat: number; carbs: number } | undefined>();
+  const [feedback, setFeedback] = useState("");
+  const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
 
   // プラン作成中かどうか
   const isPlanCreating = profile?.planCreationStatus === "creating";
@@ -204,6 +208,7 @@ export default function PlanPage() {
   const handleRejectPlan = async () => {
     if (!pendingPlan) return;
     setFetching(true);
+    setShowFeedbackDialog(false);
     try {
       const res = await fetch("/api/plan/reject", {
         method: "POST",
@@ -211,12 +216,14 @@ export default function PlanPage() {
         body: JSON.stringify({
           userId: user.uid,
           planId: pendingPlan.id,
+          feedback: feedback.trim(),
         }),
       });
       const result = await res.json();
       if (!res.ok) {
         throw new Error(result.error || "プラン拒否に失敗しました");
       }
+      setFeedback(""); // フィードバックをリセット
       const pendingRes = await fetch('/api/plan/get-pending', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -224,7 +231,7 @@ export default function PlanPage() {
       });
       const pendingData = await pendingRes.json();
       setPendingPlan(pendingData.data?.plan || null);
-      toast.success("プランを拒否しました。新しいプランを生成します。");
+      toast.success("フィードバックを送信し、新しいプランを生成します。");
       await refreshProfile();
       await fetch("/api/plan/generate", {
         method: "POST",
@@ -306,7 +313,7 @@ export default function PlanPage() {
             <Button
               variant="secondary"
               className="flex-1 h-14 rounded-[16px] font-bold text-[1rem] bg-[#f1f3f5] text-[#636e72] gap-2"
-              onClick={handleRejectPlan}
+              onClick={() => setShowFeedbackDialog(true)}
               disabled={fetching}
             >
               <RotateCw className="w-5 h-5" />
@@ -330,6 +337,28 @@ export default function PlanPage() {
           </div>
         </div>
       )}
+
+      {/* フィードバック入力ダイアログ */}
+      <ConfirmDialog
+        open={showFeedbackDialog}
+        onOpenChange={setShowFeedbackDialog}
+        title="プランを再生成"
+        description="AIへの具体的な要望があれば入力してください（任意）"
+        confirmText="送信して再生成"
+        onConfirm={handleRejectPlan}
+      >
+        <div className="grid gap-4 py-2">
+          <Textarea
+            placeholder="例: 朝食をもっと軽くしてほしい、夕食に魚を増やしてほしい、など"
+            value={feedback}
+            onChange={(e) => setFeedback(e.target.value)}
+            className="min-h-[120px]"
+          />
+          <p className="text-xs text-muted-foreground">
+            ※入力された内容は次回のプラン生成に考慮されます。何も入力せずに再生成することも可能です。
+          </p>
+        </div>
+      </ConfirmDialog>
 
 
       {/* 日別カード */}

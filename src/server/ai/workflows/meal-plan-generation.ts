@@ -172,14 +172,15 @@ async function generateInitialPlan(
  */
 function validatePlan(
   generatedPlan: PlanGeneratorOutput,
-  mealTargets: MealTargetNutrition
+  mealTargets: MealTargetNutrition,
+  fixedMeals?: PlanGeneratorInput["fixedMeals"]
 ): {
   days: Record<string, DayPlan>;
   invalidMeals: MealValidationError[];
   isValid: boolean;
 } {
   const days = convertToInternalFormat(generatedPlan);
-  const validationResult = validatePlanNutrition(days, mealTargets);
+  const validationResult = validatePlanNutrition(days, mealTargets, undefined, fixedMeals);
 
   console.log(
     `[Workflow:validatePlan] Valid: ${validationResult.isValid}, Invalid meals: ${validationResult.invalidMeals.length}`
@@ -200,6 +201,7 @@ async function fixInvalidMeals(
   invalidMeals: MealValidationError[],
   mealTargets: MealTargetNutrition,
   dislikedIngredients: string[],
+  workflowInput: MealPlanWorkflowInput,
   userId?: string
 ): Promise<{
   days: Record<string, DayPlan>;
@@ -236,6 +238,8 @@ async function fixInvalidMeals(
     invalidMeals: invalidMealInfos,
     dislikedIngredients,
     existingTitles,
+    fixedMeals: workflowInput.input.fixedMeals,
+    mealConstraints: workflowInput.input.mealConstraints,
   });
 
   try {
@@ -346,7 +350,7 @@ export async function generateMealPlan(
 
   // ステップ2: バリデーション
   console.log("[Workflow] Step 2: Validating plan...");
-  const validationResult = validatePlan(generatedPlan, mealTargets);
+  const validationResult = validatePlan(generatedPlan, mealTargets, input.fixedMeals);
 
   // ステップ3: 不合格分を一括で再生成
   console.log("[Workflow] Step 3: Fixing invalid meals...");
@@ -355,6 +359,7 @@ export async function generateMealPlan(
     validationResult.invalidMeals,
     mealTargets,
     dislikedIngredients,
+    workflowInput,
     userId
   );
 

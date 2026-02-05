@@ -40,6 +40,7 @@ export const PLAN_GENERATOR_INSTRUCTIONS = `
 - **fixedMeals (食事固定)**:
   各時間枠（breakfast, lunch, dinner）に対し提供されたレシピは、ユーザーの既定メニューです。
   全日程の対応するスロットにこのレシピをそのまま出力し、**その栄養成分を差し引いた残りのマクロ**で他の食事スロットを構成してください。
+  ※もし提供されたレシピの栄養成分（caloriesなど）が 0 の場合は、料理名からあなた自身で適切な栄養素を推定して計算に含めてください。
   
 - **mealConstraints (個別制約)**:
   「夕食はフルーツのみ」などの抽象的な要望がある場合、その内容に完全に合致するメニューを提案し、それ以外の食事スロットで1日の合計栄養目標を帳尻合わせしてください。
@@ -134,6 +135,8 @@ interface BatchMealFixPromptArgs {
   invalidMeals: InvalidMealInfo[];
   dislikedIngredients: string[];
   existingTitles: string[];
+  fixedMeals?: Record<string, { title: string }>;
+  mealConstraints?: Record<string, string>;
 }
 
 /**
@@ -143,14 +146,21 @@ export const getBatchMealFixPrompt = ({
   invalidMeals,
   dislikedIngredients,
   existingTitles,
+  fixedMeals,
+  mealConstraints,
 }: BatchMealFixPromptArgs): string => {
-  const mealsDescription = invalidMeals.map((meal, index) => `
+  const mealsDescription = invalidMeals.map((meal, index) => {
+    const fixedInfo = fixedMeals?.[meal.mealType] ? `\n   - 【絶対遵守】このスロットは固定メニュー「${fixedMeals[meal.mealType].title}」を指定してください。` : "";
+    const constraintInfo = mealConstraints?.[meal.mealType] ? `\n   - 【要望】${mealConstraints[meal.mealType]}` : "";
+    
+    return `
 ${index + 1}. ${meal.date} の ${meal.mealTypeJa}
    - キー: "${meal.date}_${meal.mealType}"
    - 目標カロリー: ${meal.target.calories}kcal
    - 目標タンパク質: ${meal.target.protein}g
    - 目標脂質: ${meal.target.fat}g
-   - 目標炭水化物: ${meal.target.carbs}g`).join("\n");
+   - 目標炭水化物: ${meal.target.carbs}g${fixedInfo}${constraintInfo}`;
+  }).join("\n");
 
   return `以下の ${invalidMeals.length} 件の食事について、それぞれ新しいレシピを生成してください。
 

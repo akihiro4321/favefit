@@ -26,6 +26,7 @@ import {
   CheckCircle2,
   Sparkles,
   CalendarDays,
+  Clock,
 } from "lucide-react";
 import type { LearnedPreferences, UserDocument } from "@/lib/schema";
 import { Timestamp } from "firebase/firestore";
@@ -34,15 +35,16 @@ import { NutritionPreferencesForm } from "@/components/nutrition-preferences-for
 import type { CalculateNutritionRequest } from "@/lib/schemas/user";
 
 // オンボーディングの総ステップ数
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 6;
 
 // 各ステップを識別するための定数オブジェクト
 const ONBOARDING_STEP = {
-  PROFILE: 1,        // 基本プロフィール（名前、体重目標など）
-  BODY_INFO: 2,      // 身体情報（年齢、身長、活動レベルなど）
+  PROFILE: 1,        // 基本プロフィール
+  BODY_INFO: 2,      // 身体情報
   NUTRITION_REVIEW: 3, // 栄養目標の確認
-  PREFERENCES: 4,    // 食の好み設定（アレルギー、好きな食材など）
-  PLAN_CREATION: 5,  // プラン作成開始
+  PREFERENCES: 4,    // 食の好み設定
+  MEAL_SETTINGS: 5,  // 食事のこだわり設定（追加）
+  PLAN_CREATION: 6,  // プラン作成開始
 } as const;
 
 // セレクトボックス共通のTailwindクラス
@@ -81,6 +83,18 @@ type OnboardingFormData = {
   flavorProfile: "light" | "medium" | "rich"; // 味付けの好み（さっぱり〜こってり）
   cookingSkillLevel: "beginner" | "intermediate" | "advanced"; // 料理スキル
   availableTime: "short" | "medium" | "long"; // 調理時間の目安
+
+  // Step 5: 食事のこだわり設定
+  mealConstraints: {
+    breakfast: string;
+    lunch: string;
+    dinner: string;
+  };
+  fixedMeals: {
+    breakfast: string; // 料理名
+    lunch: string;
+    dinner: string;
+  };
 };
 
 // フォームデータの初期値（日本人の平均的な値をデフォルトに設定）
@@ -106,6 +120,16 @@ const DEFAULT_FORM_DATA: OnboardingFormData = {
   flavorProfile: "medium",
   cookingSkillLevel: "intermediate",
   availableTime: "medium",
+  mealConstraints: {
+    breakfast: "",
+    lunch: "",
+    dinner: "",
+  },
+  fixedMeals: {
+    breakfast: "",
+    lunch: "",
+    dinner: "",
+  },
 };
 
 // =============================================================================
@@ -197,6 +221,16 @@ const buildProfileOverrides = (profile?: Partial<UserDocument> | null): Partial<
     flavorProfile: getFlavorProfile(profile.learnedPreferences),
     cookingSkillLevel: base.lifestyle?.cookingSkillLevel || DEFAULT_FORM_DATA.cookingSkillLevel,
     availableTime: base.lifestyle?.availableTime || DEFAULT_FORM_DATA.availableTime,
+    mealConstraints: {
+      breakfast: base.lifestyle?.mealConstraints?.breakfast || "",
+      lunch: base.lifestyle?.mealConstraints?.lunch || "",
+      dinner: base.lifestyle?.mealConstraints?.dinner || "",
+    },
+    fixedMeals: {
+      breakfast: base.lifestyle?.fixedMeals?.breakfast?.title || "",
+      lunch: base.lifestyle?.fixedMeals?.lunch?.title || "",
+      dinner: base.lifestyle?.fixedMeals?.dinner?.title || "",
+    },
   };
 };
 
@@ -351,6 +385,16 @@ export default function OnboardingPage() {
             cheatDayFrequency: formData.cheatDayFrequency,
             cookingSkillLevel: formData.cookingSkillLevel,
             availableTime: formData.availableTime,
+            mealConstraints: {
+              ...(formData.mealConstraints.breakfast ? { breakfast: formData.mealConstraints.breakfast } : {}),
+              ...(formData.mealConstraints.lunch ? { lunch: formData.mealConstraints.lunch } : {}),
+              ...(formData.mealConstraints.dinner ? { dinner: formData.mealConstraints.dinner } : {}),
+            },
+            fixedMeals: {
+              ...(formData.fixedMeals.breakfast ? { breakfast: { title: formData.fixedMeals.breakfast, status: "planned", nutrition: { calories: 0, protein: 0, fat: 0, carbs: 0 }, tags: [] } } : {}),
+              ...(formData.fixedMeals.lunch ? { lunch: { title: formData.fixedMeals.lunch, status: "planned", nutrition: { calories: 0, protein: 0, fat: 0, carbs: 0 }, tags: [] } } : {}),
+              ...(formData.fixedMeals.dinner ? { dinner: { title: formData.fixedMeals.dinner, status: "planned", nutrition: { calories: 0, protein: 0, fat: 0, carbs: 0 }, tags: [] } } : {}),
+            },
           },
         },
       }),
@@ -402,7 +446,7 @@ export default function OnboardingPage() {
       return;
     }
 
-    if (currentStep === ONBOARDING_STEP.PREFERENCES) {
+    if (currentStep === ONBOARDING_STEP.MEAL_SETTINGS) {
       setSubmitting(true);
       try {
         await saveProfileAndPreferences();
@@ -1073,7 +1117,102 @@ export default function OnboardingPage() {
           </Card>
         )}
 
-        {/* Step 5: プラン作成 */}
+        {/* Step 5: 食事のこだわり */}
+        {currentStep === ONBOARDING_STEP.MEAL_SETTINGS && (
+          <Card className="animate-slide-up shadow-sm border-2">
+            <CardHeader>
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="w-5 h-5 text-primary" />
+                <CardTitle>食事のこだわり</CardTitle>
+              </div>
+              <CardDescription>
+                特定の食事を固定したり、特別な要望を入力できます
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 text-foreground">
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold flex items-center gap-2">
+                  <Clock className="w-4 h-4" /> 毎日食べる固定メニュー（あれば）
+                </h3>
+                <div className="grid gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="fixed-breakfast">朝食を固定</Label>
+                    <Input
+                      id="fixed-breakfast"
+                      placeholder="例: プロテイン、納豆ご飯など"
+                      value={formData.fixedMeals.breakfast}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        fixedMeals: { ...formData.fixedMeals, breakfast: e.target.value }
+                      })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="fixed-lunch">昼食を固定</Label>
+                    <Input
+                      id="fixed-lunch"
+                      placeholder="例: 社員食堂の定食、サラダ弁当など"
+                      value={formData.fixedMeals.lunch}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        fixedMeals: { ...formData.fixedMeals, lunch: e.target.value }
+                      })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-2 border-t">
+                <h3 className="text-sm font-bold flex items-center gap-2">
+                  <UtensilsCrossed className="w-4 h-4" /> 食事バランス・要望
+                </h3>
+                <div className="grid gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="constraint-breakfast">朝食のこだわり</Label>
+                    <Input
+                      id="constraint-breakfast"
+                      placeholder="例: プロテインのみ、軽く済ませたいなど"
+                      value={formData.mealConstraints.breakfast}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        mealConstraints: { ...formData.mealConstraints, breakfast: e.target.value }
+                      })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="constraint-lunch">昼食のこだわり</Label>
+                    <Input
+                      id="constraint-lunch"
+                      placeholder="例: 外食なので800kcal程度、コンビニおにぎりのみなど"
+                      value={formData.mealConstraints.lunch}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        mealConstraints: { ...formData.mealConstraints, lunch: e.target.value }
+                      })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="constraint-dinner">夕食のこだわり</Label>
+                    <Input
+                      id="constraint-dinner"
+                      placeholder="例: 200kcal以下のサラダのみ、炭水化物抜きなど"
+                      value={formData.mealConstraints.dinner}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        mealConstraints: { ...formData.mealConstraints, dinner: e.target.value }
+                      })}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
+                    💡 「夕食を軽く」した分、AIが他の食事で栄養素を調整し、1日の目標カロリーを達成するように献立を作ります。
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Step 6: プラン作成 */}
         {currentStep === ONBOARDING_STEP.PLAN_CREATION && (
           <Card className="animate-pop-in h-96 flex flex-col justify-center border-2 border-primary/20 bg-primary/5">
             <CardContent className="text-center py-12 space-y-6 text-foreground">
