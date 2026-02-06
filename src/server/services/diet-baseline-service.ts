@@ -6,14 +6,6 @@
 
 import { UserProfile, UserNutrition } from "@/lib/schema";
 
-interface DietGap {
-  calorieDiff: number; // 現状 - 理想
-  proteinDiff: number;
-  fatDiff: number;
-  carbsDiff: number;
-  summary: string;
-}
-
 interface AdaptiveDirective {
   baseCalories: number; // 生成時のベースとなるカロリー（理想値そのものではない場合がある）
   instructions: string[]; // AIプロンプトに追加する指示リスト

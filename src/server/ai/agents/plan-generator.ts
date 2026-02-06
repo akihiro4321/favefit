@@ -68,6 +68,13 @@ export const PlanGeneratorInputSchema = z.object({
     .describe("チートデイ頻度"),
   startDate: z.string().describe("プラン開始日 (YYYY-MM-DD)"),
   
+  // 食事スロットごとの設定モードと入力テキスト
+  mealSettings: z.object({
+    breakfast: z.object({ mode: z.enum(["auto", "fixed", "custom"]), text: z.string() }),
+    lunch: z.object({ mode: z.enum(["auto", "fixed", "custom"]), text: z.string() }),
+    dinner: z.object({ mode: z.enum(["auto", "fixed", "custom"]), text: z.string() }),
+  }).optional(),
+
   // 汎用的な食事固定設定
   fixedMeals: z
     .object({

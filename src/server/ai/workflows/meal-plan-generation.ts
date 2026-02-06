@@ -18,12 +18,14 @@ import {
 } from "../types/common";
 import { 
   PLAN_GENERATOR_INSTRUCTIONS,
-  getPlanGenerationPrompt, 
   getBatchMealFixPrompt 
 } from "../agents/prompts/plan-generator";
 import { validatePlanNutrition, recalculateDayNutrition, MealValidationError } from "@/lib/tools/nutritionValidator";
 import { DayPlan, MealSlot, UserProfile, UserNutrition } from "@/lib/schema";
 import { MealTargetNutrition, NutritionValues } from "@/lib/tools/mealNutritionCalculator";
+import { runAuditor } from "../agents/auditor";
+import { getFillPlanPrompt } from "../agents/prompts/plan-generator";
+import { dietBaselineService } from "../../services/diet-baseline-service";
 
 /**
  * ワークフロー入力
@@ -148,92 +150,6 @@ function convertToInternalFormat(
   }
 
   return days;
-}
-
-import { fixedMealService } from "../../services/fixed-meal-service";
-import { dietBaselineService } from "../../services/diet-baseline-service";
-
-/**
- * 事前処理: 適応型入力データの準備
- */
-async function prepareAdaptiveInput(
-  input: PlanGeneratorInput,
-  mealTargets: MealTargetNutrition
-): Promise<PlanGeneratorInput> {
-  const profileStub = {
-    lifestyle: {
-      fixedMeals: input.fixedMeals,
-      currentDiet: input.currentDiet,
-    },
-    physical: {
-      goal: (input as unknown as { goal?: "lose" | "maintain" | "gain" }).goal || "maintain",
-    },
-  } as unknown as UserProfile;
-
-
-  // 1. 固定メニューの栄養解決（ロック）
-  //    ※ PlanGeneratorInputのfixedMealsは { title: string } だけの場合もあるが
-  //       サービス側で解決し、栄養素入りのMealSlotに変換する
-  const resolvedFixedMeals = await fixedMealService.resolveFixedMeals(profileStub);
-  
-  // 2. 現状ギャップ分析・適応型指示の生成
-  //    ※ targetCaloriesだけでなく、mealTargets全体から計算した総カロリーを使用
-  const totalTargetCalories = mealTargets.breakfast.calories + mealTargets.lunch.calories + mealTargets.dinner.calories;
-  
-  const adaptiveDirective = dietBaselineService.createAdaptiveDirective(
-    profileStub,
-    // 簡易UserNutritionとしてのキャスト
-    { dailyCalories: totalTargetCalories } as unknown as UserNutrition
-  );
-
-  // 3. 入力データの上書き
-  //    - fixedMeals: 栄養価付きのデータに差し替え
-  //    - adaptiveDirective: 追加
-  return {
-    ...input,
-    fixedMeals: {
-      breakfast: resolvedFixedMeals.breakfast ? { 
-        title: resolvedFixedMeals.breakfast.title,
-        nutrition: resolvedFixedMeals.breakfast.nutrition,
-        tags: ["固定メニュー"]
-      } : undefined,
-      lunch: resolvedFixedMeals.lunch ? { 
-        title: resolvedFixedMeals.lunch.title,
-        nutrition: resolvedFixedMeals.lunch.nutrition,
-        tags: ["固定メニュー"]
-      } : undefined,
-      dinner: resolvedFixedMeals.dinner ? { 
-        title: resolvedFixedMeals.dinner.title,
-        nutrition: resolvedFixedMeals.dinner.nutrition,
-        tags: ["固定メニュー"]
-      } : undefined,
-    } as PlanGeneratorInput["fixedMeals"], // 型定義に合わせてキャスト
-
-    adaptiveDirective,
-  };
-}
-
-/**
- * ステップ1: 初回のプラン生成
- */
-async function generateInitialPlan(
-  input: PlanGeneratorInput,
-  mealTargets: MealTargetNutrition,
-  feedbackText?: string,
-  userId?: string
-): Promise<PlanGeneratorOutput> {
-  // 適応型プランニングのための前処理（固定メニュー計算 & 指示生成）
-  const adaptiveInput = await prepareAdaptiveInput(input, mealTargets);
-
-  console.log("[Workflow] Adaptive Directive:", JSON.stringify(adaptiveInput.adaptiveDirective, null, 2));
-
-  const prompt = getPlanGenerationPrompt({
-    duration: DEFAULT_PLAN_DURATION_DAYS,
-    user_info: JSON.stringify(adaptiveInput, null, 2), // 加工済み入力を渡す
-    feedback_text: feedbackText || "",
-  });
-
-  return runPlanGenerator(prompt, userId);
 }
 
 /**
@@ -400,22 +316,127 @@ function applyFinalFallback(
 }
 
 /**
+ * 処理のステップ: Anchor & Fill
+ */
+async function runAnchorAndFillProcess(
+  input: PlanGeneratorInput,
+  mealTargets: MealTargetNutrition,
+  feedbackText?: string,
+  userId?: string
+): Promise<PlanGeneratorOutput> {
+  const duration = DEFAULT_PLAN_DURATION_DAYS;
+  
+  // 0. 適応型プランニング指示の生成 (現状の食生活分析)
+  const totalTargetCalories = mealTargets.breakfast.calories + mealTargets.lunch.calories + mealTargets.dinner.calories;
+  const adaptiveDirective = dietBaselineService.createAdaptiveDirective(
+    {
+      lifestyle: { currentDiet: input.currentDiet },
+      physical: { goal: (input as unknown as { goal?: "lose" | "maintain" | "gain" }).goal || "maintain" }
+    } as unknown as UserProfile,
+    { dailyCalories: totalTargetCalories } as unknown as UserNutrition
+  );
+
+  console.log("[Workflow:Anchor&Fill] Adaptive Directive created:", JSON.stringify(adaptiveDirective.instructions));
+
+  // 1. Auditorの実行 (固定・こだわり枠の栄養価解決)
+  console.log("[Workflow:Anchor&Fill] 1. Running Auditor...");
+  
+  // input.mealSettingsが存在しない場合（後方互換性）は、空のオブジェクトとして扱う
+  const mealSettings = input.mealSettings || {
+    breakfast: { mode: "auto", text: "" },
+    lunch: { mode: "auto", text: "" },
+    dinner: { mode: "auto", text: "" },
+  };
+
+  // 1日の総目標
+  const dailyTarget = {
+    calories: mealTargets.breakfast.calories + mealTargets.lunch.calories + mealTargets.dinner.calories,
+    protein: mealTargets.breakfast.protein + mealTargets.lunch.protein + mealTargets.dinner.protein,
+    fat: mealTargets.breakfast.fat + mealTargets.lunch.fat + mealTargets.dinner.fat,
+    carbs: mealTargets.breakfast.carbs + mealTargets.lunch.carbs + mealTargets.dinner.carbs,
+  };
+
+  const auditorResult = await runAuditor(mealSettings, dailyTarget);
+  console.log(`[Workflow:Anchor&Fill] Auditor resolved ${auditorResult.anchors.length} anchors.`);
+
+  // 2. 栄養予算（Remaining Budget）の計算
+  // アンカーは毎日繰り返される前提で計算（MVP仕様）
+  const anchorNutritionSum = auditorResult.anchors.reduce(
+    (acc, anchor) => ({
+      calories: acc.calories + anchor.estimatedNutrition.calories,
+      protein: acc.protein + anchor.estimatedNutrition.protein,
+      fat: acc.fat + anchor.estimatedNutrition.fat,
+      carbs: acc.carbs + anchor.estimatedNutrition.carbs,
+    }),
+    { calories: 0, protein: 0, fat: 0, carbs: 0 }
+  );
+
+  const remainingBudget = {
+    calories: Math.max(0, dailyTarget.calories - anchorNutritionSum.calories),
+    protein: Math.max(0, dailyTarget.protein - anchorNutritionSum.protein),
+    fat: Math.max(0, dailyTarget.fat - anchorNutritionSum.fat),
+    carbs: Math.max(0, dailyTarget.carbs - anchorNutritionSum.carbs),
+  };
+
+  const remainingBudgetSummary = `
+- カロリー: ${remainingBudget.calories}kcal
+- タンパク質: ${remainingBudget.protein}g
+- 脂質: ${remainingBudget.fat}g
+- 炭水化物: ${remainingBudget.carbs}g
+`;
+
+  // 3. Fill Planner用プロンプトの作成
+  // アンカー情報の整形
+  const anchorsText = auditorResult.anchors.map(a => 
+    `- ${a.mealType}: ${a.resolvedTitle} (約${a.estimatedNutrition.calories}kcal)`
+  ).join("\n") || "なし";
+
+  const user_info = JSON.stringify({
+    ...input,
+    adaptiveDirective,
+    // AIには解決済みの固定枠として渡す
+    fixedMeals: auditorResult.anchors.reduce((acc, anchor) => ({
+      ...acc,
+      [anchor.mealType]: {
+        title: anchor.resolvedTitle,
+        nutrition: anchor.estimatedNutrition,
+        tags: ["固定/こだわり"]
+      }
+    }), {})
+  }, null, 2);
+
+  const prompt = getFillPlanPrompt({
+    duration,
+    user_info,
+    anchors: anchorsText,
+    remaining_budget_summary: remainingBudgetSummary,
+    feedback_text: feedbackText || "",
+  });
+
+  // 4. Fill Planner実行 (残りの枠を埋める)
+  console.log("[Workflow:Anchor&Fill] 2. Running Fill Planner...");
+  const generatedPlan = await runPlanGenerator(prompt, userId);
+
+  return generatedPlan;
+}
+
+/**
  * 食事プラン生成ワークフロー (メイン)
  *
- * シンプルな4ステップフロー:
- * 1. generateInitialPlan - 初回プラン生成
+ * Anchor & Fill 戦略を用いた新しいフロー:
+ * 1. runAnchorAndFillProcess - Auditorによる解決とFill Plannerによる生成
  * 2. validatePlan - バリデーション
- * 3. fixInvalidMeals - 不合格分を一括再生成（1回のLLM呼び出し）
- * 4. applyFinalFallback - それでもダメならフォールバック
+ * 3. fixInvalidMeals - 不合格分を一括再生成
+ * 4. applyFinalFallback - フォールバック
  */
 export async function generateMealPlan(
   workflowInput: MealPlanWorkflowInput
 ): Promise<MealPlanWorkflowResult> {
   const { input, feedbackText, mealTargets, dislikedIngredients, userId } = workflowInput;
 
-  // ステップ1: 初回プラン生成
-  console.log("[Workflow] Step 1: Generating initial plan...");
-  const generatedPlan = await generateInitialPlan(input, mealTargets, feedbackText, userId);
+  // ステップ1: Anchor & Fill プロセス
+  console.log("[Workflow] Step 1: Starting Anchor & Fill Process...");
+  const generatedPlan = await runAnchorAndFillProcess(input, mealTargets, feedbackText, userId);
 
   // ステップ2: バリデーション
   console.log("[Workflow] Step 2: Validating plan...");
