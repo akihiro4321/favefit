@@ -137,6 +137,14 @@ interface InvalidMealInfo {
   };
 }
 
+interface FillPlanPromptArgs {
+  duration: number;
+  user_info: string;
+  anchors: string;
+  remaining_budget_summary: string;
+  feedback_text: string;
+}
+
 interface BatchMealFixPromptArgs {
   invalidMeals: InvalidMealInfo[];
   dislikedIngredients: string[];
@@ -144,6 +152,35 @@ interface BatchMealFixPromptArgs {
   fixedMeals?: Record<string, { title: string }>;
   mealConstraints?: Record<string, string>;
 }
+
+/**
+ * Anchor & Fill戦略: 残りの枠（Fill）を埋めるためのプロンプト
+ */
+export const getFillPlanPrompt = ({
+  duration,
+  user_info,
+  anchors,
+  remaining_budget_summary,
+  feedback_text,
+}: FillPlanPromptArgs): string => {
+  return `
+以下の情報に基づいて${duration}日間の食事プランを完成させてください。
+
+【ユーザー情報】
+${user_info}
+
+【確定済みメニュー（Anchors）】
+以下のスロットは既にメニューと栄養価が確定しています。これらは絶対に変更せず、そのまま出力に含めてください。
+${anchors}
+
+【残りの栄養予算（Fill Target）】
+確定済みメニューの栄養価を差し引いた、残りのスロット（空き枠）で摂取すべき目標値は以下の通りです。
+この予算を使い切るように、残りの献立を生成してください。
+${remaining_budget_summary}
+
+${feedback_text}
+`;
+};
 
 /**
  * 複数の不合格食事を一括修正するためのプロンプトを生成します。
