@@ -1,11 +1,11 @@
 {  
   "hooks": {  
-    "AfterTool": [  
+    "AfterAgent": [  
       {  
         "matcher": "write_file|replace|edit_file",  
         "hooks": [  
           {  
-            "name": "typescript-check",  
+            "name": "ts-lint-and-check",  
             "type": "command",  
             "command": "npm run lint && npx tsc --noEmit",  
             "timeout": 30000  
