@@ -22,7 +22,7 @@ import {
   getBatchMealFixPrompt 
 } from "../agents/prompts/plan-generator";
 import { validatePlanNutrition, recalculateDayNutrition, MealValidationError } from "@/lib/tools/nutritionValidator";
-import { DayPlan, MealSlot } from "@/lib/schema";
+import { DayPlan, MealSlot, UserProfile, UserNutrition } from "@/lib/schema";
 import { MealTargetNutrition, NutritionValues } from "@/lib/tools/mealNutritionCalculator";
 
 /**
@@ -150,17 +150,86 @@ function convertToInternalFormat(
   return days;
 }
 
+import { fixedMealService } from "../../services/fixed-meal-service";
+import { dietBaselineService } from "../../services/diet-baseline-service";
+
+/**
+ * 事前処理: 適応型入力データの準備
+ */
+async function prepareAdaptiveInput(
+  input: PlanGeneratorInput,
+  mealTargets: MealTargetNutrition
+): Promise<PlanGeneratorInput> {
+  const profileStub = {
+    lifestyle: {
+      fixedMeals: input.fixedMeals,
+      currentDiet: input.currentDiet,
+    },
+    physical: {
+      goal: (input as unknown as { goal?: "lose" | "maintain" | "gain" }).goal || "maintain",
+    },
+  } as unknown as UserProfile;
+
+
+  // 1. 固定メニューの栄養解決（ロック）
+  //    ※ PlanGeneratorInputのfixedMealsは { title: string } だけの場合もあるが
+  //       サービス側で解決し、栄養素入りのMealSlotに変換する
+  const resolvedFixedMeals = await fixedMealService.resolveFixedMeals(profileStub);
+  
+  // 2. 現状ギャップ分析・適応型指示の生成
+  //    ※ targetCaloriesだけでなく、mealTargets全体から計算した総カロリーを使用
+  const totalTargetCalories = mealTargets.breakfast.calories + mealTargets.lunch.calories + mealTargets.dinner.calories;
+  
+  const adaptiveDirective = dietBaselineService.createAdaptiveDirective(
+    profileStub,
+    // 簡易UserNutritionとしてのキャスト
+    { dailyCalories: totalTargetCalories } as unknown as UserNutrition
+  );
+
+  // 3. 入力データの上書き
+  //    - fixedMeals: 栄養価付きのデータに差し替え
+  //    - adaptiveDirective: 追加
+  return {
+    ...input,
+    fixedMeals: {
+      breakfast: resolvedFixedMeals.breakfast ? { 
+        title: resolvedFixedMeals.breakfast.title,
+        nutrition: resolvedFixedMeals.breakfast.nutrition,
+        tags: ["固定メニュー"]
+      } : undefined,
+      lunch: resolvedFixedMeals.lunch ? { 
+        title: resolvedFixedMeals.lunch.title,
+        nutrition: resolvedFixedMeals.lunch.nutrition,
+        tags: ["固定メニュー"]
+      } : undefined,
+      dinner: resolvedFixedMeals.dinner ? { 
+        title: resolvedFixedMeals.dinner.title,
+        nutrition: resolvedFixedMeals.dinner.nutrition,
+        tags: ["固定メニュー"]
+      } : undefined,
+    } as PlanGeneratorInput["fixedMeals"], // 型定義に合わせてキャスト
+
+    adaptiveDirective,
+  };
+}
+
 /**
  * ステップ1: 初回のプラン生成
  */
 async function generateInitialPlan(
   input: PlanGeneratorInput,
+  mealTargets: MealTargetNutrition,
   feedbackText?: string,
   userId?: string
 ): Promise<PlanGeneratorOutput> {
+  // 適応型プランニングのための前処理（固定メニュー計算 & 指示生成）
+  const adaptiveInput = await prepareAdaptiveInput(input, mealTargets);
+
+  console.log("[Workflow] Adaptive Directive:", JSON.stringify(adaptiveInput.adaptiveDirective, null, 2));
+
   const prompt = getPlanGenerationPrompt({
     duration: DEFAULT_PLAN_DURATION_DAYS,
-    user_info: JSON.stringify(input, null, 2),
+    user_info: JSON.stringify(adaptiveInput, null, 2), // 加工済み入力を渡す
     feedback_text: feedbackText || "",
   });
 
@@ -346,7 +415,7 @@ export async function generateMealPlan(
 
   // ステップ1: 初回プラン生成
   console.log("[Workflow] Step 1: Generating initial plan...");
-  const generatedPlan = await generateInitialPlan(input, feedbackText, userId);
+  const generatedPlan = await generateInitialPlan(input, mealTargets, feedbackText, userId);
 
   // ステップ2: バリデーション
   console.log("[Workflow] Step 2: Validating plan...");

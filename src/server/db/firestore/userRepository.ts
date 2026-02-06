@@ -288,3 +288,19 @@ export const getLearnedPreferences = async (
     return null;
   }
 };
+
+/**
+ * プラン拒否時のフィードバックをクリア
+ */
+export const clearUserRejectionFeedback = async (uid: string): Promise<void> => {
+  try {
+    const userRef = docRefs.user(uid);
+    await updateDoc(userRef, {
+      planRejectionFeedback: "",
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    console.error("Error clearing user rejection feedback:", error);
+    throw error;
+  }
+};

@@ -71,6 +71,13 @@ export interface UserProfile {
       dayOfWeek: number; // 0-6 (Sunday to Saturday)
       servings: number; // 何食分作るか
     };
+    // 現状の食生活（適応型プランニング用）
+    currentDiet?: {
+      breakfast?: string;
+      lunch?: string;
+      dinner?: string;
+      snack?: string;
+    };
   };
 }
 

@@ -34,18 +34,19 @@ import { PlanCreatingScreen } from "@/components/plan-creating-screen";
 import { NutritionPreferencesForm } from "@/components/nutrition-preferences-form";
 import type { CalculateNutritionRequest } from "@/lib/schemas/user";
 
-// オンボーディングの総ステップ数
-const TOTAL_STEPS = 6;
-
 // 各ステップを識別するための定数オブジェクト
 const ONBOARDING_STEP = {
   PROFILE: 1,        // 基本プロフィール
   BODY_INFO: 2,      // 身体情報
   NUTRITION_REVIEW: 3, // 栄養目標の確認
-  PREFERENCES: 4,    // 食の好み設定
-  MEAL_SETTINGS: 5,  // 食事のこだわり設定（追加）
-  PLAN_CREATION: 6,  // プラン作成開始
+  CURRENT_DIET: 4,     // 現状の食生活（追加）
+  PREFERENCES: 5,    // 食の好み設定
+  MEAL_SETTINGS: 6,  // 食事のこだわり設定
+  PLAN_CREATION: 7,  // プラン作成開始
 } as const;
+
+// 画面遷移上のステップ総数
+const TOTAL_STEPS = 7;
 
 // セレクトボックス共通のTailwindクラス
 const SELECT_CLASS_NAME = "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm";
@@ -76,7 +77,15 @@ type OnboardingFormData = {
   gainStrategy: "lean" | "standard" | "aggressive"; // 増量戦略
   macroPreset: "balanced" | "lowfat" | "lowcarb" | "highprotein"; // マクロ栄養素のプリセット
 
-  // Step 4: 食の好み
+  // Step 4: 現状の食生活（適応型プランニング用）
+  currentDiet: {
+    breakfast: string;
+    lunch: string;
+    dinner: string;
+    snack: string;
+  };
+
+  // Step 5: 食の好み
   allergies: string[];            // アレルギー・苦手な食材
   favoriteIngredients: string[];  // 好きな食材
   preferredCuisines: string[];    // 好きな料理ジャンル
@@ -114,6 +123,12 @@ const DEFAULT_FORM_DATA: OnboardingFormData = {
   gainPaceKgPerMonth: 0.5,
   gainStrategy: "lean",
   macroPreset: "balanced",
+  currentDiet: {
+    breakfast: "",
+    lunch: "",
+    dinner: "",
+    snack: "",
+  },
   allergies: [],
   favoriteIngredients: [],
   preferredCuisines: [],
@@ -932,10 +947,9 @@ export default function OnboardingPage() {
                       <summary className="cursor-pointer hover:text-foreground transition-colors flex items-center gap-1 font-medium">
                         計算の詳細を見る
                       </summary>
-                      <div className="mt-2 pl-4 border-l-2 border-muted space-y-1">
-                        <p>1. BMR (Mifflin-St Jeor): {nutritionResult.bmr?.toLocaleString()} kcal</p>
-                        <p>2. TDEE (x 活動係数): {nutritionResult.tdee?.toLocaleString()} kcal</p>
-                        <p>3. 目標ペース調整: {delta > 0 ? "+" : ""}{Math.round(delta)} kcal</p>
+                      {/* TODO: Add calculation details visualization here */}
+                      <div className="mt-2 p-2 bg-muted rounded text-xs text-muted-foreground">
+                        詳細な計算ロジックは調整中です
                       </div>
                    </details>
                 </div>
@@ -944,7 +958,76 @@ export default function OnboardingPage() {
           );
         })()}
 
-        {/* Step 4: 好み設定 */}
+        {/* Step 4: 現状の食生活確認 */}
+        {currentStep === ONBOARDING_STEP.CURRENT_DIET && (
+          <Card className="animate-slide-up shadow-sm border-2">
+            <CardHeader>
+              <div className="flex items-center gap-2 mb-2">
+                <UtensilsCrossed className="w-5 h-5 text-primary" />
+                <CardTitle>いつもの食事</CardTitle>
+              </div>
+              <CardDescription>
+                普段の食事内容を教えてください。急な変化によるストレスを防ぎ、無理のないプランを提案するために使用します。
+                <br />
+                <span className="text-xs text-muted-foreground">※おおよそで構いません</span>
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 text-foreground">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="diet-breakfast">朝食</Label>
+                  <Input
+                    id="diet-breakfast"
+                    placeholder="例: 何も食べない、コーヒーのみ、トースト1枚"
+                    value={formData.currentDiet.breakfast}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      currentDiet: { ...formData.currentDiet, breakfast: e.target.value }
+                    })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="diet-lunch">昼食</Label>
+                  <Input
+                    id="diet-lunch"
+                    placeholder="例: コンビニのおにぎり2個、社食の定食（ご飯大盛り）"
+                    value={formData.currentDiet.lunch}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      currentDiet: { ...formData.currentDiet, lunch: e.target.value }
+                    })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="diet-dinner">夕食</Label>
+                  <Input
+                    id="diet-dinner"
+                    placeholder="例: パスタ1人前、ビール350mlと唐揚げ"
+                    value={formData.currentDiet.dinner}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      currentDiet: { ...formData.currentDiet, dinner: e.target.value }
+                    })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="diet-snack">間食（あれば）</Label>
+                  <Input
+                    id="diet-snack"
+                    placeholder="例: チョコレート3粒、ナッツ、特になし"
+                    value={formData.currentDiet.snack}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      currentDiet: { ...formData.currentDiet, snack: e.target.value }
+                    })}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Step 5: 好み設定 */}
         {currentStep === ONBOARDING_STEP.PREFERENCES && (
           <Card className="animate-slide-up shadow-sm border-2">
             <CardHeader>

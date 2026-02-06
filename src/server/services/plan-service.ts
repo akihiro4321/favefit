@@ -9,7 +9,7 @@ import {
   buildRecipePrompt,
   runRecipeCreator,
 } from "@/server/ai";
-import { getOrCreateUser, setPlanCreating, setPlanCreated } from "@/server/db/firestore/userRepository";
+import { getOrCreateUser, setPlanCreating, setPlanCreated, clearUserRejectionFeedback } from "@/server/db/firestore/userRepository";
 import {
   createPlan,
   updatePlanStatus,
@@ -179,7 +179,7 @@ async function generatePlanBackground(
       mealConstraints: userDoc.profile.lifestyle.mealConstraints,
       mealPrep: userDoc.profile.lifestyle.mealPrepConfig
         ? {
-            prepDay: startDate,
+            prepDay: new Date().toISOString().split("T")[0], // 仮
             servings: userDoc.profile.lifestyle.mealPrepConfig.servings,
           }
         : undefined,
@@ -188,6 +188,7 @@ async function generatePlanBackground(
         availableTime: userDoc.profile.lifestyle.availableTime,
         maxCookingTime: userDoc.profile.lifestyle.maxCookingTimePerMeal?.lunch,
       },
+      currentDiet: userDoc.profile.lifestyle.currentDiet, // 適応型プランニング用
     };
 
     // Vercel AI SDK ワークフローを実行
@@ -276,18 +277,7 @@ function calculateUserMacroGoals(userDoc: NonNullable<Awaited<ReturnType<typeof 
 }
 
 
-/**
- * ユーザーの拒否フィードバックをクリア
- */
-async function clearUserRejectionFeedback(userId: string) {
-  try {
-    const { db } = await import("@/server/db/firestore/client");
-    const { doc, updateDoc, serverTimestamp } = await import("firebase/firestore");
-    await updateDoc(doc(db, "users", userId), { planRejectionFeedback: null, updatedAt: serverTimestamp() });
-  } catch {
-    // フィードバッククリアの失敗は無視
-  }
-}
+
 
 
 /**

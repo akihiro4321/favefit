@@ -99,7 +99,21 @@ export const PlanGeneratorInputSchema = z.object({
   fridgeIngredients: z
     .array(z.string())
     .optional()
-    .describe("冷蔵庫にある使い切りたい食材リスト"),
+    .describe("冷蔵庫の余り物食材（優先的に使用）"),
+
+  // 適応型プランニング用: AIへの具体的な方針指示
+  adaptiveDirective: z.object({
+    baseCalories: z.number().describe("プラン生成の基準とする1日摂取カロリー"),
+    instructions: z.array(z.string()).describe("現状の食生活を考慮した追加指示リスト"),
+  }).optional(),
+
+  currentDiet: z.object({
+    breakfast: z.string().optional(),
+    lunch: z.string().optional(),
+    dinner: z.string().optional(),
+    snack: z.string().optional(),
+  }).optional().describe("ユーザーの現状の食生活"),
+
 
   lifestyle: z
     .object({

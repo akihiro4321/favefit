@@ -155,24 +155,15 @@ export function validatePlanNutrition(
 
       // 固定メニューが設定されている場合
       const fixedMeal = fixedMeals?.[mealType as keyof typeof fixedMeals];
-      
-      let errors: string[] = [];
-      
+
       // 固定メニューがあれば、タイトルが一致しているかチェック
-      if (fixedMeal && fixedMeal.title) {
+      if (fixedMeal?.title && meal.title.includes(fixedMeal.title)) {
         // タイトルが含まれているか、またはタイトルが一致していれば、栄養素バリデーションをスキップ
         // (ユーザー設定の固定メニューは目標栄養素を満たしていないことが多いため)
-        if (meal.title.includes(fixedMeal.title) || fixedMeal.title.includes(meal.title)) {
-          // 栄養素バリデーションをスキップ
-          errors = [];
-        } else {
-          // 固定メニューのはずなのにタイトルが違う場合はエラー
-          errors = validateMealNutrition(meal, target, tolerancePercent);
-          errors.push(`固定メニュー「${fixedMeal.title}」が反映されていません（実際: ${meal.title}）`);
-        }
-      } else {
-        errors = validateMealNutrition(meal, target, tolerancePercent);
+        continue;
       }
+
+      const errors = validateMealNutrition(meal, target, tolerancePercent);
 
       if (errors.length > 0) {
         invalidMeals.push({
