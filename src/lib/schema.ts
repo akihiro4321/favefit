@@ -54,7 +54,13 @@ export interface UserProfile {
       dinner?: number;
     };
     timeSavingPriority?: "breakfast" | "lunch" | "dinner";
-    // 汎用的な食事固定設定
+    // 食事スロットごとの設定モードと入力テキスト
+    mealSettings?: {
+      breakfast: { mode: "auto" | "fixed" | "custom"; text: string };
+      lunch: { mode: "auto" | "fixed" | "custom"; text: string };
+      dinner: { mode: "auto" | "fixed" | "custom"; text: string };
+    };
+    // 汎用的な食事固定設定（Auditor解決後のデータ格納用）
     fixedMeals?: {
       breakfast?: MealSlot;
       lunch?: MealSlot;
