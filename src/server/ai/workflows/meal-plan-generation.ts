@@ -35,6 +35,7 @@ import {
 import { runAuditor, type AuditorOutput } from "../agents/auditor";
 import { getFillPlanPrompt } from "../prompts/agents/plan-generator";
 import { dietBaselineService } from "../../services/diet-baseline-service";
+import { GEMINI_3_FLASH_MODEL } from "../config";
 
 /**
  * ワークフロー入力
@@ -259,10 +260,7 @@ async function fixInvalidMeals(
       PLAN_GENERATOR_INSTRUCTIONS,
       prompt,
       BatchFixOutputSchema,
-      "flash",
-      "fix-invalid-meals",
-      userId,
-      "meal-plan-fix",
+      GEMINI_3_FLASH_MODEL,
     );
 
     // 修正結果をマージ
@@ -414,12 +412,7 @@ async function runAnchorAndFillProcess(
       mealTargets.dinner.carbs,
   };
 
-  const auditorResult = await runAuditor(
-    mealSettings,
-    dailyTarget,
-    userId,
-    "meal-plan-anchor",
-  );
+  const auditorResult = await runAuditor(mealSettings, dailyTarget);
   console.log(
     `[Workflow:Anchor&Fill] Auditor resolved ${auditorResult.anchors.length} anchors.`,
   );
@@ -515,11 +508,7 @@ async function runAnchorAndFillProcess(
 
   // 4. Fill Planner実行
   console.log("[Workflow:Anchor&Fill] 2. Running Fill Planner...");
-  const generatedPlan = await runPlanGenerator(
-    prompt,
-    userId,
-    "meal-plan-fill",
-  );
+  const generatedPlan = await runPlanGenerator(prompt);
 
   return {
     generatedPlan,

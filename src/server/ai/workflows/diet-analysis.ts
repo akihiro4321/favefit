@@ -25,30 +25,33 @@ export interface DietAnalysisWorkflowResult {
  * 普段の食事内容から摂取カロリーを分析するワークフロー
  */
 export async function analyzeCurrentIntake(
-  input: DietAnalysisWorkflowInput
+  input: DietAnalysisWorkflowInput,
 ): Promise<DietAnalysisWorkflowResult> {
   const { currentDiet, userId } = input;
 
   if (!currentDiet) {
     return {
       totalCalories: 0,
-      breakdown: { breakfast: 0, lunch: 0, dinner: 0, snack: 0 }
+      breakdown: { breakfast: 0, lunch: 0, dinner: 0, snack: 0 },
     };
   }
 
   // 各食事内容から栄養価を推定するヘルパー
   const estimate = async (text?: string) => {
     if (!text || text.trim() === "") return 0;
-    
+
     // 「なし」系キーワードの簡易チェック
     const skipKeywords = ["なし", "抜き", "食べない", "nothing", "none"];
-    if (skipKeywords.some(k => text.includes(k))) return 0;
+    if (skipKeywords.some((k) => text.includes(k))) return 0;
 
     try {
-      const result = await estimateDietBaseline(text, userId);
+      const result = await estimateDietBaseline(text);
       return result.calories;
     } catch (error) {
-      console.warn(`[DietAnalysisWorkflow] Failed to estimate calories for "${text}"`, error);
+      console.warn(
+        `[DietAnalysisWorkflow] Failed to estimate calories for "${text}"`,
+        error,
+      );
       return text.length > 3 ? 400 : 0;
     }
   };
@@ -58,11 +61,11 @@ export async function analyzeCurrentIntake(
     estimate(currentDiet.breakfast),
     estimate(currentDiet.lunch),
     estimate(currentDiet.dinner),
-    estimate(currentDiet.snack)
+    estimate(currentDiet.snack),
   ]);
 
   return {
     totalCalories: breakfast + lunch + dinner + snack,
-    breakdown: { breakfast, lunch, dinner, snack }
+    breakdown: { breakfast, lunch, dinner, snack },
   };
 }

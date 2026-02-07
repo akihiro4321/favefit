@@ -27,6 +27,7 @@ export type Recipe = z.infer<typeof RecipeOutputSchema>;
 // ============================================
 
 import { RECIPE_CREATOR_INSTRUCTIONS } from "../prompts/functions/recipe-generator";
+import { GEMINI_3_FLASH_MODEL } from "../config";
 
 // ============================================
 // 関数実行
@@ -35,18 +36,11 @@ import { RECIPE_CREATOR_INSTRUCTIONS } from "../prompts/functions/recipe-generat
 /**
  * レシピデータを生成
  */
-export async function generateRecipeData(
-  prompt: string,
-  userId?: string,
-  processName?: string,
-): Promise<Recipe> {
+export async function generateRecipeData(prompt: string): Promise<Recipe> {
   return callModelWithSchema(
     RECIPE_CREATOR_INSTRUCTIONS,
     prompt,
     RecipeOutputSchema,
-    "flash",
-    "recipe-generator",
-    userId,
-    processName,
+    GEMINI_3_FLASH_MODEL,
   );
 }

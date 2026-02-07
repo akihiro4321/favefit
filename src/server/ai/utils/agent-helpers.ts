@@ -4,12 +4,7 @@
 
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import {
-  genAI,
-  GEMINI_FLASH_MODEL,
-  GEMINI_PRO_MODEL,
-  GEMINI_25_FLASH_MODEL,
-} from "../config";
+import { genAI } from "../config";
 
 // ============================================
 // エージェント実行ヘルパー
@@ -22,22 +17,14 @@ export async function callModelWithSchema<TSchema extends z.ZodType>(
   instructions: string,
   prompt: string,
   schema: TSchema,
-  model: string = "flash",
-  agentName?: string,
-  userId?: string,
-  processName?: string,
+  model: string,
 ): Promise<z.infer<TSchema>> {
-  // モデルIDの解決
-  let modelId = GEMINI_FLASH_MODEL;
-  if (model === "flash-2.5") modelId = GEMINI_25_FLASH_MODEL;
-  if (model === "pro") modelId = GEMINI_PRO_MODEL;
-
   // JSON Schema 生成
   const jsonSchema = zodToJsonSchema(schema, { target: "openApi3" });
 
   try {
     const result = await genAI.models.generateContent({
-      model: modelId,
+      model: model,
       config: {
         systemInstruction: {
           parts: [{ text: instructions }],

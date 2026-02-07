@@ -75,6 +75,7 @@ export type PreferenceAnalysis = PreferenceLearnerOutput;
 // ============================================
 
 import { PREFERENCE_LEARNER_INSTRUCTIONS } from "../prompts/functions/preference-analyzer";
+import { GEMINI_3_FLASH_MODEL } from "../config";
 
 // ============================================
 // 関数実行
@@ -85,16 +86,11 @@ import { PREFERENCE_LEARNER_INSTRUCTIONS } from "../prompts/functions/preference
  */
 export async function analyzePreferenceData(
   prompt: string,
-  userId?: string,
-  processName?: string,
 ): Promise<PreferenceLearnerOutput> {
   return callModelWithSchema(
     PREFERENCE_LEARNER_INSTRUCTIONS,
     prompt,
     PreferenceLearnerOutputSchema,
-    "flash",
-    "preference-analyzer",
-    userId,
-    processName,
+    GEMINI_3_FLASH_MODEL,
   );
 }

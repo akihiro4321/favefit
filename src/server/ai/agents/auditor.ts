@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { callModelWithSchema } from "../utils/agent-helpers";
-import { AUDITOR_INSTRUCTIONS, getAuditorPrompt } from "../prompts/agents/auditor";
+import {
+  AUDITOR_INSTRUCTIONS,
+  getAuditorPrompt,
+} from "../prompts/agents/auditor";
+import { GEMINI_2_5_FLASH_MODEL } from "../config";
 
 /**
  * Auditorエージェントの出力スキーマ
@@ -39,8 +43,6 @@ export async function runAuditor(
     fat: number;
     carbs: number;
   },
-  userId?: string,
-  processName?: string,
 ): Promise<AuditorOutput> {
   // 固定またはこだわりが設定されているスロットを抽出
   const inputs = Object.entries(mealSettings)
@@ -65,10 +67,7 @@ export async function runAuditor(
       AUDITOR_INSTRUCTIONS,
       getAuditorPrompt({ inputs, dailyTarget }),
       AuditorOutputSchema,
-      "flash-2.5", // gemini-2.5-flashを使用
-      "auditor",
-      userId,
-      processName || "meal-plan-anchor",
+      GEMINI_2_5_FLASH_MODEL,
     );
   } catch (error) {
     console.error("Auditor Agent Error:", error);

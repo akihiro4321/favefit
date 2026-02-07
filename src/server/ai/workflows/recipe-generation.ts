@@ -19,14 +19,14 @@ import type { UserDocument } from "@/server/db/firestore/userRepository";
  */
 export interface RecipeGenerationWorkflowInput {
   userId?: string;
-  mood: string;  // レシピタイトルまたは気分（「ハンバーグ」「ガッツリ」など）
+  mood: string; // レシピタイトルまたは気分（「ハンバーグ」「ガッツリ」など）
   targetNutrition: {
     calories: number;
     protein: number;
     fat: number;
     carbs: number;
   };
-  userDoc?: UserDocument | null;  // オプショナル（ない場合はシンプル生成）
+  userDoc?: UserDocument | null; // オプショナル（ない場合はシンプル生成）
 }
 
 /**
@@ -34,7 +34,7 @@ export interface RecipeGenerationWorkflowInput {
  */
 export interface RecipeGenerationWorkflowResult {
   recipe: Recipe;
-  executionTime?: number;  // デバッグ用（ミリ秒）
+  executionTime?: number; // デバッグ用（ミリ秒）
 }
 
 // ============================================
@@ -46,12 +46,12 @@ export interface RecipeGenerationWorkflowResult {
  * 既存のbuildRecipePrompt関数を呼び出し
  */
 async function buildRecipeGenerationPrompt(
-  input: RecipeGenerationWorkflowInput
+  input: RecipeGenerationWorkflowInput,
 ): Promise<string> {
   return buildRecipePrompt(
     input.userDoc || null,
     input.mood,
-    input.targetNutrition
+    input.targetNutrition,
   );
 }
 
@@ -59,11 +59,8 @@ async function buildRecipeGenerationPrompt(
  * Step 2: エージェント実行
  * RecipeCreatorエージェントを実行
  */
-async function executeRecipeGeneration(
-  prompt: string,
-  userId?: string
-): Promise<Recipe> {
-  return generateRecipeData(prompt, userId, "recipe-generation");
+async function executeRecipeGeneration(prompt: string): Promise<Recipe> {
+  return generateRecipeData(prompt);
 }
 
 /**
@@ -95,7 +92,7 @@ function validateRecipeOutput(recipe: Recipe): boolean {
  * 3. validateRecipeOutput - 基本バリデーション
  */
 export async function generateRecipe(
-  input: RecipeGenerationWorkflowInput
+  input: RecipeGenerationWorkflowInput,
 ): Promise<RecipeGenerationWorkflowResult> {
   const startTime = Date.now();
 
@@ -103,7 +100,7 @@ export async function generateRecipe(
   const prompt = await buildRecipeGenerationPrompt(input);
 
   console.log("[RecipeWorkflow] Step 2: Executing agent...");
-  const recipe = await executeRecipeGeneration(prompt, input.userId);
+  const recipe = await executeRecipeGeneration(prompt);
 
   console.log("[RecipeWorkflow] Step 3: Validating output...");
   const isValid = validateRecipeOutput(recipe);
@@ -111,7 +108,7 @@ export async function generateRecipe(
   if (!isValid) {
     console.warn(
       "[RecipeWorkflow] Recipe validation failed, but returning result. " +
-      "Future enhancement: add retry logic here."
+        "Future enhancement: add retry logic here.",
     );
     // 将来的にリトライ処理を追加する余地
   }

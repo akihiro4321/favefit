@@ -50,9 +50,10 @@ export interface MenuAdjustmentWorkflowResult {
  * Step 1: 入力データの検証
  * 必須フィールドの存在と妥当性をチェック
  */
-function validateMenuAdjustmentInput(
-  input: MenuAdjustmentWorkflowInput
-): { isValid: boolean; reason?: string } {
+function validateMenuAdjustmentInput(input: MenuAdjustmentWorkflowInput): {
+  isValid: boolean;
+  reason?: string;
+} {
   if (!input.availableIngredients || input.availableIngredients.length === 0) {
     return {
       isValid: false,
@@ -75,7 +76,7 @@ function validateMenuAdjustmentInput(
  * 既存のgetMenuAdjustmentPrompt関数を呼び出し
  */
 async function buildMenuAdjustmentPromptInternal(
-  input: MenuAdjustmentWorkflowInput
+  input: MenuAdjustmentWorkflowInput,
 ): Promise<string> {
   const menuAdjusterInput: MenuAdjusterInput = {
     availableIngredients: input.availableIngredients,
@@ -94,9 +95,8 @@ async function buildMenuAdjustmentPromptInternal(
  */
 async function executeMenuAdjustment(
   prompt: string,
-  userId?: string
 ): Promise<MenuAdjusterOutput> {
-  return generateMenuSuggestions(prompt, userId, "menu-adjustment");
+  return generateMenuSuggestions(prompt);
 }
 
 /**
@@ -104,12 +104,12 @@ async function executeMenuAdjustment(
  * メタデータを生成してユーザーに有用な情報を提供
  */
 function processMenuSuggestions(
-  rawOutput: MenuAdjusterOutput
+  rawOutput: MenuAdjusterOutput,
 ): MenuAdjustmentWorkflowResult {
   const suggestions = rawOutput.suggestions || [];
 
   const hasAdditionalIngredients = suggestions.some(
-    (s) => s.additionalIngredients && s.additionalIngredients.length > 0
+    (s) => s.additionalIngredients && s.additionalIngredients.length > 0,
   );
 
   return {
@@ -136,7 +136,7 @@ function processMenuSuggestions(
  * 4. processMenuSuggestions - 結果のポストプロセス
  */
 export async function adjustMenu(
-  input: MenuAdjustmentWorkflowInput
+  input: MenuAdjustmentWorkflowInput,
 ): Promise<MenuAdjustmentWorkflowResult> {
   console.log("[MenuAdjustmentWorkflow] Step 1: Validating input...");
   const validation = validateMenuAdjustmentInput(input);
@@ -149,14 +149,14 @@ export async function adjustMenu(
   const prompt = await buildMenuAdjustmentPromptInternal(input);
 
   console.log("[MenuAdjustmentWorkflow] Step 3: Executing agent...");
-  const rawOutput = await executeMenuAdjustment(prompt, input.userId);
+  const rawOutput = await executeMenuAdjustment(prompt);
 
   console.log("[MenuAdjustmentWorkflow] Step 4: Processing suggestions...");
   const result = processMenuSuggestions(rawOutput);
 
   console.log(
     `[MenuAdjustmentWorkflow] Generated ${result.adjustmentMetadata.totalSuggestions} suggestions ` +
-      `(additional ingredients needed: ${result.adjustmentMetadata.hasAdditionalIngredients})`
+      `(additional ingredients needed: ${result.adjustmentMetadata.hasAdditionalIngredients})`,
   );
 
   return result;

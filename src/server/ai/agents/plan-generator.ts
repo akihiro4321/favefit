@@ -205,23 +205,19 @@ export const DEFAULT_PLAN_DURATION_DAYS = 7;
 
 import { callModelWithSchema } from "../utils/agent-helpers";
 import { PLAN_GENERATOR_INSTRUCTIONS } from "../prompts/agents/plan-generator";
+import { GEMINI_3_FLASH_MODEL } from "../config";
 
 /**
  * 全日程の食事プランを生成
  */
 export async function runPlanGenerator(
   prompt: string,
-  userId?: string,
-  processName?: string,
 ): Promise<PlanGeneratorOutput> {
   return callModelWithSchema(
     PLAN_GENERATOR_INSTRUCTIONS,
     prompt,
     PlanGeneratorOutputSchema,
-    "flash",
-    "plan-generator",
-    userId,
-    processName,
+    GEMINI_3_FLASH_MODEL,
   );
 }
 
@@ -230,16 +226,11 @@ export async function runPlanGenerator(
  */
 export async function runPartialPlanGenerator(
   prompt: string,
-  userId?: string,
-  processName?: string,
 ): Promise<z.infer<typeof PartialPlanOutputSchema>> {
   return callModelWithSchema(
     PLAN_GENERATOR_INSTRUCTIONS,
     prompt,
     PartialPlanOutputSchema,
-    "flash",
-    "partial-plan-generator",
-    userId,
-    processName,
+    GEMINI_3_FLASH_MODEL,
   );
 }

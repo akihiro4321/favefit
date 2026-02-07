@@ -24,7 +24,7 @@ export interface PreferenceLearningWorkflowInput {
   recipe: {
     title: string;
     tags: string[];
-    ingredients: string[];  // 食材名のみの配列
+    ingredients: string[]; // 食材名のみの配列
   };
   feedback: {
     wantToMakeAgain: boolean;
@@ -56,7 +56,7 @@ export interface PreferenceLearningWorkflowResult {
  * 既存のgetPreferenceLearningPrompt関数を呼び出し
  */
 async function buildPreferenceLearningPromptInternal(
-  input: PreferenceLearningWorkflowInput
+  input: PreferenceLearningWorkflowInput,
 ): Promise<string> {
   return getPreferenceLearningPrompt({
     recipe: input.recipe,
@@ -70,25 +70,25 @@ async function buildPreferenceLearningPromptInternal(
  */
 async function executePreferenceLearning(
   prompt: string,
-  userId?: string
 ): Promise<PreferenceLearnerOutput> {
-  return analyzePreferenceData(prompt, userId, "preference-learning");
+  return analyzePreferenceData(prompt);
 }
 
 /**
  * Step 3: 分析結果の統計情報を計算
  * スコア変更の合計値を算出
  */
-function calculateScoreChanges(
-  analysis: PreferenceLearnerOutput
-): { totalCuisineChanges: number; totalFlavorChanges: number } {
+function calculateScoreChanges(analysis: PreferenceLearnerOutput): {
+  totalCuisineChanges: number;
+  totalFlavorChanges: number;
+} {
   const cuisineTotal = analysis.cuisineUpdates.reduce(
     (sum, update) => sum + Math.abs(update.score),
-    0
+    0,
   );
   const flavorTotal = analysis.flavorUpdates.reduce(
     (sum, update) => sum + Math.abs(update.score),
-    0
+    0,
   );
 
   return {
@@ -110,20 +110,22 @@ function calculateScoreChanges(
  * 3. calculateScoreChanges - 統計情報計算
  */
 export async function learnPreferences(
-  input: PreferenceLearningWorkflowInput
+  input: PreferenceLearningWorkflowInput,
 ): Promise<PreferenceLearningWorkflowResult> {
   console.log("[PreferenceLearningWorkflow] Step 1: Building prompt...");
   const prompt = await buildPreferenceLearningPromptInternal(input);
 
   console.log("[PreferenceLearningWorkflow] Step 2: Executing agent...");
-  const analysis = await executePreferenceLearning(prompt, input.userId);
+  const analysis = await executePreferenceLearning(prompt);
 
-  console.log("[PreferenceLearningWorkflow] Step 3: Calculating score changes...");
+  console.log(
+    "[PreferenceLearningWorkflow] Step 3: Calculating score changes...",
+  );
   const updatedScores = calculateScoreChanges(analysis);
 
   console.log(
     `[PreferenceLearningWorkflow] Updated ${updatedScores.totalCuisineChanges} cuisine scores, ` +
-      `${updatedScores.totalFlavorChanges} flavor scores`
+      `${updatedScores.totalFlavorChanges} flavor scores`,
   );
 
   return {

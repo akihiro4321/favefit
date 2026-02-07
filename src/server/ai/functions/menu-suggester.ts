@@ -69,6 +69,7 @@ export type MenuAdjusterOutput = z.infer<typeof MenuAdjusterOutputSchema>;
 // ============================================
 
 import { MENU_ADJUSTER_INSTRUCTIONS } from "../prompts/functions/menu-suggester";
+import { GEMINI_3_FLASH_MODEL } from "../config";
 
 // ============================================
 // 関数実行
@@ -79,16 +80,11 @@ import { MENU_ADJUSTER_INSTRUCTIONS } from "../prompts/functions/menu-suggester"
  */
 export async function generateMenuSuggestions(
   prompt: string,
-  userId?: string,
-  processName?: string,
 ): Promise<MenuAdjusterOutput> {
   return callModelWithSchema(
     MENU_ADJUSTER_INSTRUCTIONS,
     prompt,
     MenuAdjusterOutputSchema,
-    "flash",
-    "menu-suggester",
-    userId,
-    processName,
+    GEMINI_3_FLASH_MODEL,
   );
 }

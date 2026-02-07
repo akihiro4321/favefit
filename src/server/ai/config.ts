@@ -15,7 +15,6 @@ export const genAI = new GoogleGenAI({
 /**
  * モデルID定義
  */
-export const GEMINI_FLASH_MODEL = "gemini-1.5-flash";
-export const GEMINI_PRO_MODEL = "gemini-1.5-pro";
-// ユーザー指定のモデル名（存在確認が必要だが、一旦維持）
-export const GEMINI_25_FLASH_MODEL = "gemini-2.5-flash";
+export const GEMINI_2_5_FLASH_MODEL = "gemini-2.5-flash";
+export const GEMINI_3_PRO_MODEL = "gemini-3-pro-preview";
+export const GEMINI_3_FLASH_MODEL = "gemini-3-flash-preview";
