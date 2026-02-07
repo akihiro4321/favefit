@@ -156,10 +156,10 @@ export function validatePlanNutrition(
       // 固定メニューが設定されている場合
       const fixedMeal = fixedMeals?.[mealType as keyof typeof fixedMeals];
 
-      // 固定メニューがあれば、タイトルが一致しているかチェック
-      if (fixedMeal?.title && meal.title.includes(fixedMeal.title)) {
-        // タイトルが含まれているか、またはタイトルが一致していれば、栄養素バリデーションをスキップ
-        // (ユーザー設定の固定メニューは目標栄養素を満たしていないことが多いため)
+      // 固定メニュー判定:
+      // Auditorによって正規化されたタイトルと完全一致するか、あるいは部分一致する場合
+      // 固定メニューはユーザーの選択を優先するため、栄養素バリデーションをスキップする
+      if (fixedMeal?.title && (meal.title === fixedMeal.title || meal.title.includes(fixedMeal.title))) {
         continue;
       }
 

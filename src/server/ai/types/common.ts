@@ -60,10 +60,9 @@ export const MealTypeSchema = z.enum(["breakfast", "lunch", "dinner"]);
 export type MealType = z.infer<typeof MealTypeSchema>;
 
 /**
- * 単一食事スキーマ
+ * 単一食事スキーマ (AI生成用)
  */
 export const SingleMealSchema = z.object({
-  recipeId: z.string().describe("ユニークなレシピID"),
   title: z.string().describe("レシピ名"),
   tags: z.array(z.string()).describe("タグ（和食、洋食など）"),
   ingredients: z.array(IngredientItemSchema).describe("材料リスト"),

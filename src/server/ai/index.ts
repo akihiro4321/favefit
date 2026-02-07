@@ -88,6 +88,11 @@ export {
 } from "./agents/preference-learner";
 
 export {
+  runAuditor,
+  type AuditorOutput,
+} from "./agents/auditor";
+
+export {
   runDietBaselineEstimator,
 } from "./agents/diet-baseline-estimator";
 
@@ -115,6 +120,11 @@ export {
   PREFERENCE_LEARNER_INSTRUCTIONS,
   getPreferenceLearningPrompt,
 } from "./agents/prompts/preference-learner";
+
+export {
+  AUDITOR_INSTRUCTIONS,
+  getAuditorPrompt,
+} from "./agents/prompts/auditor";
 
 export {
   DIET_BASELINE_ESTIMATOR_INSTRUCTIONS,

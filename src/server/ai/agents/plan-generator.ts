@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SingleMealSchema } from "../types/common";
 
 /**
  * 食事プラン生成エージェントの入力スキーマ
@@ -137,29 +138,15 @@ export const PlanGeneratorInputSchema = z.object({
 
 export type PlanGeneratorInput = z.infer<typeof PlanGeneratorInputSchema>;
 
-/**
- * 出力スキーマ
- */
-const MealSlotOutputSchema = z.object({
-  title: z.string().describe("料理名"),
-  nutrition: z.object({
-    calories: z.number().describe("推定カロリー(kcal)"),
-    protein: z.number().describe("推定タンパク質(g)"),
-    fat: z.number().describe("推定脂質(g)"),
-    carbs: z.number().describe("推定炭水化物(g)"),
-  }),
-  tags: z.array(z.string()).describe("料理の特徴を表すタグ"),
-});
-
 export const PlanGeneratorOutputSchema = z.object({
   days: z.array(
     z.object({
       date: z.string().describe("日付 (YYYY-MM-DD)"),
       isCheatDay: z.boolean().describe("この日がチートデイかどうか"),
       meals: z.object({
-        breakfast: MealSlotOutputSchema,
-        lunch: MealSlotOutputSchema,
-        dinner: MealSlotOutputSchema,
+        breakfast: SingleMealSchema,
+        lunch: SingleMealSchema,
+        dinner: SingleMealSchema,
       }),
       totalNutrition: z.object({
         calories: z.number(),
@@ -180,7 +167,7 @@ export const PartialPlanOutputSchema = z.object({
   meals: z.array(
     z.object({
       key: z.string().describe("食事キー (YYYY-MM-DD_mealType)"),
-      recipe: MealSlotOutputSchema,
+      recipe: SingleMealSchema,
     })
   ),
 });
