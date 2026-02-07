@@ -333,7 +333,7 @@ async function runAnchorAndFillProcess(
   
   // 0. 適応型プランニング指示の生成 (現状の食生活分析)
   const totalTargetCalories = mealTargets.breakfast.calories + mealTargets.lunch.calories + mealTargets.dinner.calories;
-  const adaptiveDirective = dietBaselineService.createAdaptiveDirective(
+  const adaptiveDirective = await dietBaselineService.createAdaptiveDirective(
     {
       lifestyle: { currentDiet: input.currentDiet },
       physical: { goal: (input as unknown as { goal?: "lose" | "maintain" | "gain" }).goal || "maintain" }

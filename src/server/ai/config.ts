@@ -18,6 +18,11 @@ export const google = createGoogleGenerativeAI({
 export const geminiFlash = google("gemini-flash-latest");
 
 /**
+ * Gemini 2.5 Flash モデル（2026年時点の最新高速モデル）
+ */
+export const gemini25Flash = google("gemini-2.5-flash");
+
+/**
  * Gemini Pro モデル（高品質、複雑なタスク向け）
  */
 export const geminiPro = google("gemini-pro-latest");

@@ -87,6 +87,10 @@ export {
   type PreferenceAnalysis,
 } from "./agents/preference-learner";
 
+export {
+  runDietBaselineEstimator,
+} from "./agents/diet-baseline-estimator";
+
 // ============================================
 // Prompts
 // ============================================
@@ -111,6 +115,11 @@ export {
   PREFERENCE_LEARNER_INSTRUCTIONS,
   getPreferenceLearningPrompt,
 } from "./agents/prompts/preference-learner";
+
+export {
+  DIET_BASELINE_ESTIMATOR_INSTRUCTIONS,
+  getDietBaselineEstimationPrompt,
+} from "./agents/prompts/diet-baseline-estimator";
 
 // ============================================
 // Workflows
@@ -138,3 +147,9 @@ export {
   type MenuAdjustmentWorkflowInput,
   type MenuAdjustmentWorkflowResult,
 } from "./workflows/menu-adjustment";
+
+export {
+  analyzeCurrentIntake,
+  type DietAnalysisWorkflowInput,
+  type DietAnalysisWorkflowResult,
+} from "./workflows/diet-analysis";

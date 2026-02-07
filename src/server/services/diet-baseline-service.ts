@@ -5,80 +5,33 @@
  */
 
 import { UserProfile, UserNutrition } from "@/lib/schema";
+import { analyzeCurrentIntake } from "../ai/workflows/diet-analysis";
 
 interface AdaptiveDirective {
   baseCalories: number; // 生成時のベースとなるカロリー（理想値そのものではない場合がある）
   instructions: string[]; // AIプロンプトに追加する指示リスト
 }
 
-/**
- * テキスト入力（例: "おにぎり2個"）から概算カロリーを推定する簡易ロジック
- * ※本来はここもAIやAPIで厳密にやるべきだが、まずは簡易的なキーワードマッチングで実装
- */
-const estimateMealCalories = (text: string): number => {
-  if (!text) return 0;
-  
-  let calories = 0;
-  
-  // キーワードベースの簡易推定
-  const keywords = [
-    { word: "おにぎり", kcal: 200 },
-    { word: "ご飯", kcal: 250 },
-    { word: "パン", kcal: 150 },
-    { word: "トースト", kcal: 200 },
-    { word: "サラダ", kcal: 50 },
-    { word: "定食", kcal: 800 },
-    { word: "弁当", kcal: 700 },
-    { word: "ラーメン", kcal: 900 },
-    { word: "パスタ", kcal: 700 },
-    { word: "カレー", kcal: 800 },
-    { word: "プロテイン", kcal: 100 },
-    { word: "卵", kcal: 80 },
-    { word: "納豆", kcal: 80 },
-    { word: "なし", kcal: 0 },
-    { word: "抜き", kcal: 0 },
-    { word: "コーヒー", kcal: 10 },
-  ];
-
-  for (const k of keywords) {
-    if (text.includes(k.word)) {
-      // 数量の簡易判定 ("2個"など)
-      const countMatch = text.match(/(\d+)個/);
-      const count = countMatch ? parseInt(countMatch[1]) : 1;
-      calories += k.kcal * count;
-    }
-  }
-
-  // キーワードにヒットしなかった場合でも、何か入力されていれば最低限の値を設定
-  if (calories === 0 && text.length > 3) {
-    return 400; // デフォルト値
-  }
-
-  return calories;
-};
-
 export class DietBaselineService {
   /**
    * 現状の食生活を分析し、概算摂取カロリーを算出
    */
-  calculateCurrentIntake(currentDiet: UserProfile["lifestyle"]["currentDiet"]): number {
-    if (!currentDiet) return 0;
-
-    const breakfast = estimateMealCalories(currentDiet.breakfast || "");
-    const lunch = estimateMealCalories(currentDiet.lunch || "");
-    const dinner = estimateMealCalories(currentDiet.dinner || "");
-    const snack = estimateMealCalories(currentDiet.snack || "");
-
-    return breakfast + lunch + dinner + snack;
+  async calculateCurrentIntake(
+    currentDiet: UserProfile["lifestyle"]["currentDiet"],
+    userId?: string
+  ): Promise<number> {
+    const result = await analyzeCurrentIntake({ currentDiet, userId });
+    return result.totalCalories;
   }
 
   /**
    * ギャップ分析とAI指示の生成
    */
-  createAdaptiveDirective(
+  async createAdaptiveDirective(
     profile: UserProfile,
-    target: UserNutrition
-  ): AdaptiveDirective {
+    target: UserNutrition,
+    userId?: string
+  ): Promise<AdaptiveDirective> {
     const currentDiet = profile.lifestyle.currentDiet;
     
     // 現状データがない場合は、標準の目標値をそのまま使用
@@ -89,7 +42,7 @@ export class DietBaselineService {
       };
     }
 
-    const currentCalories = this.calculateCurrentIntake(currentDiet);
+    const currentCalories = await this.calculateCurrentIntake(currentDiet, userId);
     
     // 異常値（極端に少ない/多い）の場合は補正
     if (currentCalories < 500) {

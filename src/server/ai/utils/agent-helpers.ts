@@ -4,19 +4,20 @@
 
 import { generateObject, generateText, LanguageModelV1 } from "ai";
 import { z } from "zod";
-import { geminiFlash, geminiPro } from "../config";
+import { geminiFlash, geminiPro, gemini25Flash } from "../config";
 import { getTelemetryConfig } from "../observability";
 
 // ============================================
 // モデル選択
 // ============================================
 
-export type ModelType = "flash" | "pro";
+export type ModelType = "flash" | "pro" | "flash-2.5";
 
 /**
  * モデルを取得
  */
 export function getModel(type: ModelType = "flash"): LanguageModelV1 {
+  if (type === "flash-2.5") return gemini25Flash;
   return type === "pro" ? geminiPro : geminiFlash;
 }
 
