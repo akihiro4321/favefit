@@ -2,7 +2,7 @@
  * FaveFit - AIエージェントヘルパー関数
  */
 
-import { generateObject, generateText, LanguageModelV1 } from "ai";
+import { generateObject, LanguageModelV1 } from "ai";
 import { z } from "zod";
 import { geminiFlash, geminiPro, gemini25Flash } from "../config";
 import { getTelemetryConfig } from "../observability";
@@ -24,42 +24,6 @@ export function getModel(type: ModelType = "flash"): LanguageModelV1 {
 // ============================================
 // エージェント実行ヘルパー
 // ============================================
-
-export interface AgentConfig<TSchema extends z.ZodType> {
-  /** システムプロンプト */
-  instructions: string;
-  /** 出力スキーマ */
-  schema: TSchema;
-  /** 使用するモデル */
-  model?: ModelType;
-  /** エージェント名（テレメトリ用） */
-  agentName?: string;
-  /** ユーザーID（テレメトリ用） */
-  userId?: string;
-  /** プロセス名（テレメトリ用：どのワークフローか） */
-  processName?: string;
-}
-
-/**
- * 構造化出力を生成するエージェントを実行
- */
-export async function runAgent<TSchema extends z.ZodType>(
-  config: AgentConfig<TSchema>,
-  prompt: string
-): Promise<z.infer<TSchema>> {
-  const { object } = await generateObject({
-    model: getModel(config.model),
-    prompt,
-    schema: config.schema,
-    experimental_telemetry: getTelemetryConfig({
-      agentName: config.agentName || "agent",
-      userId: config.userId,
-      processName: config.processName,
-    }),
-  });
-
-  return object;
-}
 
 /**
  * 複数のスキーマに対応するエージェント実行
@@ -86,62 +50,6 @@ export async function runAgentWithSchema<TSchema extends z.ZodType>(
   });
 
   return object;
-}
-
-// ============================================
-// テキスト生成・パースヘルパー
-// ============================================
-
-export interface TextAgentConfig {
-  instructions: string;
-  model?: ModelType;
-  maxSteps?: number;
-  tools?: Record<string, unknown>;
-  agentName?: string;
-  userId?: string;
-  processName?: string;
-}
-
-/**
- * テキスト生成エージェントを実行
- */
-export async function runTextAgent(
-  config: TextAgentConfig,
-  prompt: string
-): Promise<string> {
-  const result = await generateText({
-    model: getModel(config.model),
-    system: config.instructions,
-    prompt,
-    maxSteps: config.maxSteps,
-    tools: config.tools as Parameters<typeof generateText>[0]["tools"],
-    experimental_telemetry: getTelemetryConfig({
-      agentName: config.agentName || "text-agent",
-      userId: config.userId,
-      processName: config.processName,
-    }),
-  });
-
-  return result.text;
-}
-
-/**
- * テキストからJSONを抽出してパース
- */
-export function parseJsonFromText<TSchema extends z.ZodType>(
-  text: string,
-  schema: TSchema
-): z.infer<TSchema> | null {
-  try {
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-      return schema.parse(parsed);
-    }
-  } catch (error) {
-    console.error("Failed to parse JSON from text:", error);
-  }
-  return null;
 }
 
 // ============================================

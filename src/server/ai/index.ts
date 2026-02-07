@@ -11,9 +11,7 @@ export { google, geminiFlash, geminiPro } from "./config";
 // ============================================
 // Observability
 // ============================================
-export {
-  getTelemetryConfig,
-} from "./observability";
+export { getTelemetryConfig } from "./observability";
 
 // ============================================
 // Common Types
@@ -38,15 +36,11 @@ export {
 // Helpers
 // ============================================
 export {
-  runAgent,
   runAgentWithSchema,
-  runTextAgent,
-  parseJsonFromText,
   formatPreferences,
   formatArray,
   getModel,
   type ModelType,
-  type AgentConfig,
 } from "./utils/agent-helpers";
 
 // ============================================
@@ -87,14 +81,9 @@ export {
   type PreferenceAnalysis,
 } from "./agents/preference-learner";
 
-export {
-  runAuditor,
-  type AuditorOutput,
-} from "./agents/auditor";
+export { runAuditor, type AuditorOutput } from "./agents/auditor";
 
-export {
-  runDietBaselineEstimator,
-} from "./agents/diet-baseline-estimator";
+export { runDietBaselineEstimator } from "./agents/diet-baseline-estimator";
 
 // ============================================
 // Prompts
