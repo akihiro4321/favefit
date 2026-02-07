@@ -56,10 +56,7 @@ src/
 - **型チェック:** `npm run type-check`
 
 ### コーディング規約
-- **UI:** スタイリングには Tailwind CSS を使用。`src/components/ui` にある既存のコンポーネントを優先的に使用。
-- **状態管理:** 可能な限りデータ取得には React Server Components (RSC) を使用。ミューテーションには Server Actions を使用。
-- **データベース:** Firestore とのやり取りには、必ず `src/server/db/firestore` にある型定義済みリポジトリを使用。コンポーネント内で生の SDK を呼び出すのは避ける。
-- **AI エージェント:** 新しい AI 機能は `src/server/ai/agents` で定義し、`src/server/ai/workflows` で統合する。
+コーディング規約は [`docs/coding-style.md`](../docs/coding-style.md) にまとめてあるので、コードの生成・変更時は必ず参照すること。
 
 ## AI ワークフロー
 アプリケーションは以下のマルチエージェントシステムを使用しています：
