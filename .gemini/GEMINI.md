@@ -4,7 +4,7 @@
 このプロジェクトでのやりとりや生成物はすべて日本語にすること
 
 ## プロジェクト概要
-**FaveFit** は、ユーザーの目標（減量、筋肥大など）や好みに基づいて、パーソナライズされた週間の食事プランを生成するAI搭載型食事プランニングアプリケーションです。**Vercel AI SDK** と **Google Gemini** モデルを活用し、食事プランの策定、レシピ生成、買い物リストの作成をマルチエージェントワークフローでオーケストレーションします。
+**FaveFit** は、ユーザーの目標（減量、筋肥大など）や好みに基づいて、パーソナライズされた週間の食事プランを生成するAI搭載型食事プランニングアプリケーションです。**Google Gemini API (@google/genai)** を活用し、食事プランの策定、レシピ生成、買い物リストの作成をマルチエージェントワークフローでオーケストレーションします。
 
 ## 技術スタック
 - **フレームワーク:** Next.js 16 (App Router)
@@ -12,8 +12,7 @@
 - **スタイリング:** Tailwind CSS, Radix UI (`lucide-react`, `class-variance-authority` を使用)
 - **データベース:** Firebase Firestore
 - **認証:** Firebase Auth
-- **AI 統合:** Vercel AI SDK (`ai`), Google Gemini (`@ai-sdk/google`)
-- **オブザーバビリティ:** Langfuse (`@langfuse/tracing`)
+- **AI 統合:** Google Generative AI SDK (`@google/genai`)[https://googleapis.github.io/js-genai/release_docs/index.html]
 - **テスト:** Vitest, React Testing Library
 
 ## アーキテクチャとディレクトリ構造

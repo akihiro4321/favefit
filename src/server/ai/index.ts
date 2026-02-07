@@ -6,12 +6,12 @@
 // ============================================
 // Config
 // ============================================
-export { google, geminiFlash, geminiPro } from "./config";
-
-// ============================================
-// Observability
-// ============================================
-export { getTelemetryConfig } from "./observability";
+export {
+  genAI,
+  GEMINI_FLASH_MODEL,
+  GEMINI_PRO_MODEL,
+  GEMINI_25_FLASH_MODEL,
+} from "./config";
 
 // ============================================
 // Common Types
@@ -39,8 +39,6 @@ export {
   callModelWithSchema as runAgentWithSchema,
   formatPreferences,
   formatArray,
-  getModel,
-  type ModelType,
 } from "./utils/agent-helpers";
 
 // ============================================

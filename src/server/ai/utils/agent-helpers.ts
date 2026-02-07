@@ -2,24 +2,14 @@
  * FaveFit - AIエージェントヘルパー関数
  */
 
-import { generateObject, LanguageModelV1 } from "ai";
 import { z } from "zod";
-import { geminiFlash, geminiPro, gemini25Flash } from "../config";
-import { getTelemetryConfig } from "../observability";
-
-// ============================================
-// モデル選択
-// ============================================
-
-export type ModelType = "flash" | "pro" | "flash-2.5";
-
-/**
- * モデルを取得
- */
-export function getModel(type: ModelType = "flash"): LanguageModelV1 {
-  if (type === "flash-2.5") return gemini25Flash;
-  return type === "pro" ? geminiPro : geminiFlash;
-}
+import { zodToJsonSchema } from "zod-to-json-schema";
+import {
+  genAI,
+  GEMINI_FLASH_MODEL,
+  GEMINI_PRO_MODEL,
+  GEMINI_25_FLASH_MODEL,
+} from "../config";
 
 // ============================================
 // エージェント実行ヘルパー
@@ -32,24 +22,60 @@ export async function callModelWithSchema<TSchema extends z.ZodType>(
   instructions: string,
   prompt: string,
   schema: TSchema,
-  model: ModelType = "flash",
+  model: string = "flash",
   agentName?: string,
   userId?: string,
   processName?: string,
 ): Promise<z.infer<TSchema>> {
-  const { object } = await generateObject({
-    model: getModel(model),
-    system: instructions,
-    prompt,
-    schema,
-    experimental_telemetry: getTelemetryConfig({
-      agentName: agentName || "agent",
-      userId,
-      processName,
-    }),
-  });
+  // モデルIDの解決
+  let modelId = GEMINI_FLASH_MODEL;
+  if (model === "flash-2.5") modelId = GEMINI_25_FLASH_MODEL;
+  if (model === "pro") modelId = GEMINI_PRO_MODEL;
 
-  return object;
+  // JSON Schema 生成
+  const jsonSchema = zodToJsonSchema(schema, { target: "openApi3" });
+
+  try {
+    const result = await genAI.models.generateContent({
+      model: modelId,
+      config: {
+        systemInstruction: {
+          parts: [{ text: instructions }],
+          role: "system",
+        },
+        responseMimeType: "application/json",
+        responseSchema: jsonSchema as any,
+      },
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: prompt }],
+        },
+      ],
+    });
+
+    // @google/genai SDK response handling
+    let responseText: string | undefined | null;
+
+    // Check if helper method exists (common in Google SDKs)
+    if (typeof (result as any).text === "function") {
+      responseText = (result as any).text();
+    } else {
+      // Fallback to direct candidate access
+      responseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+    }
+
+    if (!responseText) {
+      throw new Error("No response from Gemini");
+    }
+
+    const json = JSON.parse(responseText);
+    // Zod でバリデーション
+    return schema.parse(json);
+  } catch (error) {
+    console.error("Gemini API Error:", error);
+    throw error;
+  }
 }
 
 // ============================================
