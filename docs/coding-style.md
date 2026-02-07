@@ -103,6 +103,7 @@ export async function POST(
 ### サービス (`src/server/services/`)
 
 - ビジネスロジックを担当する。API ルートから呼び出される
+- **AI エージェント (`src/server/ai/agents/`) を直接呼び出さない。必ずワークフロー (`src/server/ai/workflows/`) を経由すること**
 - Request / Response のインターフェースを定義して使用する
 - JSDoc コメントで関数の概要を日本語で記載する
 - ファイル先頭にモジュール説明のコメントブロックを置く
