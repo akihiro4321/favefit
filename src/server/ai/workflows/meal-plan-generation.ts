@@ -1,6 +1,6 @@
 /**
  * FaveFit - Meal Plan Generation Workflow (Vercel AI SDK形式)
- * 
+ *
  * 食事プラン生成ワークフロー
  * Anchor & Fill 戦略を用いて、以下のステップで食事プランを生成します:
  * 1. Auditorエージェントを実行し、固定・こだわり枠の栄養価を解決
@@ -10,23 +10,28 @@
  */
 
 import { z } from "zod";
-import { runAgentWithSchema } from "../utils/agent-helpers";
+import { callModelWithSchema } from "../utils/agent-helpers";
 import {
   DEFAULT_PLAN_DURATION_DAYS,
   runPlanGenerator,
   type PlanGeneratorInput,
   type PlanGeneratorOutput,
 } from "../agents/plan-generator";
+import { SingleMealSchema } from "../types/common";
 import {
-  SingleMealSchema,
-} from "../types/common";
-import { 
   PLAN_GENERATOR_INSTRUCTIONS,
-  getBatchMealFixPrompt 
+  getBatchMealFixPrompt,
 } from "../agents/prompts/plan-generator";
-import { validatePlanNutrition, recalculateDayNutrition, MealValidationError } from "@/lib/tools/nutritionValidator";
+import {
+  validatePlanNutrition,
+  recalculateDayNutrition,
+  MealValidationError,
+} from "@/lib/tools/nutritionValidator";
 import { DayPlan, MealSlot, UserProfile, UserNutrition } from "@/lib/schema";
-import { MealTargetNutrition, NutritionValues } from "@/lib/tools/mealNutritionCalculator";
+import {
+  MealTargetNutrition,
+  NutritionValues,
+} from "@/lib/tools/mealNutritionCalculator";
 import { runAuditor, type AuditorOutput } from "../agents/auditor";
 import { getFillPlanPrompt } from "../agents/prompts/plan-generator";
 import { dietBaselineService } from "../../services/diet-baseline-service";
@@ -57,9 +62,11 @@ export interface MealPlanWorkflowResult {
 const BatchFixOutputSchema = z.object({
   meals: z.array(
     z.object({
-      key: z.string().describe("日付とmealTypeを結合したキー（例：2024-01-01_breakfast）"),
+      key: z
+        .string()
+        .describe("日付とmealTypeを結合したキー（例：2024-01-01_breakfast）"),
       recipe: SingleMealSchema,
-    })
+    }),
   ),
 });
 
@@ -97,7 +104,7 @@ function getFallbackMeal(mealType: string, target: NutritionValues): MealSlot {
  * AI出力を内部形式に変換するヘルパー
  */
 function convertToInternalFormat(
-  generatedPlan: PlanGeneratorOutput
+  generatedPlan: PlanGeneratorOutput,
 ): Record<string, DayPlan> {
   const days: Record<string, DayPlan> = {};
 
@@ -109,7 +116,12 @@ function convertToInternalFormat(
       tags?: string[];
       ingredients?: { name: string; amount: string }[];
       steps?: string[];
-      nutrition: { calories: number; protein: number; fat: number; carbs: number };
+      nutrition: {
+        calories: number;
+        protein: number;
+        fat: number;
+        carbs: number;
+      };
     }): MealSlot => ({
       recipeId:
         meal.recipeId ||
@@ -162,17 +174,22 @@ function convertToInternalFormat(
 function validatePlan(
   generatedPlan: PlanGeneratorOutput,
   mealTargets: MealTargetNutrition,
-  fixedMeals?: PlanGeneratorInput["fixedMeals"]
+  fixedMeals?: PlanGeneratorInput["fixedMeals"],
 ): {
   days: Record<string, DayPlan>;
   invalidMeals: MealValidationError[];
   isValid: boolean;
 } {
   const days = convertToInternalFormat(generatedPlan);
-  const validationResult = validatePlanNutrition(days, mealTargets, undefined, fixedMeals);
+  const validationResult = validatePlanNutrition(
+    days,
+    mealTargets,
+    undefined,
+    fixedMeals,
+  );
 
   console.log(
-    `[Workflow:validatePlan] Valid: ${validationResult.isValid}, Invalid meals: ${validationResult.invalidMeals.length}`
+    `[Workflow:validatePlan] Valid: ${validationResult.isValid}, Invalid meals: ${validationResult.invalidMeals.length}`,
   );
 
   return {
@@ -191,19 +208,21 @@ async function fixInvalidMeals(
   mealTargets: MealTargetNutrition,
   dislikedIngredients: string[],
   workflowInput: MealPlanWorkflowInput,
-  userId?: string
+  userId?: string,
 ): Promise<{
   days: Record<string, DayPlan>;
   invalidMeals: MealValidationError[];
   isValid: boolean;
 }> {
   if (invalidMeals.length === 0) {
-    console.log("[Workflow:fixInvalidMeals] All meals valid, skipping fix step.");
+    console.log(
+      "[Workflow:fixInvalidMeals] All meals valid, skipping fix step.",
+    );
     return { days, invalidMeals: [], isValid: true };
   }
 
   console.log(
-    `[Workflow:fixInvalidMeals] Fixing ${invalidMeals.length} invalid meals in one batch...`
+    `[Workflow:fixInvalidMeals] Fixing ${invalidMeals.length} invalid meals in one batch...`,
   );
 
   // 既存メニュー名を収集（重複回避用）
@@ -214,7 +233,11 @@ async function fixInvalidMeals(
   ]);
 
   // 不合格食事の情報を整形
-  const mealTypeJaMap = { breakfast: "朝食", lunch: "昼食", dinner: "夕食" } as const;
+  const mealTypeJaMap = {
+    breakfast: "朝食",
+    lunch: "昼食",
+    dinner: "夕食",
+  } as const;
   const invalidMealInfos = invalidMeals.map((m) => ({
     date: m.date,
     mealType: m.mealType,
@@ -232,14 +255,14 @@ async function fixInvalidMeals(
   });
 
   try {
-    const object = await runAgentWithSchema(
+    const object = await callModelWithSchema(
       PLAN_GENERATOR_INSTRUCTIONS,
       prompt,
       BatchFixOutputSchema,
       "flash",
       "fix-invalid-meals",
       userId,
-      "meal-plan-fix"
+      "meal-plan-fix",
     );
 
     // 修正結果をマージ
@@ -249,11 +272,18 @@ async function fixInvalidMeals(
       const [date, mealType] = fixedMeal.key.split("_");
 
       if (!date || !mealType || !updatedDays[date]) {
-        console.warn(`[Workflow:fixInvalidMeals] Invalid key: ${fixedMeal.key}`);
+        console.warn(
+          `[Workflow:fixInvalidMeals] Invalid key: ${fixedMeal.key}`,
+        );
         continue;
       }
 
-      if (mealType !== "breakfast" && mealType !== "lunch" && mealType !== "dinner") continue;
+      if (
+        mealType !== "breakfast" &&
+        mealType !== "lunch" &&
+        mealType !== "dinner"
+      )
+        continue;
       const target = mealTargets[mealType];
 
       // カロリー差が15%以内かチェック
@@ -280,7 +310,7 @@ async function fixInvalidMeals(
     // 再バリデーション
     const validationResult = validatePlanNutrition(updatedDays, mealTargets);
     console.log(
-      `[Workflow:fixInvalidMeals] After fix - Valid: ${validationResult.isValid}, Remaining invalid: ${validationResult.invalidMeals.length}`
+      `[Workflow:fixInvalidMeals] After fix - Valid: ${validationResult.isValid}, Remaining invalid: ${validationResult.invalidMeals.length}`,
     );
 
     return {
@@ -300,14 +330,14 @@ async function fixInvalidMeals(
 function applyFinalFallback(
   days: Record<string, DayPlan>,
   invalidMeals: MealValidationError[],
-  mealTargets: MealTargetNutrition
+  mealTargets: MealTargetNutrition,
 ): Record<string, DayPlan> {
   if (invalidMeals.length === 0) {
     return days;
   }
 
   console.log(
-    `[Workflow:applyFinalFallback] Applying fallback for ${invalidMeals.length} remaining invalid meals.`
+    `[Workflow:applyFinalFallback] Applying fallback for ${invalidMeals.length} remaining invalid meals.`,
   );
   const finalDays = { ...days };
 
@@ -327,28 +357,38 @@ async function runAnchorAndFillProcess(
   input: PlanGeneratorInput,
   mealTargets: MealTargetNutrition,
   feedbackText?: string,
-  userId?: string
+  userId?: string,
 ): Promise<{
   generatedPlan: PlanGeneratorOutput;
   resolvedAnchors: AuditorOutput["anchors"]; // Auditorの解決結果を保持
 }> {
   const duration = DEFAULT_PLAN_DURATION_DAYS;
-  
+
   // 0. 適応型プランニング指示の生成 (現状の食生活分析)
-  const totalTargetCalories = mealTargets.breakfast.calories + mealTargets.lunch.calories + mealTargets.dinner.calories;
+  const totalTargetCalories =
+    mealTargets.breakfast.calories +
+    mealTargets.lunch.calories +
+    mealTargets.dinner.calories;
   const adaptiveDirective = await dietBaselineService.createAdaptiveDirective(
     {
       lifestyle: { currentDiet: input.currentDiet },
-      physical: { goal: (input as unknown as { goal?: "lose" | "maintain" | "gain" }).goal || "maintain" }
+      physical: {
+        goal:
+          (input as unknown as { goal?: "lose" | "maintain" | "gain" }).goal ||
+          "maintain",
+      },
     } as unknown as UserProfile,
-    { dailyCalories: totalTargetCalories } as unknown as UserNutrition
+    { dailyCalories: totalTargetCalories } as unknown as UserNutrition,
   );
 
-  console.log("[Workflow:Anchor&Fill] Adaptive Directive created:", JSON.stringify(adaptiveDirective.instructions));
+  console.log(
+    "[Workflow:Anchor&Fill] Adaptive Directive created:",
+    JSON.stringify(adaptiveDirective.instructions),
+  );
 
   // 1. Auditorの実行 (固定・こだわり枠の栄養価解決)
   console.log("[Workflow:Anchor&Fill] 1. Running Auditor...");
-  
+
   const mealSettings = input.mealSettings || {
     breakfast: { mode: "auto", text: "" },
     lunch: { mode: "auto", text: "" },
@@ -356,14 +396,33 @@ async function runAnchorAndFillProcess(
   };
 
   const dailyTarget = {
-    calories: mealTargets.breakfast.calories + mealTargets.lunch.calories + mealTargets.dinner.calories,
-    protein: mealTargets.breakfast.protein + mealTargets.lunch.protein + mealTargets.dinner.protein,
-    fat: mealTargets.breakfast.fat + mealTargets.lunch.fat + mealTargets.dinner.fat,
-    carbs: mealTargets.breakfast.carbs + mealTargets.lunch.carbs + mealTargets.dinner.carbs,
+    calories:
+      mealTargets.breakfast.calories +
+      mealTargets.lunch.calories +
+      mealTargets.dinner.calories,
+    protein:
+      mealTargets.breakfast.protein +
+      mealTargets.lunch.protein +
+      mealTargets.dinner.protein,
+    fat:
+      mealTargets.breakfast.fat +
+      mealTargets.lunch.fat +
+      mealTargets.dinner.fat,
+    carbs:
+      mealTargets.breakfast.carbs +
+      mealTargets.lunch.carbs +
+      mealTargets.dinner.carbs,
   };
 
-  const auditorResult = await runAuditor(mealSettings, dailyTarget, userId, "meal-plan-anchor");
-  console.log(`[Workflow:Anchor&Fill] Auditor resolved ${auditorResult.anchors.length} anchors.`);
+  const auditorResult = await runAuditor(
+    mealSettings,
+    dailyTarget,
+    userId,
+    "meal-plan-anchor",
+  );
+  console.log(
+    `[Workflow:Anchor&Fill] Auditor resolved ${auditorResult.anchors.length} anchors.`,
+  );
 
   // 2. スロット別ターゲットの計算
   const anchorNutritionSum = auditorResult.anchors.reduce(
@@ -373,60 +432,79 @@ async function runAnchorAndFillProcess(
       fat: acc.fat + anchor.estimatedNutrition.fat,
       carbs: acc.carbs + anchor.estimatedNutrition.carbs,
     }),
-    { calories: 0, protein: 0, fat: 0, carbs: 0 }
+    { calories: 0, protein: 0, fat: 0, carbs: 0 },
   );
 
   // 1日の基準摂取量（Adaptive Directiveで調整された値）
   const baseDailyCalories = adaptiveDirective.baseCalories;
-  
+
   // 残り予算 (最低0を下回らないように)
-  const remainingCalories = Math.max(0, baseDailyCalories - anchorNutritionSum.calories);
-  
+  const remainingCalories = Math.max(
+    0,
+    baseDailyCalories - anchorNutritionSum.calories,
+  );
+
   // 空きスロットの特定と分配比率
   const allMealTypes = ["breakfast", "lunch", "dinner"] as const;
-  const fixedTypes = auditorResult.anchors.map(a => a.mealType);
-  const autoTypes = allMealTypes.filter(type => !fixedTypes.includes(type));
-  
+  const fixedTypes = auditorResult.anchors.map((a) => a.mealType);
+  const autoTypes = allMealTypes.filter((type) => !fixedTypes.includes(type));
+
   // 標準分配比率 (朝2:昼4:夕4)
   const standardRatios = { breakfast: 0.2, lunch: 0.4, dinner: 0.4 };
-  const autoRatioSum = autoTypes.reduce((sum, type) => sum + standardRatios[type], 0);
+  const autoRatioSum = autoTypes.reduce(
+    (sum, type) => sum + standardRatios[type],
+    0,
+  );
 
   // スロット別ターゲット記述の生成
-  const slotTargetsDescription = allMealTypes.map(type => {
-    // ANCHORの場合
-    if (fixedTypes.includes(type)) {
-      const anchor = auditorResult.anchors.find(a => a.mealType === type)!;
-      return `- ${type.toUpperCase()} (ANCHOR):\n  - title: "${anchor.resolvedTitle}"\n  - nutrition: ${JSON.stringify(anchor.estimatedNutrition)}\n  - note: "一字一句変えずにそのまま出力してください。"`;
-    } 
-    
-    // AUTOの場合
-    // そのスロットの配分 = (スロット標準比率 / 空きスロット合計比率) * 残りカロリー
-    // もし空きスロットが無ければ0 (理論上ありえないがガード)
-    const ratio = autoRatioSum > 0 ? standardRatios[type] / autoRatioSum : 0;
-    const targetCal = Math.round(remainingCalories * ratio);
-    
-    // PFCは残り予算から分配
-    const remainingP = Math.max(0, dailyTarget.protein - anchorNutritionSum.protein);
-    const remainingF = Math.max(0, dailyTarget.fat - anchorNutritionSum.fat);
-    const remainingC = Math.max(0, dailyTarget.carbs - anchorNutritionSum.carbs);
-    
-    // AUTOスロット同士での分配比率
-    const autoDistributionRatio = autoRatioSum > 0 ? standardRatios[type] / autoRatioSum : 0;
+  const slotTargetsDescription = allMealTypes
+    .map((type) => {
+      // ANCHORの場合
+      if (fixedTypes.includes(type)) {
+        const anchor = auditorResult.anchors.find((a) => a.mealType === type)!;
+        return `- ${type.toUpperCase()} (ANCHOR):\n  - title: "${anchor.resolvedTitle}"\n  - nutrition: ${JSON.stringify(anchor.estimatedNutrition)}\n  - note: "一字一句変えずにそのまま出力してください。"`;
+      }
 
-    const targetP = Math.round(remainingP * autoDistributionRatio);
-    const targetF = Math.round(remainingF * autoDistributionRatio);
-    const targetC = Math.round(remainingC * autoDistributionRatio);
+      // AUTOの場合
+      // そのスロットの配分 = (スロット標準比率 / 空きスロット合計比率) * 残りカロリー
+      // もし空きスロットが無ければ0 (理論上ありえないがガード)
+      const ratio = autoRatioSum > 0 ? standardRatios[type] / autoRatioSum : 0;
+      const targetCal = Math.round(remainingCalories * ratio);
 
-    const baselineContext = `目標カロリーは${targetCal}kcalです。普段の摂取量を考慮し、無理のない範囲で調整されています。`;
+      // PFCは残り予算から分配
+      const remainingP = Math.max(
+        0,
+        dailyTarget.protein - anchorNutritionSum.protein,
+      );
+      const remainingF = Math.max(0, dailyTarget.fat - anchorNutritionSum.fat);
+      const remainingC = Math.max(
+        0,
+        dailyTarget.carbs - anchorNutritionSum.carbs,
+      );
 
-    return `- ${type.toUpperCase()} (AUTO):\n  - target: { calories: ${targetCal}, protein: ${targetP}, fat: ${targetF}, carbs: ${targetC} }\n  - baseline_context: "${baselineContext}"`;
-  }).join("\n\n");
+      // AUTOスロット同士での分配比率
+      const autoDistributionRatio =
+        autoRatioSum > 0 ? standardRatios[type] / autoRatioSum : 0;
+
+      const targetP = Math.round(remainingP * autoDistributionRatio);
+      const targetF = Math.round(remainingF * autoDistributionRatio);
+      const targetC = Math.round(remainingC * autoDistributionRatio);
+
+      const baselineContext = `目標カロリーは${targetCal}kcalです。普段の摂取量を考慮し、無理のない範囲で調整されています。`;
+
+      return `- ${type.toUpperCase()} (AUTO):\n  - target: { calories: ${targetCal}, protein: ${targetP}, fat: ${targetF}, carbs: ${targetC} }\n  - baseline_context: "${baselineContext}"`;
+    })
+    .join("\n\n");
 
   // 3. Fill Planner用プロンプトの作成
-  const user_info = JSON.stringify({
-    ...input,
-    adaptiveDirective,
-  }, null, 2);
+  const user_info = JSON.stringify(
+    {
+      ...input,
+      adaptiveDirective,
+    },
+    null,
+    2,
+  );
 
   const prompt = getFillPlanPrompt({
     duration,
@@ -437,11 +515,15 @@ async function runAnchorAndFillProcess(
 
   // 4. Fill Planner実行
   console.log("[Workflow:Anchor&Fill] 2. Running Fill Planner...");
-  const generatedPlan = await runPlanGenerator(prompt, userId, "meal-plan-fill");
+  const generatedPlan = await runPlanGenerator(
+    prompt,
+    userId,
+    "meal-plan-fill",
+  );
 
   return {
     generatedPlan,
-    resolvedAnchors: auditorResult.anchors
+    resolvedAnchors: auditorResult.anchors,
   };
 }
 
@@ -449,22 +531,30 @@ async function runAnchorAndFillProcess(
  * 食事プラン生成ワークフロー (メイン)
  */
 export async function generateMealPlan(
-  workflowInput: MealPlanWorkflowInput
+  workflowInput: MealPlanWorkflowInput,
 ): Promise<MealPlanWorkflowResult> {
-  const { input, feedbackText, mealTargets, dislikedIngredients, userId } = workflowInput;
+  const { input, feedbackText, mealTargets, dislikedIngredients, userId } =
+    workflowInput;
 
   // ステップ1: Anchor & Fill プロセス
   console.log("[Workflow] Step 1: Starting Anchor & Fill Process...");
-  const { generatedPlan, resolvedAnchors } = await runAnchorAndFillProcess(input, mealTargets, feedbackText, userId);
+  const { generatedPlan, resolvedAnchors } = await runAnchorAndFillProcess(
+    input,
+    mealTargets,
+    feedbackText,
+    userId,
+  );
 
   // ステップ1.5: 固定スロットの強制上書き (整合性確保)
-  console.log("[Workflow] Step 1.5: Overwriting fixed slots with Auditor results...");
+  console.log(
+    "[Workflow] Step 1.5: Overwriting fixed slots with Auditor results...",
+  );
   for (const day of generatedPlan.days) {
     for (const anchor of resolvedAnchors) {
       const mealType = anchor.mealType as "breakfast" | "lunch" | "dinner";
       // AIが生成したスロットを、Auditorが解決した正確なタイトルと栄養価で上書き
       // 材料リストなどがAIによって生成されていることを期待しつつ、タイトルと栄養価の整合性を最優先する
-      generatedPlan.days.find(d => d.date === day.date)!.meals[mealType] = {
+      generatedPlan.days.find((d) => d.date === day.date)!.meals[mealType] = {
         ...day.meals[mealType],
         title: anchor.resolvedTitle,
         nutrition: anchor.estimatedNutrition,
@@ -475,12 +565,19 @@ export async function generateMealPlan(
   // ステップ2: バリデーション
   console.log("[Workflow] Step 2: Validating plan...");
   // バリデーションに渡す fixedMeals を、ユーザーの生入力ではなく Auditor の解決済みタイトルに差し替える
-  const trustedFixedMeals = resolvedAnchors.reduce((acc, anchor) => ({
-    ...acc,
-    [anchor.mealType]: { title: anchor.resolvedTitle }
-  }), {});
+  const trustedFixedMeals = resolvedAnchors.reduce(
+    (acc, anchor) => ({
+      ...acc,
+      [anchor.mealType]: { title: anchor.resolvedTitle },
+    }),
+    {},
+  );
 
-  const validationResult = validatePlan(generatedPlan, mealTargets, trustedFixedMeals);
+  const validationResult = validatePlan(
+    generatedPlan,
+    mealTargets,
+    trustedFixedMeals,
+  );
 
   // ステップ3: 不合格分を一括で再生成
   console.log("[Workflow] Step 3: Fixing invalid meals...");
@@ -490,7 +587,7 @@ export async function generateMealPlan(
     mealTargets,
     dislikedIngredients,
     workflowInput,
-    userId
+    userId,
   );
 
   // ステップ4: 最終フォールバック
@@ -498,7 +595,7 @@ export async function generateMealPlan(
   const finalDays = applyFinalFallback(
     fixResult.days,
     fixResult.invalidMeals,
-    mealTargets
+    mealTargets,
   );
 
   return {

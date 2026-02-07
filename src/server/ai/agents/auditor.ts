@@ -1,9 +1,6 @@
 import { z } from "zod";
-import { runAgentWithSchema } from "../utils/agent-helpers";
-import { 
-  AUDITOR_INSTRUCTIONS, 
-  getAuditorPrompt 
-} from "./prompts/auditor";
+import { callModelWithSchema } from "../utils/agent-helpers";
+import { AUDITOR_INSTRUCTIONS, getAuditorPrompt } from "./prompts/auditor";
 
 /**
  * Auditorエージェントの出力スキーマ
@@ -20,7 +17,7 @@ const AuditorOutputSchema = z.object({
         carbs: z.number(),
       }),
       reason: z.string().describe("推定の根拠や調整内容"),
-    })
+    }),
   ),
 });
 
@@ -36,16 +33,24 @@ export async function runAuditor(
     lunch: { mode: string; text: string };
     dinner: { mode: string; text: string };
   },
-  dailyTarget: { calories: number; protein: number; fat: number; carbs: number },
+  dailyTarget: {
+    calories: number;
+    protein: number;
+    fat: number;
+    carbs: number;
+  },
   userId?: string,
-  processName?: string
+  processName?: string,
 ): Promise<AuditorOutput> {
   // 固定またはこだわりが設定されているスロットを抽出
   const inputs = Object.entries(mealSettings)
     .filter(([, setting]) => setting.mode !== "auto" && setting.text)
     .map(([key, setting]) => {
-      const typeLabel = { breakfast: "朝食", lunch: "昼食", dinner: "夕食" }[key as "breakfast" | "lunch" | "dinner"];
-      const modeLabel = setting.mode === "fixed" ? "【固定メニュー】" : "【こだわり要望】";
+      const typeLabel = { breakfast: "朝食", lunch: "昼食", dinner: "夕食" }[
+        key as "breakfast" | "lunch" | "dinner"
+      ];
+      const modeLabel =
+        setting.mode === "fixed" ? "【固定メニュー】" : "【こだわり要望】";
       return `- ${typeLabel}: ${modeLabel} "${setting.text}"`;
     })
     .join("\n");
@@ -56,14 +61,14 @@ export async function runAuditor(
   }
 
   try {
-    return await runAgentWithSchema(
+    return await callModelWithSchema(
       AUDITOR_INSTRUCTIONS,
       getAuditorPrompt({ inputs, dailyTarget }),
       AuditorOutputSchema,
       "flash-2.5", // gemini-2.5-flashを使用
       "auditor",
       userId,
-      processName || "meal-plan-anchor"
+      processName || "meal-plan-anchor",
     );
   } catch (error) {
     console.error("Auditor Agent Error:", error);

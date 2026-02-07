@@ -4,7 +4,7 @@
  */
 
 import { z } from "zod";
-import { runAgentWithSchema } from "../utils/agent-helpers";
+import { callModelWithSchema } from "../utils/agent-helpers";
 import {
   NutritionValuesSchema,
   IngredientItemSchema,
@@ -29,9 +29,8 @@ export const MenuAdjusterInputSchema = z.object({
     .array(z.string())
     .optional()
     .describe("すでに提案して却下されたレシピ名"),
-  preferences: PreferencesProfileSchema.optional().describe(
-    "学習済み嗜好プロファイル"
-  ),
+  preferences:
+    PreferencesProfileSchema.optional().describe("学習済み嗜好プロファイル"),
 });
 
 /**
@@ -81,15 +80,15 @@ import { MENU_ADJUSTER_INSTRUCTIONS } from "./prompts/menu-adjuster";
 export async function runMenuAdjuster(
   prompt: string,
   userId?: string,
-  processName?: string
+  processName?: string,
 ): Promise<MenuAdjusterOutput> {
-  return runAgentWithSchema(
+  return callModelWithSchema(
     MENU_ADJUSTER_INSTRUCTIONS,
     prompt,
     MenuAdjusterOutputSchema,
     "flash",
     "menu-adjuster",
     userId,
-    processName
+    processName,
   );
 }

@@ -3,11 +3,11 @@
  * ユーザーの現状の食事内容から栄養価を推定する
  */
 
-import { runAgentWithSchema } from "../utils/agent-helpers";
+import { callModelWithSchema } from "../utils/agent-helpers";
 import { NutritionValuesSchema, type NutritionValues } from "../types/common";
-import { 
-  DIET_BASELINE_ESTIMATOR_INSTRUCTIONS, 
-  getDietBaselineEstimationPrompt 
+import {
+  DIET_BASELINE_ESTIMATOR_INSTRUCTIONS,
+  getDietBaselineEstimationPrompt,
 } from "./prompts/diet-baseline-estimator";
 
 /**
@@ -15,15 +15,15 @@ import {
  */
 export async function runDietBaselineEstimator(
   text: string,
-  userId?: string
+  userId?: string,
 ): Promise<NutritionValues> {
-  return await runAgentWithSchema(
+  return await callModelWithSchema(
     DIET_BASELINE_ESTIMATOR_INSTRUCTIONS,
     getDietBaselineEstimationPrompt(text),
     NutritionValuesSchema,
     "flash-2.5",
     "diet-baseline-estimator",
     userId,
-    "diet-analysis"
+    "diet-analysis",
   );
 }

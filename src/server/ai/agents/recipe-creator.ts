@@ -4,7 +4,7 @@
  */
 
 import { z } from "zod";
-import { runAgentWithSchema } from "../utils/agent-helpers";
+import { callModelWithSchema } from "../utils/agent-helpers";
 import { NutritionValuesSchema, IngredientItemSchema } from "../types/common";
 
 // ============================================
@@ -38,16 +38,15 @@ import { RECIPE_CREATOR_INSTRUCTIONS } from "./prompts/recipe-creator";
 export async function runRecipeCreator(
   prompt: string,
   userId?: string,
-  processName?: string
+  processName?: string,
 ): Promise<Recipe> {
-  return runAgentWithSchema(
+  return callModelWithSchema(
     RECIPE_CREATOR_INSTRUCTIONS,
     prompt,
     RecipeOutputSchema,
     "flash",
     "recipe-creator",
     userId,
-    processName
+    processName,
   );
 }
-

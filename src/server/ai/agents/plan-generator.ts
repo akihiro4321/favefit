@@ -60,21 +60,32 @@ export const PlanGeneratorInputSchema = z.object({
         id: z.string(),
         title: z.string(),
         tags: z.array(z.string()),
-      })
+      }),
     )
     .describe("お気に入りレシピのリスト（これを参考にプランに組み込む）"),
-  cheapIngredients: z.array(z.string()).describe("現在安価な食材（低コストプラン用）"),
-  cheatDayFrequency: z
-    .enum(["weekly", "biweekly"])
-    .describe("チートデイ頻度"),
+  cheapIngredients: z
+    .array(z.string())
+    .describe("現在安価な食材（低コストプラン用）"),
+  cheatDayFrequency: z.enum(["weekly", "biweekly"]).describe("チートデイ頻度"),
   startDate: z.string().describe("プラン開始日 (YYYY-MM-DD)"),
-  
+
   // 食事スロットごとの設定モードと入力テキスト
-  mealSettings: z.object({
-    breakfast: z.object({ mode: z.enum(["auto", "fixed", "custom"]), text: z.string() }),
-    lunch: z.object({ mode: z.enum(["auto", "fixed", "custom"]), text: z.string() }),
-    dinner: z.object({ mode: z.enum(["auto", "fixed", "custom"]), text: z.string() }),
-  }).optional(),
+  mealSettings: z
+    .object({
+      breakfast: z.object({
+        mode: z.enum(["auto", "fixed", "custom"]),
+        text: z.string(),
+      }),
+      lunch: z.object({
+        mode: z.enum(["auto", "fixed", "custom"]),
+        text: z.string(),
+      }),
+      dinner: z.object({
+        mode: z.enum(["auto", "fixed", "custom"]),
+        text: z.string(),
+      }),
+    })
+    .optional(),
 
   // 汎用的な食事固定設定
   fixedMeals: z
@@ -103,25 +114,33 @@ export const PlanGeneratorInputSchema = z.object({
     })
     .optional()
     .describe("作り置き（バルク調理）の設定"),
-  
+
   fridgeIngredients: z
     .array(z.string())
     .optional()
     .describe("冷蔵庫の余り物食材（優先的に使用）"),
 
   // 適応型プランニング用: AIへの具体的な方針指示
-  adaptiveDirective: z.object({
-    baseCalories: z.number().describe("プラン生成の基準とする1日摂取カロリー"),
-    instructions: z.array(z.string()).describe("現状の食生活を考慮した追加指示リスト"),
-  }).optional(),
+  adaptiveDirective: z
+    .object({
+      baseCalories: z
+        .number()
+        .describe("プラン生成の基準とする1日摂取カロリー"),
+      instructions: z
+        .array(z.string())
+        .describe("現状の食生活を考慮した追加指示リスト"),
+    })
+    .optional(),
 
-  currentDiet: z.object({
-    breakfast: z.string().optional(),
-    lunch: z.string().optional(),
-    dinner: z.string().optional(),
-    snack: z.string().optional(),
-  }).optional().describe("ユーザーの現状の食生活"),
-
+  currentDiet: z
+    .object({
+      breakfast: z.string().optional(),
+      lunch: z.string().optional(),
+      dinner: z.string().optional(),
+      snack: z.string().optional(),
+    })
+    .optional()
+    .describe("ユーザーの現状の食生活"),
 
   lifestyle: z
     .object({
@@ -139,23 +158,25 @@ export const PlanGeneratorInputSchema = z.object({
 export type PlanGeneratorInput = z.infer<typeof PlanGeneratorInputSchema>;
 
 export const PlanGeneratorOutputSchema = z.object({
-  days: z.array(
-    z.object({
-      date: z.string().describe("日付 (YYYY-MM-DD)"),
-      isCheatDay: z.boolean().describe("この日がチートデイかどうか"),
-      meals: z.object({
-        breakfast: SingleMealSchema,
-        lunch: SingleMealSchema,
-        dinner: SingleMealSchema,
+  days: z
+    .array(
+      z.object({
+        date: z.string().describe("日付 (YYYY-MM-DD)"),
+        isCheatDay: z.boolean().describe("この日がチートデイかどうか"),
+        meals: z.object({
+          breakfast: SingleMealSchema,
+          lunch: SingleMealSchema,
+          dinner: SingleMealSchema,
+        }),
+        totalNutrition: z.object({
+          calories: z.number(),
+          protein: z.number(),
+          fat: z.number(),
+          carbs: z.number(),
+        }),
       }),
-      totalNutrition: z.object({
-        calories: z.number(),
-        protein: z.number(),
-        fat: z.number(),
-        carbs: z.number(),
-      }),
-    })
-  ).describe("各日程の食事プラン"),
+    )
+    .describe("各日程の食事プラン"),
 });
 
 export type PlanGeneratorOutput = z.infer<typeof PlanGeneratorOutputSchema>;
@@ -168,7 +189,7 @@ export const PartialPlanOutputSchema = z.object({
     z.object({
       key: z.string().describe("食事キー (YYYY-MM-DD_mealType)"),
       recipe: SingleMealSchema,
-    })
+    }),
   ),
 });
 
@@ -182,7 +203,7 @@ export const DEFAULT_PLAN_DURATION_DAYS = 7;
 // エージェント実行
 // ============================================
 
-import { runAgentWithSchema } from "../utils/agent-helpers";
+import { callModelWithSchema } from "../utils/agent-helpers";
 import { PLAN_GENERATOR_INSTRUCTIONS } from "./prompts/plan-generator";
 
 /**
@@ -191,16 +212,16 @@ import { PLAN_GENERATOR_INSTRUCTIONS } from "./prompts/plan-generator";
 export async function runPlanGenerator(
   prompt: string,
   userId?: string,
-  processName?: string
+  processName?: string,
 ): Promise<PlanGeneratorOutput> {
-  return runAgentWithSchema(
+  return callModelWithSchema(
     PLAN_GENERATOR_INSTRUCTIONS,
     prompt,
     PlanGeneratorOutputSchema,
     "flash",
     "plan-generator",
     userId,
-    processName
+    processName,
   );
 }
 
@@ -210,15 +231,15 @@ export async function runPlanGenerator(
 export async function runPartialPlanGenerator(
   prompt: string,
   userId?: string,
-  processName?: string
+  processName?: string,
 ): Promise<z.infer<typeof PartialPlanOutputSchema>> {
-  return runAgentWithSchema(
+  return callModelWithSchema(
     PLAN_GENERATOR_INSTRUCTIONS,
     prompt,
     PartialPlanOutputSchema,
     "flash",
     "partial-plan-generator",
     userId,
-    processName
+    processName,
   );
 }

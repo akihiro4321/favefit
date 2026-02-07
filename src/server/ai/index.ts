@@ -36,7 +36,7 @@ export {
 // Helpers
 // ============================================
 export {
-  runAgentWithSchema,
+  callModelWithSchema as runAgentWithSchema,
   formatPreferences,
   formatArray,
   getModel,
