@@ -35,6 +35,8 @@ export interface AgentConfig<TSchema extends z.ZodType> {
   agentName?: string;
   /** ユーザーID（テレメトリ用） */
   userId?: string;
+  /** プロセス名（テレメトリ用：どのワークフローか） */
+  processName?: string;
 }
 
 /**
@@ -48,10 +50,11 @@ export async function runAgent<TSchema extends z.ZodType>(
     model: getModel(config.model),
     prompt,
     schema: config.schema,
-    experimental_telemetry: getTelemetryConfig(
-      config.agentName || "agent",
-      config.userId
-    ),
+    experimental_telemetry: getTelemetryConfig({
+      agentName: config.agentName || "agent",
+      userId: config.userId,
+      processName: config.processName,
+    }),
   });
 
   return object;
@@ -66,17 +69,19 @@ export async function runAgentWithSchema<TSchema extends z.ZodType>(
   schema: TSchema,
   model: ModelType = "flash",
   agentName?: string,
-  userId?: string
+  userId?: string,
+  processName?: string
 ): Promise<z.infer<TSchema>> {
   const { object } = await generateObject({
     model: getModel(model),
     system: instructions,
     prompt,
     schema,
-    experimental_telemetry: getTelemetryConfig(
-      agentName || "agent",
-      userId
-    ),
+    experimental_telemetry: getTelemetryConfig({
+      agentName: agentName || "agent",
+      userId,
+      processName,
+    }),
   });
 
   return object;
@@ -93,6 +98,7 @@ export interface TextAgentConfig {
   tools?: Record<string, unknown>;
   agentName?: string;
   userId?: string;
+  processName?: string;
 }
 
 /**
@@ -108,10 +114,11 @@ export async function runTextAgent(
     prompt,
     maxSteps: config.maxSteps,
     tools: config.tools as Parameters<typeof generateText>[0]["tools"],
-    experimental_telemetry: getTelemetryConfig(
-      config.agentName || "text-agent",
-      config.userId
-    ),
+    experimental_telemetry: getTelemetryConfig({
+      agentName: config.agentName || "text-agent",
+      userId: config.userId,
+      processName: config.processName,
+    }),
   });
 
   return result.text;

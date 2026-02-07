@@ -78,11 +78,17 @@ import { PREFERENCE_LEARNER_INSTRUCTIONS } from "./prompts/preference-learner";
  * Preference Learner を実行
  */
 export async function runPreferenceLearner(
-  prompt: string
+  prompt: string,
+  userId?: string,
+  processName?: string
 ): Promise<PreferenceLearnerOutput> {
   return runAgentWithSchema(
     PREFERENCE_LEARNER_INSTRUCTIONS,
     prompt,
-    PreferenceLearnerOutputSchema
+    PreferenceLearnerOutputSchema,
+    "flash",
+    "preference-learner",
+    userId,
+    processName
   );
 }

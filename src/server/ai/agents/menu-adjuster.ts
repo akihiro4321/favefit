@@ -79,7 +79,17 @@ import { MENU_ADJUSTER_INSTRUCTIONS } from "./prompts/menu-adjuster";
  * Menu Adjuster を実行
  */
 export async function runMenuAdjuster(
-  prompt: string
+  prompt: string,
+  userId?: string,
+  processName?: string
 ): Promise<MenuAdjusterOutput> {
-  return runAgentWithSchema(MENU_ADJUSTER_INSTRUCTIONS, prompt, MenuAdjusterOutputSchema);
+  return runAgentWithSchema(
+    MENU_ADJUSTER_INSTRUCTIONS,
+    prompt,
+    MenuAdjusterOutputSchema,
+    "flash",
+    "menu-adjuster",
+    userId,
+    processName
+  );
 }

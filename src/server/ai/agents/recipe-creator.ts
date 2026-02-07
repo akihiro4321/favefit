@@ -37,7 +37,8 @@ import { RECIPE_CREATOR_INSTRUCTIONS } from "./prompts/recipe-creator";
  */
 export async function runRecipeCreator(
   prompt: string,
-  userId?: string
+  userId?: string,
+  processName?: string
 ): Promise<Recipe> {
   return runAgentWithSchema(
     RECIPE_CREATOR_INSTRUCTIONS,
@@ -45,7 +46,8 @@ export async function runRecipeCreator(
     RecipeOutputSchema,
     "flash",
     "recipe-creator",
-    userId
+    userId,
+    processName
   );
 }
 

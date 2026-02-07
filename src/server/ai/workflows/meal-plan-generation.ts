@@ -2,7 +2,11 @@
  * FaveFit - Meal Plan Generation Workflow (Vercel AI SDK形式)
  * 
  * 食事プラン生成ワークフロー
- * MastraのcreateWorkflow/createStepを標準的な非同期関数チェーンに変換
+ * Anchor & Fill 戦略を用いて、以下のステップで食事プランを生成します:
+ * 1. Auditorエージェントを実行し、固定・こだわり枠の栄養価を解決
+ * 2. Fill Plannerエージェントを実行し、残りの枠を埋める
+ * 3. 生成されたプランをバリデーションし、不合格分を一括で再生成
+ * 4. 最終的なフォールバックを適用
  */
 
 import { z } from "zod";
@@ -234,7 +238,8 @@ async function fixInvalidMeals(
       BatchFixOutputSchema,
       "flash",
       "fix-invalid-meals",
-      userId
+      userId,
+      "meal-plan-fix"
     );
 
     // 修正結果をマージ
@@ -356,7 +361,7 @@ async function runAnchorAndFillProcess(
     carbs: mealTargets.breakfast.carbs + mealTargets.lunch.carbs + mealTargets.dinner.carbs,
   };
 
-  const auditorResult = await runAuditor(mealSettings, dailyTarget);
+  const auditorResult = await runAuditor(mealSettings, dailyTarget, userId, "meal-plan-anchor");
   console.log(`[Workflow:Anchor&Fill] Auditor resolved ${auditorResult.anchors.length} anchors.`);
 
   // 2. 栄養予算（Remaining Budget）の計算
@@ -415,7 +420,7 @@ async function runAnchorAndFillProcess(
 
   // 4. Fill Planner実行 (残りの枠を埋める)
   console.log("[Workflow:Anchor&Fill] 2. Running Fill Planner...");
-  const generatedPlan = await runPlanGenerator(prompt, userId);
+  const generatedPlan = await runPlanGenerator(prompt, userId, "meal-plan-fill");
 
   return generatedPlan;
 }

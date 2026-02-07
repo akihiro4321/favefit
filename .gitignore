@@ -48,3 +48,5 @@ next-env.d.ts
 
 # mastra
 .mastra/
+
+*.log

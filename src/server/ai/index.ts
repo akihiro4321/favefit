@@ -13,7 +13,6 @@ export { google, geminiFlash, geminiPro } from "./config";
 // ============================================
 export {
   getTelemetryConfig,
-  isObservabilityEnabled,
 } from "./observability";
 
 // ============================================

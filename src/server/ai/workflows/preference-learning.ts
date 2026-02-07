@@ -69,9 +69,10 @@ async function buildPreferenceLearningPromptInternal(
  * PreferenceLearnerエージェントを実行
  */
 async function executePreferenceLearning(
-  prompt: string
+  prompt: string,
+  userId?: string
 ): Promise<PreferenceLearnerOutput> {
-  return runPreferenceLearner(prompt);
+  return runPreferenceLearner(prompt, userId, "preference-learning");
 }
 
 /**
@@ -115,7 +116,7 @@ export async function learnPreferences(
   const prompt = await buildPreferenceLearningPromptInternal(input);
 
   console.log("[PreferenceLearningWorkflow] Step 2: Executing agent...");
-  const analysis = await executePreferenceLearning(prompt);
+  const analysis = await executePreferenceLearning(prompt, input.userId);
 
   console.log("[PreferenceLearningWorkflow] Step 3: Calculating score changes...");
   const updatedScores = calculateScoreChanges(analysis);

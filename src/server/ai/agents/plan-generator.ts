@@ -203,7 +203,8 @@ import { PLAN_GENERATOR_INSTRUCTIONS } from "./prompts/plan-generator";
  */
 export async function runPlanGenerator(
   prompt: string,
-  userId?: string
+  userId?: string,
+  processName?: string
 ): Promise<PlanGeneratorOutput> {
   return runAgentWithSchema(
     PLAN_GENERATOR_INSTRUCTIONS,
@@ -211,7 +212,8 @@ export async function runPlanGenerator(
     PlanGeneratorOutputSchema,
     "flash",
     "plan-generator",
-    userId
+    userId,
+    processName
   );
 }
 
@@ -220,7 +222,8 @@ export async function runPlanGenerator(
  */
 export async function runPartialPlanGenerator(
   prompt: string,
-  userId?: string
+  userId?: string,
+  processName?: string
 ): Promise<z.infer<typeof PartialPlanOutputSchema>> {
   return runAgentWithSchema(
     PLAN_GENERATOR_INSTRUCTIONS,
@@ -228,6 +231,7 @@ export async function runPartialPlanGenerator(
     PartialPlanOutputSchema,
     "flash",
     "partial-plan-generator",
-    userId
+    userId,
+    processName
   );
 }

@@ -63,7 +63,7 @@ async function executeRecipeGeneration(
   prompt: string,
   userId?: string
 ): Promise<Recipe> {
-  return runRecipeCreator(prompt, userId);
+  return runRecipeCreator(prompt, userId, "recipe-generation");
 }
 
 /**

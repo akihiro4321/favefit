@@ -1,14 +1,21 @@
-/**
- * FaveFit - AI Observability Configuration
- * Langfuse統合による可観測性設定
- * 
- * OpenTelemetry統合は src/instrumentation.ts で設定
- * このファイルはテレメトリ設定のヘルパーを提供
- */
+import { LangfuseSpanProcessor, ShouldExportSpan } from '@langfuse/otel';
+import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 
-// ============================================
-// 設定
-// ============================================
+// Optional: filter out Next.js infra spans
+const shouldExportSpan: ShouldExportSpan = span => {
+  return span.otelSpan.instrumentationScope.name !== 'next.js';
+};
+
+export const langfuseSpanProcessor = new LangfuseSpanProcessor({
+  shouldExportSpan,
+});
+
+const tracerProvider = new NodeTracerProvider({
+  spanProcessors: [langfuseSpanProcessor],
+});
+
+tracerProvider.register();
+
 
 const isLangfuseEnabled = Boolean(
   process.env.LANGFUSE_PUBLIC_KEY && process.env.LANGFUSE_SECRET_KEY
@@ -22,11 +29,14 @@ const isLangfuseEnabled = Boolean(
  * Vercel AI SDKのテレメトリ設定を取得
  * これを各generateObject/generateText呼び出しに渡す
  */
-export function getTelemetryConfig(
-  agentName: string,
-  userId?: string,
-  metadata?: Record<string, string | number | boolean>
-) {
+export function getTelemetryConfig(options: {
+  agentName: string;
+  userId?: string;
+  processName?: string;
+  metadata?: Record<string, string | number | boolean>;
+}) {
+  const { agentName, userId, processName, metadata } = options;
+
   const metadataParams: Record<string, string | number | boolean> = {
     agent: agentName,
     ...metadata,
@@ -36,17 +46,18 @@ export function getTelemetryConfig(
     metadataParams.userId = userId;
   }
 
-  // Cast to specific type expected by AI SDK/OTel if needed, but simple Record should work if types match
+  if (processName) {
+    metadataParams.process = processName;
+  }
+
+  // functionIdを "favefit-[processName]-[agentName]" の形式にする
+  const functionId = processName 
+    ? `favefit-${processName}-${agentName}`
+    : `favefit-${agentName}`;
+
   return {
     isEnabled: isLangfuseEnabled,
-    functionId: `favefit-${agentName}`,
+    functionId,
     metadata: metadataParams,
   };
-}
-
-/**
- * Langfuseが有効かどうか
- */
-export function isObservabilityEnabled(): boolean {
-  return isLangfuseEnabled;
 }

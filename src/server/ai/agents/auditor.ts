@@ -1,11 +1,13 @@
 import { generateObject } from "ai";
 import { z } from "zod";
 import { google } from "../config";
+import { getTelemetryConfig } from "../observability";
 
 /**
  * Auditorエージェントの出力スキーマ
  */
 const AuditorOutputSchema = z.object({
+// ... (omitted for brevity, keep the same)
   anchors: z.array(
     z.object({
       mealType: z.enum(["breakfast", "lunch", "dinner"]),
@@ -33,7 +35,9 @@ export async function runAuditor(
     lunch: { mode: string; text: string };
     dinner: { mode: string; text: string };
   },
-  dailyTarget: { calories: number; protein: number; fat: number; carbs: number }
+  dailyTarget: { calories: number; protein: number; fat: number; carbs: number },
+  userId?: string,
+  processName?: string
 ): Promise<AuditorOutput> {
   // 固定またはこだわりが設定されているスロットを抽出
   const inputs = Object.entries(mealSettings)
@@ -76,10 +80,15 @@ ${inputs}
 
   try {
     const result = await generateObject({
-      model: google("gemini-2.5-flash"), // ご指定のモデルを使用
+      model: google("gemini-1.5-flash"), 
       schema: AuditorOutputSchema,
       prompt,
       temperature: 0.3, // 決定論的な出力を重視
+      experimental_telemetry: getTelemetryConfig({
+        agentName: "auditor",
+        userId,
+        processName,
+      }),
     });
 
     return result.object;

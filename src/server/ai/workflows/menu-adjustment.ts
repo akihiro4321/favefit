@@ -93,9 +93,10 @@ async function buildMenuAdjustmentPromptInternal(
  * MenuAdjusterエージェントを実行
  */
 async function executeMenuAdjustment(
-  prompt: string
+  prompt: string,
+  userId?: string
 ): Promise<MenuAdjusterOutput> {
-  return runMenuAdjuster(prompt);
+  return runMenuAdjuster(prompt, userId, "menu-adjustment");
 }
 
 /**
@@ -148,7 +149,7 @@ export async function adjustMenu(
   const prompt = await buildMenuAdjustmentPromptInternal(input);
 
   console.log("[MenuAdjustmentWorkflow] Step 3: Executing agent...");
-  const rawOutput = await executeMenuAdjustment(prompt);
+  const rawOutput = await executeMenuAdjustment(prompt, input.userId);
 
   console.log("[MenuAdjustmentWorkflow] Step 4: Processing suggestions...");
   const result = processMenuSuggestions(rawOutput);
