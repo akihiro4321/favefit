@@ -6,8 +6,8 @@
  * 将来的な拡張（バリデーション、リトライ）に備える
  */
 
-import { runRecipeCreator, type Recipe } from "../agents/recipe-creator";
-import { buildRecipePrompt } from "../agents/prompts/recipe-creator";
+import { generateRecipeData, type Recipe } from "../functions/recipe-generator";
+import { buildRecipePrompt } from "../prompts/functions/recipe-generator";
 import type { UserDocument } from "@/server/db/firestore/userRepository";
 
 // ============================================
@@ -63,7 +63,7 @@ async function executeRecipeGeneration(
   prompt: string,
   userId?: string
 ): Promise<Recipe> {
-  return runRecipeCreator(prompt, userId, "recipe-generation");
+  return generateRecipeData(prompt, userId, "recipe-generation");
 }
 
 /**

@@ -4,7 +4,7 @@
  */
 
 import { UserProfile } from "@/lib/schema";
-import { runDietBaselineEstimator } from "../agents/diet-baseline-estimator";
+import { estimateDietBaseline } from "../functions/diet-estimator";
 
 export interface DietAnalysisWorkflowInput {
   currentDiet: UserProfile["lifestyle"]["currentDiet"];
@@ -45,7 +45,7 @@ export async function analyzeCurrentIntake(
     if (skipKeywords.some(k => text.includes(k))) return 0;
 
     try {
-      const result = await runDietBaselineEstimator(text, userId);
+      const result = await estimateDietBaseline(text, userId);
       return result.calories;
     } catch (error) {
       console.warn(`[DietAnalysisWorkflow] Failed to estimate calories for "${text}"`, error);

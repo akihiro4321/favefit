@@ -56,67 +56,74 @@ export {
   type PlanGeneratorOutput,
 } from "./agents/plan-generator";
 
-export {
-  runRecipeCreator,
-  RecipeOutputSchema,
-  type Recipe,
-} from "./agents/recipe-creator";
+export { runAuditor, type AuditorOutput } from "./agents/auditor";
+
+// ============================================
+// Functions
+// ============================================
 
 export {
-  runMenuAdjuster,
+  generateRecipeData,
+  RecipeOutputSchema,
+  type Recipe,
+} from "./functions/recipe-generator";
+
+export {
+  generateMenuSuggestions,
   MenuAdjusterInputSchema,
   MenuAdjusterOutputSchema,
   type MenuAdjusterInput,
   type MenuAdjusterOutput,
-} from "./agents/menu-adjuster";
+} from "./functions/menu-suggester";
 
 export {
-  runPreferenceLearner,
+  analyzePreferenceData,
   PreferenceLearnerInputSchema,
   PreferenceLearnerOutputSchema,
   type PreferenceLearnerInput,
   type PreferenceLearnerOutput,
   type PreferenceAnalysis,
-} from "./agents/preference-learner";
+} from "./functions/preference-analyzer";
 
-export { runAuditor, type AuditorOutput } from "./agents/auditor";
-
-export { runDietBaselineEstimator } from "./agents/diet-baseline-estimator";
+export { estimateDietBaseline } from "./functions/diet-estimator";
 
 // ============================================
 // Prompts
 // ============================================
+
+// Agents
 export {
   PLAN_GENERATOR_INSTRUCTIONS,
   getPlanGenerationPrompt,
   getSingleMealFixPrompt,
   getBatchMealFixPrompt,
-} from "./agents/prompts/plan-generator";
-
-export {
-  RECIPE_CREATOR_INSTRUCTIONS,
-  buildRecipePrompt,
-} from "./agents/prompts/recipe-creator";
-
-export {
-  MENU_ADJUSTER_INSTRUCTIONS,
-  getMenuAdjustmentPrompt,
-} from "./agents/prompts/menu-adjuster";
-
-export {
-  PREFERENCE_LEARNER_INSTRUCTIONS,
-  getPreferenceLearningPrompt,
-} from "./agents/prompts/preference-learner";
+} from "./prompts/agents/plan-generator";
 
 export {
   AUDITOR_INSTRUCTIONS,
   getAuditorPrompt,
-} from "./agents/prompts/auditor";
+} from "./prompts/agents/auditor";
+
+// Functions
+export {
+  RECIPE_CREATOR_INSTRUCTIONS,
+  buildRecipePrompt,
+} from "./prompts/functions/recipe-generator";
+
+export {
+  MENU_ADJUSTER_INSTRUCTIONS,
+  getMenuAdjustmentPrompt,
+} from "./prompts/functions/menu-suggester";
+
+export {
+  PREFERENCE_LEARNER_INSTRUCTIONS,
+  getPreferenceLearningPrompt,
+} from "./prompts/functions/preference-analyzer";
 
 export {
   DIET_BASELINE_ESTIMATOR_INSTRUCTIONS,
   getDietBaselineEstimationPrompt,
-} from "./agents/prompts/diet-baseline-estimator";
+} from "./prompts/functions/diet-estimator";
 
 // ============================================
 // Workflows

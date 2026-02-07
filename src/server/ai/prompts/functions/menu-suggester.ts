@@ -1,4 +1,4 @@
-import { MenuAdjusterInput } from "../menu-adjuster";
+import { MenuAdjusterInput } from "../../functions/menu-suggester";
 
 export const MENU_ADJUSTER_INSTRUCTIONS = `
 あなたは「今あるもので何とかする」料理の達人です。

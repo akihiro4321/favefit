@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { callModelWithSchema } from "../utils/agent-helpers";
-import { AUDITOR_INSTRUCTIONS, getAuditorPrompt } from "./prompts/auditor";
+import { AUDITOR_INSTRUCTIONS, getAuditorPrompt } from "../prompts/agents/auditor";
 
 /**
  * Auditorエージェントの出力スキーマ

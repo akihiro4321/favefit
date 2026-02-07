@@ -7,7 +7,7 @@ import {
   PlanGeneratorInput,
   generateMealPlan,
   buildRecipePrompt,
-  runRecipeCreator,
+  generateRecipeData,
 } from "@/server/ai";
 import { getOrCreateUser, setPlanCreating, setPlanCreated, clearUserRejectionFeedback } from "@/server/db/firestore/userRepository";
 import {
@@ -302,7 +302,7 @@ async function generateSingleRecipeDetail(
   const userDoc = await getOrCreateUser(userId);
   const prompt = buildRecipePrompt(userDoc, meal.title, meal.nutrition);
 
-  const aiResult = await runRecipeCreator(prompt, userId);
+  const aiResult = await generateRecipeData(prompt, userId);
 
   const ingredients = aiResult.ingredients.map(
     (i: { name: string; amount: string }) => ({ name: i.name, amount: i.amount })

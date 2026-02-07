@@ -1,6 +1,6 @@
 /**
- * FaveFit - Preference Learner Agent
- * ユーザー嗜好学習エージェント
+ * FaveFit - Preference Analyzer Function
+ * ユーザー嗜好学習・分析関数
  */
 
 import { z } from "zod";
@@ -74,16 +74,16 @@ export type PreferenceAnalysis = PreferenceLearnerOutput;
 // プロンプト
 // ============================================
 
-import { PREFERENCE_LEARNER_INSTRUCTIONS } from "./prompts/preference-learner";
+import { PREFERENCE_LEARNER_INSTRUCTIONS } from "../prompts/functions/preference-analyzer";
 
 // ============================================
-// エージェント実行
+// 関数実行
 // ============================================
 
 /**
- * Preference Learner を実行
+ * Preference Analysis を実行
  */
-export async function runPreferenceLearner(
+export async function analyzePreferenceData(
   prompt: string,
   userId?: string,
   processName?: string,
@@ -93,7 +93,7 @@ export async function runPreferenceLearner(
     prompt,
     PreferenceLearnerOutputSchema,
     "flash",
-    "preference-learner",
+    "preference-analyzer",
     userId,
     processName,
   );

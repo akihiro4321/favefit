@@ -7,10 +7,10 @@
  */
 
 import {
-  runPreferenceLearner,
+  analyzePreferenceData,
   type PreferenceLearnerOutput,
-} from "../agents/preference-learner";
-import { getPreferenceLearningPrompt } from "../agents/prompts/preference-learner";
+} from "../functions/preference-analyzer";
+import { getPreferenceLearningPrompt } from "../prompts/functions/preference-analyzer";
 
 // ============================================
 // 型定義
@@ -72,7 +72,7 @@ async function executePreferenceLearning(
   prompt: string,
   userId?: string
 ): Promise<PreferenceLearnerOutput> {
-  return runPreferenceLearner(prompt, userId, "preference-learning");
+  return analyzePreferenceData(prompt, userId, "preference-learning");
 }
 
 /**

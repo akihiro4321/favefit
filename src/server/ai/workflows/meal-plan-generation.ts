@@ -21,7 +21,7 @@ import { SingleMealSchema } from "../types/common";
 import {
   PLAN_GENERATOR_INSTRUCTIONS,
   getBatchMealFixPrompt,
-} from "../agents/prompts/plan-generator";
+} from "../prompts/agents/plan-generator";
 import {
   validatePlanNutrition,
   recalculateDayNutrition,
@@ -33,7 +33,7 @@ import {
   NutritionValues,
 } from "@/lib/tools/mealNutritionCalculator";
 import { runAuditor, type AuditorOutput } from "../agents/auditor";
-import { getFillPlanPrompt } from "../agents/prompts/plan-generator";
+import { getFillPlanPrompt } from "../prompts/agents/plan-generator";
 import { dietBaselineService } from "../../services/diet-baseline-service";
 
 /**

@@ -1,6 +1,6 @@
 /**
- * FaveFit - Menu Adjuster Agent
- * 臨機応変なメニュー提案エージェント
+ * FaveFit - Menu Suggester Function
+ * 臨機応変なメニュー提案関数
  */
 
 import { z } from "zod";
@@ -68,16 +68,16 @@ export type MenuAdjusterOutput = z.infer<typeof MenuAdjusterOutputSchema>;
 // プロンプト
 // ============================================
 
-import { MENU_ADJUSTER_INSTRUCTIONS } from "./prompts/menu-adjuster";
+import { MENU_ADJUSTER_INSTRUCTIONS } from "../prompts/functions/menu-suggester";
 
 // ============================================
-// エージェント実行
+// 関数実行
 // ============================================
 
 /**
- * Menu Adjuster を実行
+ * Menu Suggestions を生成
  */
-export async function runMenuAdjuster(
+export async function generateMenuSuggestions(
   prompt: string,
   userId?: string,
   processName?: string,
@@ -87,7 +87,7 @@ export async function runMenuAdjuster(
     prompt,
     MenuAdjusterOutputSchema,
     "flash",
-    "menu-adjuster",
+    "menu-suggester",
     userId,
     processName,
   );

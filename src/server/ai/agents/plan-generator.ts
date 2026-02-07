@@ -204,7 +204,7 @@ export const DEFAULT_PLAN_DURATION_DAYS = 7;
 // ============================================
 
 import { callModelWithSchema } from "../utils/agent-helpers";
-import { PLAN_GENERATOR_INSTRUCTIONS } from "./prompts/plan-generator";
+import { PLAN_GENERATOR_INSTRUCTIONS } from "../prompts/agents/plan-generator";
 
 /**
  * 全日程の食事プランを生成

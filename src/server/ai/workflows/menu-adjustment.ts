@@ -7,11 +7,11 @@
  */
 
 import {
-  runMenuAdjuster,
+  generateMenuSuggestions,
   type MenuAdjusterInput,
   type MenuAdjusterOutput,
-} from "../agents/menu-adjuster";
-import { getMenuAdjustmentPrompt } from "../agents/prompts/menu-adjuster";
+} from "../functions/menu-suggester";
+import { getMenuAdjustmentPrompt } from "../prompts/functions/menu-suggester";
 import type { NutritionValues, PreferencesProfile } from "../types/common";
 
 // ============================================
@@ -96,7 +96,7 @@ async function executeMenuAdjustment(
   prompt: string,
   userId?: string
 ): Promise<MenuAdjusterOutput> {
-  return runMenuAdjuster(prompt, userId, "menu-adjustment");
+  return generateMenuSuggestions(prompt, userId, "menu-adjustment");
 }
 
 /**

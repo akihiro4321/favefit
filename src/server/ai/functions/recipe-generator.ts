@@ -1,6 +1,6 @@
 /**
- * FaveFit - Recipe Creator Agent
- * レシピ詳細生成エージェント
+ * FaveFit - Recipe Generator Function
+ * レシピ詳細生成関数
  */
 
 import { z } from "zod";
@@ -26,16 +26,16 @@ export type Recipe = z.infer<typeof RecipeOutputSchema>;
 // プロンプト
 // ============================================
 
-import { RECIPE_CREATOR_INSTRUCTIONS } from "./prompts/recipe-creator";
+import { RECIPE_CREATOR_INSTRUCTIONS } from "../prompts/functions/recipe-generator";
 
 // ============================================
-// エージェント実行
+// 関数実行
 // ============================================
 
 /**
- * Recipe Creator を実行
+ * レシピデータを生成
  */
-export async function runRecipeCreator(
+export async function generateRecipeData(
   prompt: string,
   userId?: string,
   processName?: string,
@@ -45,7 +45,7 @@ export async function runRecipeCreator(
     prompt,
     RecipeOutputSchema,
     "flash",
-    "recipe-creator",
+    "recipe-generator",
     userId,
     processName,
   );
