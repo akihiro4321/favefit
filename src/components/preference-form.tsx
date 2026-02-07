@@ -36,6 +36,13 @@ export function PreferenceForm({
   const [localProfile, setLocalProfile] = useState<UserProfile>(profile);
 
   const handleSave = async () => {
+    // バリデーション
+    const diet = localProfile.lifestyle?.currentDiet;
+    if (!diet?.breakfast?.trim() || !diet?.lunch?.trim() || !diet?.dinner?.trim()) {
+      alert("いつもの食事（朝食・昼食・夕食）を入力してください。");
+      return;
+    }
+
     setSaving(true);
     setSuccess(false);
 
@@ -53,6 +60,12 @@ export function PreferenceForm({
             lifestyle: {
               cookingSkillLevel: localProfile.lifestyle?.cookingSkillLevel || "intermediate",
               availableTime: localProfile.lifestyle?.availableTime || "medium",
+              currentDiet: {
+                breakfast: localProfile.lifestyle?.currentDiet?.breakfast || "",
+                lunch: localProfile.lifestyle?.currentDiet?.lunch || "",
+                dinner: localProfile.lifestyle?.currentDiet?.dinner || "",
+                snack: localProfile.lifestyle?.currentDiet?.snack || "",
+              },
             },
           },
         }),
@@ -242,6 +255,73 @@ export function PreferenceForm({
               <option value="medium">普通 (30分程度)</option>
               <option value="long">長め (1時間〜)</option>
             </select>
+          </div>
+        </div>
+
+        {/* いつもの食事 */}
+        <div className="space-y-4 pt-4 border-t">
+          <h3 className="text-sm font-bold">いつもの食事 (適応型プランの基準)</h3>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">朝食 <span className="text-red-500">(必須)</span></Label>
+              <Input
+                value={localProfile.lifestyle.currentDiet?.breakfast || ""}
+                onChange={(e) => setLocalProfile({
+                  ...localProfile,
+                  lifestyle: {
+                    ...localProfile.lifestyle,
+                    currentDiet: { ...localProfile.lifestyle.currentDiet, breakfast: e.target.value }
+                  }
+                })}
+                placeholder="例: トースト、コーヒー"
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">昼食 <span className="text-red-500">(必須)</span></Label>
+              <Input
+                value={localProfile.lifestyle.currentDiet?.lunch || ""}
+                onChange={(e) => setLocalProfile({
+                  ...localProfile,
+                  lifestyle: {
+                    ...localProfile.lifestyle,
+                    currentDiet: { ...localProfile.lifestyle.currentDiet, lunch: e.target.value }
+                  }
+                })}
+                placeholder="例: コンビニのお弁当"
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">夕食 <span className="text-red-500">(必須)</span></Label>
+              <Input
+                value={localProfile.lifestyle.currentDiet?.dinner || ""}
+                onChange={(e) => setLocalProfile({
+                  ...localProfile,
+                  lifestyle: {
+                    ...localProfile.lifestyle,
+                    currentDiet: { ...localProfile.lifestyle.currentDiet, dinner: e.target.value }
+                  }
+                })}
+                placeholder="例: 自炊（ご飯、一汁三菜）"
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">間食</Label>
+              <Input
+                value={localProfile.lifestyle.currentDiet?.snack || ""}
+                onChange={(e) => setLocalProfile({
+                  ...localProfile,
+                  lifestyle: {
+                    ...localProfile.lifestyle,
+                    currentDiet: { ...localProfile.lifestyle.currentDiet, snack: e.target.value }
+                  }
+                })}
+                placeholder="例: ナッツ、特に食べない"
+                className="text-sm"
+              />
+            </div>
           </div>
         </div>
 

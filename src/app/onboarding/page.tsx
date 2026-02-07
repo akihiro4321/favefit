@@ -478,6 +478,14 @@ export default function OnboardingPage() {
       return;
     }
 
+    if (currentStep === ONBOARDING_STEP.CURRENT_DIET) {
+      const { breakfast, lunch, dinner } = formData.currentDiet;
+      if (!breakfast.trim() || !lunch.trim() || !dinner.trim()) {
+        alert("普段の食事内容（朝食・昼食・夕食）をすべて入力してください。より良いプラン作成のために必要です。");
+        return;
+      }
+    }
+
     setCurrentStep((s) => Math.min(s + 1, TOTAL_STEPS));
   };
 
@@ -979,7 +987,7 @@ export default function OnboardingPage() {
             <CardContent className="space-y-6 text-foreground">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="diet-breakfast">朝食</Label>
+                  <Label htmlFor="diet-breakfast">朝食 <span className="text-destructive font-normal">(必須)</span></Label>
                   <Input
                     id="diet-breakfast"
                     placeholder="例: 何も食べない、コーヒーのみ、トースト1枚"
@@ -991,7 +999,7 @@ export default function OnboardingPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="diet-lunch">昼食</Label>
+                  <Label htmlFor="diet-lunch">昼食 <span className="text-destructive font-normal">(必須)</span></Label>
                   <Input
                     id="diet-lunch"
                     placeholder="例: コンビニのおにぎり2個、社食の定食（ご飯大盛り）"
@@ -1003,7 +1011,7 @@ export default function OnboardingPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="diet-dinner">夕食</Label>
+                  <Label htmlFor="diet-dinner">夕食 <span className="text-destructive font-normal">(必須)</span></Label>
                   <Input
                     id="diet-dinner"
                     placeholder="例: パスタ1人前、ビール350mlと唐揚げ"
