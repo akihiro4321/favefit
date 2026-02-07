@@ -302,7 +302,7 @@ async function generateSingleRecipeDetail(
   const userDoc = await getOrCreateUser(userId);
   const prompt = buildRecipePrompt(userDoc, meal.title, meal.nutrition);
 
-  const aiResult = await generateRecipeData(prompt, userId);
+  const aiResult = await generateRecipeData(prompt);
 
   const ingredients = aiResult.ingredients.map(
     (i: { name: string; amount: string }) => ({ name: i.name, amount: i.amount })

@@ -8,9 +8,9 @@
 // ============================================
 export {
   genAI,
-  GEMINI_FLASH_MODEL,
-  GEMINI_PRO_MODEL,
-  GEMINI_25_FLASH_MODEL,
+  GEMINI_3_FLASH_MODEL,
+  GEMINI_3_PRO_MODEL,
+  GEMINI_2_5_FLASH_MODEL,
 } from "./config";
 
 // ============================================
@@ -56,8 +56,6 @@ export {
   type PlanGeneratorOutput,
 } from "./agents/plan-generator";
 
-export { runAuditor, type AuditorOutput } from "./agents/auditor";
-
 // ============================================
 // Functions
 // ============================================
@@ -85,7 +83,9 @@ export {
   type PreferenceAnalysis,
 } from "./functions/preference-analyzer";
 
-export { estimateDietBaseline } from "./functions/diet-estimator";
+export { estimateDailyDietBaseline } from "./functions/diet-estimator";
+
+export { auditPlanAnchors, type AuditorOutput } from "./functions/plan-auditor";
 
 // ============================================
 // Prompts
@@ -99,12 +99,12 @@ export {
   getBatchMealFixPrompt,
 } from "./prompts/agents/plan-generator";
 
+// Functions
 export {
   AUDITOR_INSTRUCTIONS,
   getAuditorPrompt,
-} from "./prompts/agents/auditor";
+} from "./prompts/functions/plan-auditor";
 
-// Functions
 export {
   RECIPE_CREATOR_INSTRUCTIONS,
   buildRecipePrompt,
@@ -122,7 +122,7 @@ export {
 
 export {
   DIET_BASELINE_ESTIMATOR_INSTRUCTIONS,
-  getDietBaselineEstimationPrompt,
+  getDailyDietBaselinePrompt,
 } from "./prompts/functions/diet-estimator";
 
 // ============================================
@@ -133,27 +133,3 @@ export {
   type MealPlanWorkflowInput,
   type MealPlanWorkflowResult,
 } from "./workflows/meal-plan-generation";
-
-export {
-  generateRecipe,
-  type RecipeGenerationWorkflowInput,
-  type RecipeGenerationWorkflowResult,
-} from "./workflows/recipe-generation";
-
-export {
-  learnPreferences,
-  type PreferenceLearningWorkflowInput,
-  type PreferenceLearningWorkflowResult,
-} from "./workflows/preference-learning";
-
-export {
-  adjustMenu,
-  type MenuAdjustmentWorkflowInput,
-  type MenuAdjustmentWorkflowResult,
-} from "./workflows/menu-adjustment";
-
-export {
-  analyzeCurrentIntake,
-  type DietAnalysisWorkflowInput,
-  type DietAnalysisWorkflowResult,
-} from "./workflows/diet-analysis";

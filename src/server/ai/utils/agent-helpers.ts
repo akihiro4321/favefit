@@ -31,6 +31,7 @@ export async function callModelWithSchema<TSchema extends z.ZodType>(
           role: "system",
         },
         responseMimeType: "application/json",
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         responseSchema: jsonSchema as any,
       },
       contents: [
@@ -45,11 +46,13 @@ export async function callModelWithSchema<TSchema extends z.ZodType>(
     let responseText: string | undefined | null;
 
     // Check if helper method exists (common in Google SDKs)
-    if (typeof (result as any).text === "function") {
-      responseText = (result as any).text();
+    const resultObj = result as unknown as Record<string, unknown>;
+    if (typeof resultObj.text === "function") {
+      responseText = (resultObj.text as () => string)();
     } else {
       // Fallback to direct candidate access
-      responseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      responseText = (result as any).candidates?.[0]?.content?.parts?.[0]?.text;
     }
 
     if (!responseText) {

@@ -3,7 +3,11 @@
  * メニュー提案に関するビジネスロジック
  */
 
-import { adjustMenu } from "@/server/ai";
+import {
+  generateMenuSuggestions,
+  getMenuAdjustmentPrompt,
+  MenuAdjusterInput,
+} from "@/server/ai";
 import { getOrCreateUser } from "@/server/db/firestore/userRepository";
 
 export interface SuggestMenuRequest {
@@ -57,22 +61,24 @@ export async function suggestMenu(
     carbs: Math.round(pfc.carbs / 3),
   };
 
-  const workflowResult = await adjustMenu({
-    userId,
+  const menuAdjusterInput: MenuAdjusterInput = {
     availableIngredients: ingredients,
     targetNutrition,
     userComment: comment,
     previousSuggestions: previousSuggestions
-      ? (previousSuggestions.filter((s): s is string => typeof s === "string"))
+      ? previousSuggestions.filter((s): s is string => typeof s === "string")
       : undefined,
     preferences: {
       cuisines: userDoc.learnedPreferences.cuisines,
       flavorProfile: userDoc.learnedPreferences.flavorProfile,
       dislikedIngredients: userDoc.learnedPreferences.dislikedIngredients,
     },
-  });
+  };
 
-  const suggestions = workflowResult.suggestions.map(
+  const prompt = getMenuAdjustmentPrompt(menuAdjusterInput);
+  const aiResult = await generateMenuSuggestions(prompt);
+
+  const suggestions = aiResult.suggestions.map(
     (s: {
       recipeId?: string;
       title: string;
@@ -81,10 +87,16 @@ export async function suggestMenu(
       ingredients?: { name: string; amount: string }[];
       additionalIngredients?: string[];
       steps?: string[];
-      nutrition: { calories: number; protein: number; fat: number; carbs: number };
+      nutrition: {
+        calories: number;
+        protein: number;
+        fat: number;
+        carbs: number;
+      };
     }) => ({
       recipeId:
-        s.recipeId || `recipe-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        s.recipeId ||
+        `recipe-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       title: s.title,
       description: s.description,
       tags: s.tags || [],
@@ -92,11 +104,11 @@ export async function suggestMenu(
       additionalIngredients: s.additionalIngredients || [],
       steps: s.steps || [],
       nutrition: s.nutrition,
-    })
+    }),
   );
 
   return {
     suggestions,
-    message: workflowResult.message,
+    message: aiResult.message,
   };
 }

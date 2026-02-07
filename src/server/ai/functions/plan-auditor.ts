@@ -3,11 +3,11 @@ import { callModelWithSchema } from "../utils/agent-helpers";
 import {
   AUDITOR_INSTRUCTIONS,
   getAuditorPrompt,
-} from "../prompts/agents/auditor";
+} from "../prompts/functions/plan-auditor";
 import { GEMINI_2_5_FLASH_MODEL } from "../config";
 
 /**
- * Auditorエージェントの出力スキーマ
+ * Plan Auditor 関数の出力スキーマ
  */
 const AuditorOutputSchema = z.object({
   anchors: z.array(
@@ -28,10 +28,10 @@ const AuditorOutputSchema = z.object({
 export type AuditorOutput = z.infer<typeof AuditorOutputSchema>;
 
 /**
- * Auditorエージェントの実行
+ * Plan Auditor を実行
  * ユーザーの「固定メニュー」や「こだわり要望」を具体的な栄養素に変換します。
  */
-export async function runAuditor(
+export async function auditPlanAnchors(
   mealSettings: {
     breakfast: { mode: string; text: string };
     lunch: { mode: string; text: string };
@@ -70,7 +70,7 @@ export async function runAuditor(
       GEMINI_2_5_FLASH_MODEL,
     );
   } catch (error) {
-    console.error("Auditor Agent Error:", error);
+    console.error("Plan Auditor Error:", error);
     // エラー時は空のアンカーを返して、後続の処理（AIによる全自動生成）に委ねる安全策
     return { anchors: [] };
   }

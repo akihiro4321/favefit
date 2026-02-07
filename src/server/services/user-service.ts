@@ -3,7 +3,12 @@
  * ユーザー関連のビジネスロジック（栄養目標計算、好み学習）
  */
 
-import { learnPreferences, PreferenceLearnerOutput } from "@/server/ai";
+import {
+  analyzePreferenceData,
+  getPreferenceLearningPrompt,
+  PreferenceLearnerOutput,
+  PreferenceLearnerInput,
+} from "@/server/ai";
 import {
   updateLearnedPreferences,
   updateUserNutrition,
@@ -157,8 +162,7 @@ export async function learnPreference(
     throw new Error("Recipe not found");
   }
 
-  const workflowResult = await learnPreferences({
-    userId,
+  const input: PreferenceLearnerInput = {
     recipe: {
       title: recipe.title,
       tags: recipe.tags || [],
@@ -168,9 +172,10 @@ export async function learnPreference(
       wantToMakeAgain: feedback.wantToMakeAgain,
       comment: feedback.comment,
     },
-  });
+  };
 
-  const analysis = workflowResult.analysis;
+  const prompt = getPreferenceLearningPrompt(input);
+  const analysis = await analyzePreferenceData(prompt);
 
   // AIからの配列形式をRepositoryが期待するRecord形式に変換
   const cuisineUpdates: Record<string, number> = {};
