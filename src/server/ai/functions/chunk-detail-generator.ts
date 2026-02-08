@@ -3,7 +3,7 @@
  */
 
 import { callModelWithSchema } from "../utils/agent-helpers";
-import { ChunkDetailedPlan, ChunkDetailedPlanSchema } from "../types/plan-v2";
+import { ChunkDetailedPlan, ChunkDetailedPlanSchema } from "../types/plan";
 import {
   CHUNK_DETAIL_GENERATOR_INSTRUCTIONS,
   getChunkDetailPrompt,

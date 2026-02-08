@@ -3,8 +3,8 @@
  */
 
 import { callModelWithSchema } from "../utils/agent-helpers";
-import { WeeklySkeleton, WeeklySkeletonSchema } from "../types/plan-v2";
-import { PlanGeneratorInput } from "../agents/plan-generator";
+import { WeeklySkeleton, WeeklySkeletonSchema } from "../types/plan";
+import { PlanGeneratorInput } from "../types/plan-input";
 import {
   PLAN_SKELETON_GENERATOR_INSTRUCTIONS,
   getPlanSkeletonPrompt,

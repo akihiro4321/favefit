@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateMealPlan, generateMealPlanV2, MealPlanWorkflowInput } from "@/server/ai";
+import { generateMealPlan, MealPlanWorkflowInput } from "@/server/ai";
 
 /**
  * デバッグ用：食事プラン生成ワークフローを直接実行するAPI
@@ -7,7 +7,7 @@ import { generateMealPlan, generateMealPlanV2, MealPlanWorkflowInput } from "@/s
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { version, ...workflowInput } = body;
+    const { ...workflowInput } = body;
     
     // 入力のバリデーション（簡易）
     if (!workflowInput.input || !workflowInput.mealTargets) {
@@ -17,12 +17,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log(`[Debug API] Starting meal plan generation (Version: ${version || 'v1'})...`);
+    console.log(`[Debug API] Starting meal plan generation...`);
     const startTime = Date.now();
     
-    const result = version === "v2" 
-      ? await generateMealPlanV2(workflowInput as MealPlanWorkflowInput)
-      : await generateMealPlan(workflowInput as MealPlanWorkflowInput);
+    // ワークフローを実行
+    const result = await generateMealPlan(workflowInput as MealPlanWorkflowInput);
     
     const executionTime = Date.now() - startTime;
     console.log(`[Debug API] Completed in ${executionTime}ms`);
@@ -31,7 +30,7 @@ export async function POST(req: NextRequest) {
       ...result,
       debug: {
         executionTimeMs: executionTime,
-        version: version || "v1"
+        version: "standard"
       }
     });
   } catch (error) {

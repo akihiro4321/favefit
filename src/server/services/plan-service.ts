@@ -5,7 +5,7 @@
 
 import {
   PlanGeneratorInput,
-  generateMealPlanV2,
+  generateMealPlan,
 } from "@/server/ai";
 import { getOrCreateUser, setPlanCreating, setPlanCreated, clearUserRejectionFeedback } from "@/server/db/firestore/userRepository";
 import {
@@ -14,11 +14,10 @@ import {
   getActivePlan as getActivePlanRepo,
   getPendingPlan as getPendingPlanRepo,
   getPlan,
-  updateMealSlot
 } from "@/server/db/firestore/planRepository";
 import { createShoppingList } from "@/server/db/firestore/shoppingListRepository";
 import { getFavorites } from "@/server/db/firestore/recipeHistoryRepository";
-import { DayPlan, MealSlot, ShoppingItem, PlanDocument } from "@/lib/schema";
+import { DayPlan, ShoppingItem, PlanDocument } from "@/lib/schema";
 import { calculatePersonalizedMacroGoals } from "@/lib/tools/calculateMacroGoals";
 import { calculateMealTargets } from "@/lib/tools/mealNutritionCalculator";
 
@@ -188,8 +187,8 @@ async function generatePlanBackground(
       currentDiet: userDoc.profile.lifestyle.currentDiet, // 適応型プランニング用
     };
 
-    // AI ワークフロー (V2) を実行
-    const result = await generateMealPlanV2({
+    // AI ワークフロー を実行
+    const result = await generateMealPlan({
       input,
       feedbackText: userDoc.planRejectionFeedback || "",
       mealTargets,

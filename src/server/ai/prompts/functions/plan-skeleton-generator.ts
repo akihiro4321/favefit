@@ -1,4 +1,4 @@
-import { PlanGeneratorInput } from "../../agents/plan-generator";
+import { PlanGeneratorInput } from "../../types/plan-input";
 
 export const PLAN_SKELETON_GENERATOR_INSTRUCTIONS = `あなたは献立作成のエキスパートです。1週間分（21食）の献立の「骨組み（スケルトン）」と、食材を効率的に使い回すための「食材プール（買い物計画）」を作成してください。
 

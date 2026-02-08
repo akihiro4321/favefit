@@ -1,4 +1,4 @@
-import { DailySkeleton, IngredientPool } from "../../types/plan-v2";
+import { DailySkeleton, IngredientPool } from "../../types/plan";
 import { NutritionValues } from "../../types/common";
 
 export const CHUNK_DETAIL_GENERATOR_INSTRUCTIONS = `あなたはプロの管理栄養士兼シェフです。

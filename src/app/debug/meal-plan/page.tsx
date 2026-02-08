@@ -3,11 +3,11 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Play, Code, Layout, AlertCircle, Plus, Trash2, CheckCircle2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MealPlanWorkflowResult } from '@/server/ai';
+import { DayPlan, MealSlot } from '@/lib/schema';
 import { cn } from '@/lib/utils';
 
 // デバッグ用の拡張結果型
@@ -294,7 +294,7 @@ export default function DebugMealPlanPage() {
                 </div>
 
                 <TabsContent value="preview" className="space-y-8 m-0">
-                  {Object.entries(activeScenario.result.days).map(([date, day]: [string, any]) => (
+                  {Object.entries(activeScenario.result.days).map(([date, day]: [string, DayPlan]) => (
                     <div key={date} className="space-y-4">
                       <div className="flex items-center gap-3">
                         <span className="text-sm font-black text-foreground/80">{date}</span>
@@ -308,7 +308,7 @@ export default function DebugMealPlanPage() {
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-                        {Object.entries(day.meals).map(([type, meal]: [string, any]) => (
+                        {Object.entries(day.meals).map(([type, meal]: [string, MealSlot]) => (
                           <div key={type} className="bg-background border-2 border-border/50 rounded-xl p-3 shadow-sm hover:border-primary/30 transition-all group relative">
                             <div className="flex justify-between items-start mb-2">
                               <span className="text-[9px] font-black text-primary/70 uppercase tracking-widest">{type}</span>

@@ -10,7 +10,7 @@ export const IngredientPoolSchema = z.object({
 
 export type IngredientPool = z.infer<typeof IngredientPoolSchema>;
 
-export const MealSkeletonV2Schema = z.object({
+export const MealSkeletonSchema = z.object({
   title: z.string().describe("メニュー名（例: 鶏胸肉の照り焼き）"),
   mainIngredients: z.array(z.string()).describe("主要食材（例: [鶏胸肉, キャベツ]）"),
   approxCalories: z.number().describe("概算カロリー"),
@@ -19,10 +19,10 @@ export const MealSkeletonV2Schema = z.object({
 export const DailySkeletonSchema = z.object({
   date: z.string(),
   meals: z.object({
-    breakfast: MealSkeletonV2Schema,
-    lunch: MealSkeletonV2Schema,
-    dinner: MealSkeletonV2Schema,
-    snack: MealSkeletonV2Schema.optional().describe("目標カロリー調整用の間食（必要時のみ）"),
+    breakfast: MealSkeletonSchema,
+    lunch: MealSkeletonSchema,
+    dinner: MealSkeletonSchema,
+    snack: MealSkeletonSchema.optional().describe("目標カロリー調整用の間食（必要時のみ）"),
   }),
 });
 
@@ -32,7 +32,7 @@ export const WeeklySkeletonSchema = z.object({
 });
 
 // Phase 2: 詳細（1日分）
-export const DetailedMealV2Schema = z.object({
+export const DetailedMealSchema = z.object({
   title: z.string(), // スケルトンから継承・固定
   ingredients: z.array(IngredientItemSchema).describe("詳細な分量付き食材リスト"),
   steps: z.array(z.string()).describe("調理手順"),
@@ -42,10 +42,10 @@ export const DetailedMealV2Schema = z.object({
 export const DailyDetailedPlanSchema = z.object({
   date: z.string(),
   meals: z.object({
-    breakfast: DetailedMealV2Schema,
-    lunch: DetailedMealV2Schema,
-    dinner: DetailedMealV2Schema,
-    snack: DetailedMealV2Schema.optional(),
+    breakfast: DetailedMealSchema,
+    lunch: DetailedMealSchema,
+    dinner: DetailedMealSchema,
+    snack: DetailedMealSchema.optional(),
   }),
 });
 
