@@ -195,21 +195,29 @@ export function validatePlanNutrition(
  * @returns 更新されたDayPlan
  */
 export function recalculateDayNutrition(dayPlan: DayPlan): DayPlan {
-  const { breakfast, lunch, dinner } = dayPlan.meals;
+  const { breakfast, lunch, dinner, snack } = dayPlan.meals;
 
   const totalNutrition = {
     calories:
       breakfast.nutrition.calories +
       lunch.nutrition.calories +
-      dinner.nutrition.calories,
+      dinner.nutrition.calories +
+      (snack?.nutrition.calories || 0),
     protein:
       breakfast.nutrition.protein +
       lunch.nutrition.protein +
-      dinner.nutrition.protein,
+      dinner.nutrition.protein +
+      (snack?.nutrition.protein || 0),
     fat:
-      breakfast.nutrition.fat + lunch.nutrition.fat + dinner.nutrition.fat,
+      breakfast.nutrition.fat + 
+      lunch.nutrition.fat + 
+      dinner.nutrition.fat +
+      (snack?.nutrition.fat || 0),
     carbs:
-      breakfast.nutrition.carbs + lunch.nutrition.carbs + dinner.nutrition.carbs,
+      breakfast.nutrition.carbs +
+      lunch.nutrition.carbs +
+      dinner.nutrition.carbs +
+      (snack?.nutrition.carbs || 0),
   };
 
   return {

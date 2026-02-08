@@ -44,7 +44,6 @@ export {
 // ============================================
 // Agents
 // ============================================
-
 export {
   runPlanGenerator,
   runPartialPlanGenerator,
@@ -56,10 +55,11 @@ export {
   type PlanGeneratorOutput,
 } from "./agents/plan-generator";
 
+export { runPlanGeneratorV2 } from "./agents/plan-generator-v2";
+
 // ============================================
 // Functions
 // ============================================
-
 export {
   generateRecipeData,
   RecipeOutputSchema,
@@ -84,8 +84,9 @@ export {
 } from "./functions/preference-analyzer";
 
 export { estimateDailyDietBaseline } from "./functions/diet-estimator";
-
 export { auditPlanAnchors, type AuditorOutput } from "./functions/plan-auditor";
+export { generatePlanSkeleton } from "./functions/plan-skeleton-generator";
+export { generateDailyDetails } from "./functions/daily-detail-generator";
 
 // ============================================
 // Prompts
@@ -125,6 +126,16 @@ export {
   getDailyDietBaselinePrompt,
 } from "./prompts/functions/diet-estimator";
 
+export {
+  PLAN_SKELETON_GENERATOR_INSTRUCTIONS,
+  getPlanSkeletonPrompt,
+} from "./prompts/functions/plan-skeleton-generator";
+
+export {
+  DAILY_DETAIL_GENERATOR_INSTRUCTIONS,
+  getDailyDetailPrompt,
+} from "./prompts/functions/daily-detail-generator";
+
 // ============================================
 // Workflows
 // ============================================
@@ -133,3 +144,5 @@ export {
   type MealPlanWorkflowInput,
   type MealPlanWorkflowResult,
 } from "./workflows/meal-plan-generation";
+
+export { generateMealPlanV2 } from "./workflows/meal-plan-generation-v2";

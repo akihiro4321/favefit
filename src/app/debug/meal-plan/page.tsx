@@ -36,14 +36,14 @@ const SAMPLE_INPUT = {
     cheatDayFrequency: "weekly",
     startDate: "2026-02-07",
     currentDiet: {
-      breakfast: "パンとコーヒー",
+      breakfast: "納豆卵かけご飯(ご飯100~120g)、味噌汁",
       lunch: "コンビニの弁当",
       dinner: "居酒屋で唐揚げとビール",
       snack: "チョコ"
     },
     mealSettings: {
-      breakfast: { mode: "auto", text: "" },
-      lunch: { mode: "fixed", text: "鶏むね肉のサラダ" },
+      breakfast: { mode: "fixed", text: "納豆卵かけご飯(ご飯100~120g)、味噌汁" },
+      lunch: { mode: "auto", text: "" },
       dinner: { mode: "auto", text: "" }
     }
   },
@@ -61,6 +61,7 @@ export default function DebugMealPlanPage() {
   const [result, setResult] = useState<DebugWorkflowResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [version, setVersion] = useState<'v1' | 'v2'>('v1');
 
   const runTest = async () => {
     setIsLoading(true);
@@ -70,7 +71,7 @@ export default function DebugMealPlanPage() {
       const response = await fetch('/api/debug/generate-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(parsedInput),
+        body: JSON.stringify({ ...parsedInput, version }),
       });
 
       const data = await response.json();
@@ -88,17 +89,41 @@ export default function DebugMealPlanPage() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Meal Plan Debugger</h1>
-          <p className="text-muted-foreground">Workflow: generateMealPlan (Anchor & Fill + Fix Loop)</p>
+          <p className="text-muted-foreground">
+            Workflow: {version === 'v1' ? 'V1 (Batch Generation)' : 'V2 (Two-Stage Skeleton + Detail)'}
+          </p>
         </div>
-        <Button 
-          size="lg" 
-          onClick={runTest} 
-          disabled={isLoading}
-          className="gap-2"
-        >
-          {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}
-          Run Workflow
-        </Button>
+        
+        <div className="flex items-center gap-4">
+          <div className="flex bg-muted p-1 rounded-lg">
+            <Button 
+              variant={version === 'v1' ? 'default' : 'ghost'} 
+              size="sm" 
+              onClick={() => setVersion('v1')}
+              className="text-xs h-8"
+            >
+              Version 1
+            </Button>
+            <Button 
+              variant={version === 'v2' ? 'default' : 'ghost'} 
+              size="sm" 
+              onClick={() => setVersion('v2')}
+              className="text-xs h-8"
+            >
+              Version 2
+            </Button>
+          </div>
+          
+          <Button 
+            size="lg" 
+            onClick={runTest} 
+            disabled={isLoading}
+            className="gap-2"
+          >
+            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}
+            Run Workflow
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
