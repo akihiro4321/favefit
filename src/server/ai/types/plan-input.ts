@@ -66,9 +66,14 @@ export const PlanGeneratorInputSchema = z.object({
     .describe("作り置き（バルク調理）の設定"),
 
   fridgeIngredients: z
-    .array(z.string())
+    .array(
+      z.object({
+        name: z.string().describe("食材名"),
+        amount: z.string().describe("残量（例: 1/4個, 200g）"),
+      })
+    )
     .optional()
-    .describe("冷蔵庫の余り物食材（優先的に使用）"),
+    .describe("冷蔵庫の在庫食材（優先的に使用）"),
 
   // 適応型プランニング用: AIへの具体的な方針指示
   adaptiveDirective: z

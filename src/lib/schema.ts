@@ -60,7 +60,7 @@ export interface UserProfile {
       lunch: { mode: "auto" | "fixed" | "custom"; text: string };
       dinner: { mode: "auto" | "fixed" | "custom"; text: string };
     };
-    fridgeIngredients?: string[];
+    fridgeIngredients?: IngredientItem[];
     mealPrepConfig?: {
       dayOfWeek: number; // 0-6 (Sunday to Saturday)
       servings: number; // 何食分作るか

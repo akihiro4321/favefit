@@ -19,7 +19,7 @@ import {
  * 入力スキーマ
  */
 export const MenuAdjusterInputSchema = z.object({
-  availableIngredients: z.array(z.string()).describe("手元にある食材リスト"),
+  availableIngredients: z.array(IngredientItemSchema).describe("手元にある食材リスト（分量込み）"),
   targetNutrition: NutritionValuesSchema.describe("本日の残り目標栄養素"),
   userComment: z
     .string()

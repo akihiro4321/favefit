@@ -31,13 +31,13 @@ export const SHOPPING_LIST_NORMALIZER_INSTRUCTIONS = `
 
 export interface ShoppingListNormalizerInput {
   ingredients: IngredientItem[];
-  fridgeItems: string[];
+  fridgeItems: IngredientItem[];
 }
 
 export function getShoppingListNormalizerPrompt(input: ShoppingListNormalizerInput) {
   const ingredientsText = input.ingredients.map(i => `- ${i.name}: ${i.amount}`).join('\n');
   const fridgeText = input.fridgeItems.length > 0 
-    ? input.fridgeItems.map(f => `- ${f}`).join('\n') 
+    ? input.fridgeItems.map(f => `- ${f.name}: ${f.amount}`).join('\n') 
     : '特になし';
 
   return `

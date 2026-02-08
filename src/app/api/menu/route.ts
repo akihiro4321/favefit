@@ -10,8 +10,11 @@ import { z } from "zod";
 const SuggestMenuRequestSchema = z.object({
   userId: z.string().min(1, "userId は必須です"),
   ingredients: z
-    .array(z.string())
-    .min(1, "ingredients は必須です（食材の配列）"),
+    .array(z.object({
+      name: z.string(),
+      amount: z.string(),
+    }))
+    .min(1, "ingredients は必須です"),
   comment: z.string().optional(),
   previousSuggestions: z.array(z.unknown()).optional(),
 });

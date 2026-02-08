@@ -9,10 +9,11 @@ import {
   MenuAdjusterInput,
 } from "@/server/ai";
 import { getOrCreateUser } from "@/server/db/firestore/userRepository";
+import { IngredientItem } from "@/lib/schema";
 
 export interface SuggestMenuRequest {
   userId: string;
-  ingredients: string[];
+  ingredients: IngredientItem[];
   comment?: string;
   previousSuggestions?: unknown[];
 }

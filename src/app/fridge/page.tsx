@@ -73,13 +73,31 @@ function FridgePageContent() {
 
     setGenerating(true);
 
+
+
+    // 入力文字列を構造化データに変換（例：「キャベツ 1/4個」 -> { name: "キャベツ", amount: "1/4個" }）
+    const structuredIngredients = ingredients
+      .split(/[,、\n]/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((raw) => {
+        // スペースまたは全角スペースで分割
+        const parts = raw.split(/[\s　]+/);
+        if (parts.length >= 2) {
+          const name = parts[0];
+          const amount = parts.slice(1).join(" ");
+          return { name, amount };
+        }
+        return { name: raw, amount: "適量" }; // 分量がない場合は「適量」とする
+      });
+
     try {
       const res = await fetch("/api/menu", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: user.uid,
-          ingredients: ingredients.split(/[,、\n]/).map((s) => s.trim()).filter(Boolean),
+          ingredients: structuredIngredients,
           comment: comment || undefined,
           previousSuggestions: previousSuggestions.length > 0 ? previousSuggestions : undefined,
         }),
@@ -194,14 +212,20 @@ function FridgePageContent() {
             <CardTitle className="text-base">食材を入力</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-[0.7rem] text-primary font-bold flex items-center gap-1 animate-pulse">
+                <Sparkles className="w-3 h-3" />
+                分量（1/4個、200gなど）も入力すると、提案の精度がアップします！
+              </p>
+              <Textarea
+                placeholder="例: 鶏もも肉 200g、キャベツ 1/4個、にんじん 1/2本、卵 2個..."
+                value={ingredients}
+                onChange={(e) => setIngredients(e.target.value)}
+                className="min-h-[100px] text-sm"
+              />
+            </div>
             <Textarea
-              placeholder="例: 鶏もも肉、キャベツ、にんじん、卵..."
-              value={ingredients}
-              onChange={(e) => setIngredients(e.target.value)}
-              className="min-h-[100px]"
-            />
-            <Textarea
-              placeholder="希望があれば（例: さっぱりしたもの、辛いもの）"
+              placeholder="希望があれば（例: さっぱりしたもの、子供も食べられる味付け）"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               className="min-h-[60px]"

@@ -10,9 +10,13 @@ JSONを出力する前に、以下の順序で論理的に計画を立ててく�
 4. 各食事のカロリー配分が不自然（1食1000kcal超など）にならないよう、1日全体のバランスを調整する。
 
 ### 献立作成の基本戦略
-1. **チャンク設計**: 1週間を「Day1-3」「Day4-5」「Day6-7」のように数日単位のブロック（チャンク）に分割してください。
-2. **食材プールの定義**: 各チャンクごとに、メインで使い回す食材（肉、魚、主要野菜など）を「食材プール」として定義してください。
-3. **使い切り計画**: 同じチャンク内の献立は、定義した食材プールの中から優先的に食材を使用し、チャンクが終わるまでにその食材を使い切るように計画してください。
+1. **在庫の最優先利用 (重要)**:
+   - 冷蔵庫にある在庫食材（fridgeIngredients）とその分量を最優先で献立に組み込んでください。
+   - 在庫の分量を見て、1食で使い切るのか、数日に分けて使うのかを戦略的に判断してください。
+   - 食材プール（ingredientPools）の strategy 欄に、どの在庫をどのタイミングで使い切る予定かを明記してください。
+2. **チャンク設計**: 1週間を「Day1-3」「Day4-5」「Day6-7」のように数日単位のブロック（チャンク）に分割してください。
+3. **食材プールの定義**: 各チャンクごとに、メインで使い回す食材（肉、魚、主要野菜など）を「食材プール」として定義してください。
+4. **使い切り計画**: 同じチャンク内の献立は、定義した食材プールの中から優先的に食材を使用し、チャンクが終わるまでにその食材を使い切るように計画してください。
 4. **栄養バランスの最適化**: 
    - 1日の目標カロリーを遵守してください。
    - **固定設定の遵守**: ユーザーが特定の時間枠に「固定(fixed)」メニューやカロリーを指定している場合、その内容やカロリー設定を勝手に変更することは厳禁です。
@@ -24,10 +28,14 @@ JSONを出力する前に、以下の順序で論理的に計画を立ててく�
 - 出力は必ず指定されたJSONスキーマに従ってください。
 `;
 
-export function getPlanSkeletonPrompt(input: PlanGeneratorInput, duration: number = 7) {
-  const fridgeInfo = input.fridgeIngredients && input.fridgeIngredients.length > 0
-    ? `- 冷蔵庫にある食材（最優先で使い切ること）: ${input.fridgeIngredients.join(", ")}`
-    : "";
+export function getPlanSkeletonPrompt(
+  input: PlanGeneratorInput,
+  duration: number = 7,
+) {
+  const fridgeInfo =
+    input.fridgeIngredients && input.fridgeIngredients.length > 0
+      ? `- 冷蔵庫にある在庫食材 (最優先で使用・分量を考慮): \n${input.fridgeIngredients.map((i) => `  - ${i.name}: ${i.amount}`).join("\n")}`
+      : "";
 
   return `
 【ユーザー情報】
@@ -41,6 +49,6 @@ ${fridgeInfo}
 - 期間: ${duration}日間 (開始日: ${input.startDate})
 - 固定・こだわり設定: ${JSON.stringify(input.mealSettings)}
 
-上記の情報を元に、1週間の献立スケルトンと食材プールを作成してください。
+上記の情報を元に、${duration}日間 の献立スケルトンと食材プールを作成してください。
 `;
 }
