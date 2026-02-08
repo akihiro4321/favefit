@@ -145,7 +145,7 @@ export default function HomePage() {
           <Sparkles className="w-16 h-16 mx-auto text-primary" />
           <h1 className="text-3xl font-bold text-primary">FaveFit</h1>
           <p className="text-muted-foreground">
-            2週間の食事プランを作成して、
+            1週間の食事プランを作成して、
             <br />
             ダイエットを楽しく始めましょう！
           </p>
@@ -205,11 +205,12 @@ export default function HomePage() {
   }
 
   // 通常のホーム画面
-  const completedMeals = Object.values(todaysMeals?.meals || {}).filter(
-    (m) => m.status === "completed"
+  const mealEntries = todaysMeals?.meals ? Object.entries(todaysMeals.meals) : [];
+  const completedMeals = mealEntries.filter(
+    ([, m]) => m.status === "completed"
   ).length;
-  const totalMeals = 3;
-  const progressPercent = (completedMeals / totalMeals) * 100;
+  const totalMeals = mealEntries.length;
+  const progressPercent = totalMeals > 0 ? (completedMeals / totalMeals) * 100 : 0;
 
   return (
     <div className="container max-w-2xl mx-auto py-8 px-4 space-y-6 pb-24">
@@ -220,7 +221,7 @@ export default function HomePage() {
           <Flame className="w-4 h-4 text-primary" />
           <span>
             目標: {profile?.nutrition?.dailyCalories || 0} kcal / 残り:{" "}
-            {((profile?.nutrition?.dailyCalories || 0) -
+            {Math.max(0, (profile?.nutrition?.dailyCalories || 0) -
               (todaysMeals?.totalNutrition?.calories || 0)).toFixed(1)}{" "}
             kcal
           </span>
@@ -233,7 +234,7 @@ export default function HomePage() {
 
       {/* 食事カード */}
       <div className="space-y-4">
-        {(["breakfast", "lunch", "dinner"] as const).map((mealType) => {
+        {(["breakfast", "lunch", "dinner", "snack"] as const).map((mealType) => {
           const meal = todaysMeals?.meals?.[mealType];
           if (!meal) return null;
 
@@ -242,6 +243,7 @@ export default function HomePage() {
             breakfast: "🍳 朝食",
             lunch: "🍱 昼食",
             dinner: "🍽️ 夕食",
+            snack: "🍪 間食・調整食",
           };
 
           return (

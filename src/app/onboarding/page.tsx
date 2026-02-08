@@ -39,14 +39,13 @@ const ONBOARDING_STEP = {
   PROFILE: 1,        // 基本プロフィール
   BODY_INFO: 2,      // 身体情報
   NUTRITION_REVIEW: 3, // 栄養目標の確認
-  CURRENT_DIET: 4,     // 現状の食生活（追加）
+  CURRENT_DIET: 4,     // 現状の食生活
   PREFERENCES: 5,    // 食の好み設定
   MEAL_SETTINGS: 6,  // 食事のこだわり設定
-  PLAN_CREATION: 7,  // プラン作成開始
 } as const;
 
 // 画面遷移上のステップ総数
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 6;
 
 // セレクトボックス共通のTailwindクラス
 const SELECT_CLASS_NAME = "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm";
@@ -400,6 +399,7 @@ export default function OnboardingPage() {
 
     // 学習済み嗜好（初期値）を保存
     if (formData.preferredCuisines.length > 0 || formData.flavorProfile) {
+      // ... (cuisineUpdates and flavorUpdates logic) ...
       const cuisineUpdates: Record<string, number> = {};
       formData.preferredCuisines.forEach((cuisine) => {
         cuisineUpdates[cuisine.toLowerCase()] = 10;
@@ -427,7 +427,22 @@ export default function OnboardingPage() {
       });
     }
 
-    setCurrentStep(ONBOARDING_STEP.PLAN_CREATION);
+    // ここでオンボーディング完了をマーク
+    await fetch('/api/user/complete-onboarding', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user!.uid }),
+    });
+
+    // プラン生成をバックグラウンドで開始
+    fetch("/api/plan/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: user!.uid }),
+    }).catch(err => console.error("Initial plan generation failed:", err));
+
+    // プラン画面へ移動
+    router.push("/plan");
   };
 
   // --- イベントハンドラー ---
@@ -1282,85 +1297,41 @@ export default function OnboardingPage() {
             </CardContent>
           </Card>
         )}
-
-        {/* Step 6: プラン作成 */}
-        {currentStep === ONBOARDING_STEP.PLAN_CREATION && (
-          <Card className="animate-pop-in h-96 flex flex-col justify-center border-2 border-primary/20 bg-primary/5">
-            <CardContent className="text-center py-12 space-y-6 text-foreground">
-              <div className="w-20 h-20 mx-auto bg-primary/20 rounded-full flex items-center justify-center">
-                <CheckCircle2 className="w-10 h-10 text-primary" />
-              </div>
-              <div className="space-y-2">
-                <h2 className="text-2xl font-bold">準備完了！</h2>
-                <p className="text-muted-foreground">
-                  さっそく{DEFAULT_DURATION}日間の食事プランを作成しましょう
-                </p>
-              </div>
-              <div className="p-4 bg-white/50 rounded-xl border-dashed border-2">
-                <p className="text-sm text-muted-foreground">
-                  プラン作成には1〜2分かかります。
-                  <br />
-                  作成中にページを閉じても問題ありません。
-                </p>
-              </div>
-              <Button
-                size="lg"
-                className="rounded-full px-8 shadow-lg hover:shadow-xl transition-all"
-                onClick={handleCreatePlan}
-                disabled={submitting}
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    開始中...
-                  </>
-                ) : (
-                  <>
-                    <CalendarDays className="w-4 h-4 mr-2" />
-                    プランを作成する
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-        )}
       </div>
 
       {/* ナビゲーションボタン（固定） */}
-      {currentStep < ONBOARDING_STEP.PLAN_CREATION && (
-        <div className="flex-none pt-4 pb-2 border-t bg-background/80 backdrop-blur-sm flex gap-4 mt-auto">
-          {currentStep > ONBOARDING_STEP.PROFILE && (
-            <Button
-              variant="outline"
-              className="flex-1 rounded-full border-2 font-bold"
-              onClick={handleBack}
-              disabled={submitting}
-            >
-              <ChevronLeft className="w-4 h-4 mr-1" />
-              戻る
-            </Button>
-          )}
+      <div className="flex-none pt-4 pb-2 border-t bg-background/80 backdrop-blur-sm flex gap-4 mt-auto">
+        {currentStep > ONBOARDING_STEP.PROFILE && (
           <Button
-            className="flex-1 rounded-full font-bold shadow-md hover:shadow-lg transition-all"
-            onClick={handleNext}
+            variant="outline"
+            className="flex-1 rounded-full border-2 font-bold"
+            onClick={handleBack}
             disabled={submitting}
           >
-            {submitting ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : currentStep === ONBOARDING_STEP.BODY_INFO ? (
-              <>
-                <Zap className="w-4 h-4 mr-1" />
-                計算開始
-              </>
-            ) : (
-              <>
-                次へ
-                <ChevronRight className="w-4 h-4 ml-1" />
-              </>
-            )}
+            <ChevronLeft className="w-4 h-4 mr-1" />
+            戻る
           </Button>
-        </div>
-      )}
+        )}
+        <Button
+          className="flex-1 rounded-full font-bold shadow-md hover:shadow-lg transition-all"
+          onClick={handleNext}
+          disabled={submitting}
+        >
+          {submitting ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : currentStep === ONBOARDING_STEP.BODY_INFO ? (
+            <>
+              <Zap className="w-4 h-4 mr-1" />
+              計算開始
+            </>
+          ) : (
+            <>
+              次へ
+              <ChevronRight className="w-4 h-4 ml-1" />
+            </>
+          )}
+        </Button>
+      </div>
     </div>
   );
 }

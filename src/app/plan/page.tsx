@@ -255,7 +255,7 @@ export default function PlanPage() {
         <div className="text-center space-y-4 animate-pop-in">
           <CalendarDays className="w-16 h-16 mx-auto text-muted-foreground" />
           <h1 className="text-2xl font-bold">プランがありません</h1>
-          <p className="text-muted-foreground">まずは2週間のプランを作成しましょう</p>
+          <p className="text-muted-foreground">まずは1週間のプランを作成しましょう</p>
           <Button
             size="lg"
             className="rounded-full px-8 mt-4"
