@@ -25,6 +25,7 @@ export default function ShoppingPage() {
   const [planId, setPlanId] = useState<string | null>(null);
   const [planDuration, setPlanDuration] = useState<number>(0);
   const [fetching, setFetching] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set()
   );
@@ -35,44 +36,70 @@ export default function ShoppingPage() {
     }
   }, [user, loading, router]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!user) return;
-      try {
-        const planRes = await fetch("/api/plan/get-active", {
+  const fetchData = async (isPoll = false) => {
+    if (!user) return;
+    try {
+      const planRes = await fetch("/api/plan/get-active", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.uid }),
+      });
+      const planData = await planRes.json();
+      const plan = planData.data?.plan;
+
+      if (plan) {
+        setPlanId(plan.id);
+        const daysCount = Object.keys(plan.days || {}).length;
+        setPlanDuration(daysCount);
+
+        // カテゴリ別表示用のアイテム取得
+        const itemsRes = await fetch("/api/shopping/get-by-category", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: user.uid }),
+          body: JSON.stringify({ planId: plan.id }),
         });
-        const planData = await planRes.json();
-        const plan = planData.data?.plan;
+        const itemsData = await itemsRes.json();
+        const items = itemsData.data?.items || {};
+        setItemsByCategory(items);
 
-        if (plan) {
-          setPlanId(plan.id);
-          const daysCount = Object.keys(plan.days || {}).length;
-          setPlanDuration(daysCount);
-
-          // カテゴリ別表示用のアイテム取得
-          const itemsRes = await fetch("/api/shopping/get-by-category", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ planId: plan.id }),
-          });
-          const itemsData = await itemsRes.json();
-          const items = itemsData.data?.items || {};
-          setItemsByCategory(items);
+        // 初回取得時にカテゴリを展開
+        if (!isPoll) {
           setExpandedCategories(new Set(Object.keys(items)));
         }
-      } catch (error) {
-        console.error("Error fetching shopping list:", error);
-      } finally {
+
+        // リストが空なら作成中とみなす
+        setIsCreating(Object.keys(items).length === 0);
+      } else {
+        setPlanId(null);
+        setIsCreating(false);
+      }
+    } catch (error) {
+      console.error("Error fetching shopping list:", error);
+    } finally {
+      if (!isPoll) {
         setFetching(false);
       }
-    };
+    }
+  };
+
+  useEffect(() => {
     if (user) {
       fetchData();
     }
   }, [user]);
+
+  // ポーリング: リスト作成中の場合は5秒ごとに再取得
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isCreating && planId && user) {
+      interval = setInterval(() => {
+        fetchData(true);
+      }, 5000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isCreating, planId, user]);
 
   const handleToggle = async (
     category: string,
@@ -152,13 +179,37 @@ export default function ShoppingPage() {
   if (Object.keys(itemsByCategory).length === 0) {
     return (
       <div className="container max-w-2xl mx-auto py-8 px-4 space-y-8">
-        <div className="text-center space-y-4 animate-pop-in">
-          <ShoppingCart className="w-16 h-16 mx-auto text-muted-foreground" />
-          <h1 className="text-2xl font-bold">買い物リストがありません</h1>
-          <p className="text-muted-foreground">
-            プランを作成すると自動で買い物リストが生成されます
-          </p>
-        </div>
+        {planId ? (
+          <div className="text-center space-y-6 py-12 animate-pop-in">
+            <div className="relative mx-auto w-24 h-24">
+              <ShoppingCart className="w-24 h-24 text-muted-foreground/30" />
+              <Loader2 className="w-12 h-12 text-primary animate-spin absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-2xl font-bold">
+                買い物リストを作成しています
+              </h1>
+              <p className="text-muted-foreground max-w-sm mx-auto">
+                プランの承認ありがとうございます！
+                <br />
+                現在、AIが最適な買い物リストを生成・正規化しています。数秒〜数十秒で完了します。
+              </p>
+            </div>
+            <div className="flex justify-center gap-1">
+              <span className="w-2 h-2 bg-primary/40 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+              <span className="w-2 h-2 bg-primary/40 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+              <span className="w-2 h-2 bg-primary/40 rounded-full animate-bounce"></span>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center space-y-4 py-12 animate-pop-in">
+            <ShoppingCart className="w-16 h-16 mx-auto text-muted-foreground" />
+            <h1 className="text-2xl font-bold">買い物リストがありません</h1>
+            <p className="text-muted-foreground">
+              プランを作成すると自動で買い物リストが生成されます
+            </p>
+          </div>
+        )}
       </div>
     );
   }
@@ -204,10 +255,9 @@ export default function ShoppingPage() {
                 "果実類",
                 "卵・乳製品",
                 "大豆製品",
-                "加工食品・その他",
-                "その他",
-                "調味料・甘味料",
                 "基本調味料・常備品 (お家にあれば購入不要)",
+                "調味料・甘味料",
+                "加工食品・その他",
               ];
               const indexA = CATEGORY_ORDER.indexOf(catA);
               const indexB = CATEGORY_ORDER.indexOf(catB);
@@ -254,7 +304,7 @@ export default function ShoppingPage() {
                             onCheckedChange={(checked) =>
                               handleToggle(category, idx, checked as boolean)
                             }
-                            className="w-5 h-5"
+                            className="w-5 h-5 border-2 border-primary/50 data-[state=checked]:border-primary"
                           />
                           <label
                             htmlFor={`item-${category}-${idx}`}

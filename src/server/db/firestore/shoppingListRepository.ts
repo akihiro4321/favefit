@@ -131,7 +131,7 @@ export const getItemsByCategory = async (
 
     return list.items.reduce(
       (acc, item) => {
-        const category = item.category || "その他";
+        const category = item.category || "加工食品・その他";
         if (!acc[category]) {
           acc[category] = [];
         }
