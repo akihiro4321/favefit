@@ -8,6 +8,8 @@ export const IngredientPoolSchema = z.object({
   strategy: z.string().describe("この期間の食材使い回し戦略の解説"),
 });
 
+export type IngredientPool = z.infer<typeof IngredientPoolSchema>;
+
 export const MealSkeletonV2Schema = z.object({
   title: z.string().describe("メニュー名（例: 鶏胸肉の照り焼き）"),
   mainIngredients: z.array(z.string()).describe("主要食材（例: [鶏胸肉, キャベツ]）"),
@@ -47,6 +49,11 @@ export const DailyDetailedPlanSchema = z.object({
   }),
 });
 
+export const ChunkDetailedPlanSchema = z.object({
+  days: z.array(DailyDetailedPlanSchema).describe("期間内の日次詳細プラン"),
+});
+
 export type WeeklySkeleton = z.infer<typeof WeeklySkeletonSchema>;
 export type DailySkeleton = z.infer<typeof DailySkeletonSchema>;
 export type DailyDetailedPlan = z.infer<typeof DailyDetailedPlanSchema>;
+export type ChunkDetailedPlan = z.infer<typeof ChunkDetailedPlanSchema>;

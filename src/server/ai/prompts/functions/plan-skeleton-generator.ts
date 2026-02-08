@@ -25,12 +25,17 @@ JSONを出力する前に、以下の順序で論理的に計画を立ててく�
 `;
 
 export function getPlanSkeletonPrompt(input: PlanGeneratorInput, duration: number = 7) {
+  const fridgeInfo = input.fridgeIngredients && input.fridgeIngredients.length > 0
+    ? `- 冷蔵庫にある食材（最優先で使い切ること）: ${input.fridgeIngredients.join(", ")}`
+    : "";
+
   return `
 【ユーザー情報】
 - 目標カロリー: ${input.targetCalories} kcal/日
 - 目標PFC: タンパク質 ${input.pfc.protein}g, 脂質 ${input.pfc.fat}g, 炭水化物 ${input.pfc.carbs}g
 - 嗜好: ${JSON.stringify(input.preferences)}
 - 特記事項: ${input.adaptiveDirective?.instructions.join("\n") || "なし"}
+${fridgeInfo}
 
 【制約】
 - 期間: ${duration}日間 (開始日: ${input.startDate})

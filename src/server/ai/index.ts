@@ -86,7 +86,7 @@ export {
 export { estimateDailyDietBaseline } from "./functions/diet-estimator";
 export { auditPlanAnchors, type AuditorOutput } from "./functions/plan-auditor";
 export { generatePlanSkeleton } from "./functions/plan-skeleton-generator";
-export { generateDailyDetails } from "./functions/daily-detail-generator";
+export { generateChunkDetails } from "./functions/chunk-detail-generator";
 
 // ============================================
 // Prompts
@@ -132,9 +132,9 @@ export {
 } from "./prompts/functions/plan-skeleton-generator";
 
 export {
-  DAILY_DETAIL_GENERATOR_INSTRUCTIONS,
-  getDailyDetailPrompt,
-} from "./prompts/functions/daily-detail-generator";
+  CHUNK_DETAIL_GENERATOR_INSTRUCTIONS,
+  getChunkDetailPrompt,
+} from "./prompts/functions/chunk-detail-generator";
 
 // ============================================
 // Workflows
