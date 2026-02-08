@@ -25,6 +25,10 @@
           {
             "type": "command",
             "command": "npx eslint . --ext .ts,.tsx 2>&1 || { echo 'ESLint errors found' >&2; exit 2; }"
+          },
+          {
+            "type": "command",
+            "command": "npx prettier --check . 2>&1 || { echo 'Prettier formatting issues found' >&2; exit 2; }"
           }
         ]
       }
