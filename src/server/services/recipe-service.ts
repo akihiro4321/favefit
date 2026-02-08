@@ -5,10 +5,18 @@
 
 import { generateRecipeData, buildRecipePrompt } from "@/server/ai";
 import { getOrCreateUser } from "@/server/db/firestore/userRepository";
-import { getPlan, updateMealSlot, swapMeal } from "@/server/db/firestore/planRepository";
+import {
+  getPlan,
+  updateMealSlot,
+  swapMeal,
+} from "@/server/db/firestore/planRepository";
 import { MealSlot } from "@/lib/schema";
 import { addToHistory } from "@/server/db/firestore/recipeHistoryRepository";
-import { getRecipe, SavedRecipe, getSavedRecipes as getSavedRecipesRepo } from "@/server/db/firestore/recipeRepository";
+import {
+  getRecipe,
+  SavedRecipe,
+  getSavedRecipes as getSavedRecipesRepo,
+} from "@/server/db/firestore/recipeRepository";
 
 export interface GetRecipeDetailRequest {
   userId: string;
@@ -63,7 +71,8 @@ export async function getRecipeDetail(
     throw new Error("プランまたは指定された日付が見つかりません");
   }
 
-  const currentMeal = plan.days[date].meals[mealType as "breakfast" | "lunch" | "dinner"];
+  const currentMeal =
+    plan.days[date].meals[mealType as "breakfast" | "lunch" | "dinner"];
   if (!currentMeal) {
     throw new Error("指定された食事がプランに見つかりません");
   }
@@ -84,7 +93,7 @@ export async function getRecipeDetail(
   const prompt = await buildRecipePrompt(
     userDoc,
     currentMeal.title,
-    currentMeal.nutrition,
+    currentMeal.nutrition
   );
 
   const aiResult = await generateRecipeData(prompt);
@@ -141,7 +150,8 @@ export async function getSavedRecipes(
   const result = await getSavedRecipesRepo(userId, pageSize * page);
   const startIndex = (page - 1) * pageSize;
   const recipes = result.recipes.slice(startIndex, startIndex + pageSize);
-  const hasMore = result.hasMore || result.recipes.length > startIndex + pageSize;
+  const hasMore =
+    result.hasMore || result.recipes.length > startIndex + pageSize;
 
   return { recipes, hasMore, page };
 }
@@ -149,9 +159,7 @@ export async function getSavedRecipes(
 /**
  * レシピを差し替え
  */
-export async function swapMealRecipe(
-  request: SwapMealRequest
-): Promise<void> {
+export async function swapMealRecipe(request: SwapMealRequest): Promise<void> {
   const { planId, date, mealType, newMeal, userId } = request;
 
   const mealSlot: MealSlot = {

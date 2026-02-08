@@ -3,7 +3,10 @@
  */
 
 import { runPlanGenerator } from "../agents/plan-generator";
-import { MealPlanWorkflowInput, MealPlanWorkflowResult } from "../types/workflow";
+import {
+  MealPlanWorkflowInput,
+  MealPlanWorkflowResult,
+} from "../types/workflow";
 import { UserNutrition, UserProfile } from "@/lib/schema";
 import { dietBaselineService } from "../../services/diet-baseline-service";
 import { estimateDailyDietBaseline } from "../functions/diet-estimator";
@@ -12,7 +15,7 @@ import { estimateDailyDietBaseline } from "../functions/diet-estimator";
  * 食事プラン生成ワークフロー (メイン)
  */
 export async function generateMealPlan(
-  workflowInput: MealPlanWorkflowInput,
+  workflowInput: MealPlanWorkflowInput
 ): Promise<MealPlanWorkflowResult> {
   const { input, mealTargets } = workflowInput;
 
@@ -36,7 +39,7 @@ export async function generateMealPlan(
       },
     } as unknown as UserProfile,
     { dailyCalories: totalTargetCalories } as unknown as UserNutrition,
-    dietAnalysis.total.calories,
+    dietAnalysis.total.calories
   );
 
   console.log("[Workflow] Delegating to PlanGenerator Agent...");

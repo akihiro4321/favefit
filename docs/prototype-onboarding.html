@@ -1,111 +1,217 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FaveFit Onboarding Prototype</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .animate-fade-in { animation: fadeIn 0.3s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-        .tab-active { background-color: #FF8C00; color: white; border-color: #FF8C00; }
+      .animate-fade-in {
+        animation: fadeIn 0.3s ease-in-out;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .tab-active {
+        background-color: #ff8c00;
+        color: white;
+        border-color: #ff8c00;
+      }
     </style>
-</head>
-<body class="bg-gray-50 text-gray-900 font-sans">
-
-<div class="max-w-md mx-auto min-h-screen bg-white shadow-lg flex flex-col">
-    <!-- Header -->
-    <header class="p-6 border-b">
+  </head>
+  <body class="bg-gray-50 text-gray-900 font-sans">
+    <div class="max-w-md mx-auto min-h-screen bg-white shadow-lg flex flex-col">
+      <!-- Header -->
+      <header class="p-6 border-b">
         <div class="flex items-center gap-2 mb-2">
-            <span class="text-orange-500">✨</span>
-            <h1 class="text-xl font-bold">食事のこだわり設定</h1>
+          <span class="text-orange-500">✨</span>
+          <h1 class="text-xl font-bold">食事のこだわり設定</h1>
         </div>
         <p class="text-sm text-gray-500">各食事のスタイルを選択してください</p>
-    </header>
+      </header>
 
-    <main class="flex-1 p-6 space-y-8">
+      <main class="flex-1 p-6 space-y-8">
         <!-- Breakfast Slot -->
         <section class="space-y-4">
-            <div class="flex items-center gap-2">
-                <span class="bg-orange-100 text-orange-600 p-1 rounded">🌅</span>
-                <h2 class="font-bold">朝食</h2>
-            </div>
-            
-            <div class="flex p-1 bg-gray-100 rounded-lg">
-                <button onclick="setMode('breakfast', 'auto')" id="breakfast-auto-btn" class="flex-1 py-2 text-sm font-medium rounded-md tab-active">おまかせ</button>
-                <button onclick="setMode('breakfast', 'fixed')" id="breakfast-fixed-btn" class="flex-1 py-2 text-sm font-medium rounded-md text-gray-600">固定</button>
-                <button onclick="setMode('breakfast', 'custom')" id="breakfast-custom-btn" class="flex-1 py-2 text-sm font-medium rounded-md text-gray-600">こだわり</button>
-            </div>
+          <div class="flex items-center gap-2">
+            <span class="bg-orange-100 text-orange-600 p-1 rounded">🌅</span>
+            <h2 class="font-bold">朝食</h2>
+          </div>
 
-            <div id="breakfast-input-area" class="space-y-3 hidden animate-fade-in">
-                <label id="breakfast-label" class="text-xs font-bold text-gray-500 uppercase">メニューを入力</label>
-                <textarea id="breakfast-textarea" rows="2" class="w-full p-3 border rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-sm" placeholder="例: 納豆ご飯、味噌汁"></textarea>
-                <p id="breakfast-hint" class="text-[10px] text-gray-400">💡 指定されたメニューをベースに1日の栄養を調整します</p>
-            </div>
+          <div class="flex p-1 bg-gray-100 rounded-lg">
+            <button
+              onclick="setMode('breakfast', 'auto')"
+              id="breakfast-auto-btn"
+              class="flex-1 py-2 text-sm font-medium rounded-md tab-active"
+            >
+              おまかせ
+            </button>
+            <button
+              onclick="setMode('breakfast', 'fixed')"
+              id="breakfast-fixed-btn"
+              class="flex-1 py-2 text-sm font-medium rounded-md text-gray-600"
+            >
+              固定
+            </button>
+            <button
+              onclick="setMode('breakfast', 'custom')"
+              id="breakfast-custom-btn"
+              class="flex-1 py-2 text-sm font-medium rounded-md text-gray-600"
+            >
+              こだわり
+            </button>
+          </div>
+
+          <div
+            id="breakfast-input-area"
+            class="space-y-3 hidden animate-fade-in"
+          >
+            <label
+              id="breakfast-label"
+              class="text-xs font-bold text-gray-500 uppercase"
+              >メニューを入力</label
+            >
+            <textarea
+              id="breakfast-textarea"
+              rows="2"
+              class="w-full p-3 border rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-sm"
+              placeholder="例: 納豆ご飯、味噌汁"
+            ></textarea>
+            <p id="breakfast-hint" class="text-[10px] text-gray-400">
+              💡 指定されたメニューをベースに1日の栄養を調整します
+            </p>
+          </div>
         </section>
 
         <!-- Lunch Slot -->
         <section class="space-y-4">
-            <div class="flex items-center gap-2">
-                <span class="bg-blue-100 text-blue-600 p-1 rounded">☀️</span>
-                <h2 class="font-bold">昼食</h2>
-            </div>
-            
-            <div class="flex p-1 bg-gray-100 rounded-lg">
-                <button onclick="setMode('lunch', 'auto')" id="lunch-auto-btn" class="flex-1 py-2 text-sm font-medium rounded-md tab-active">おまかせ</button>
-                <button onclick="setMode('lunch', 'fixed')" id="lunch-fixed-btn" class="flex-1 py-2 text-sm font-medium rounded-md text-gray-600">固定</button>
-                <button onclick="setMode('lunch', 'custom')" id="lunch-custom-btn" class="flex-1 py-2 text-sm font-medium rounded-md text-gray-600">こだわり</button>
-            </div>
+          <div class="flex items-center gap-2">
+            <span class="bg-blue-100 text-blue-600 p-1 rounded">☀️</span>
+            <h2 class="font-bold">昼食</h2>
+          </div>
 
-            <div id="lunch-input-area" class="space-y-3 hidden animate-fade-in">
-                <label id="lunch-label" class="text-xs font-bold text-gray-500 uppercase">要望を入力</label>
-                <textarea id="lunch-textarea" rows="2" class="w-full p-3 border rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-sm" placeholder="例: コンビニのパスタ、社食の定食"></textarea>
-                <p id="lunch-hint" class="text-[10px] text-gray-400">💡 要望に合わせた献立をAIが提案します</p>
-            </div>
+          <div class="flex p-1 bg-gray-100 rounded-lg">
+            <button
+              onclick="setMode('lunch', 'auto')"
+              id="lunch-auto-btn"
+              class="flex-1 py-2 text-sm font-medium rounded-md tab-active"
+            >
+              おまかせ
+            </button>
+            <button
+              onclick="setMode('lunch', 'fixed')"
+              id="lunch-fixed-btn"
+              class="flex-1 py-2 text-sm font-medium rounded-md text-gray-600"
+            >
+              固定
+            </button>
+            <button
+              onclick="setMode('lunch', 'custom')"
+              id="lunch-custom-btn"
+              class="flex-1 py-2 text-sm font-medium rounded-md text-gray-600"
+            >
+              こだわり
+            </button>
+          </div>
+
+          <div id="lunch-input-area" class="space-y-3 hidden animate-fade-in">
+            <label
+              id="lunch-label"
+              class="text-xs font-bold text-gray-500 uppercase"
+              >要望を入力</label
+            >
+            <textarea
+              id="lunch-textarea"
+              rows="2"
+              class="w-full p-3 border rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-sm"
+              placeholder="例: コンビニのパスタ、社食の定食"
+            ></textarea>
+            <p id="lunch-hint" class="text-[10px] text-gray-400">
+              💡 要望に合わせた献立をAIが提案します
+            </p>
+          </div>
         </section>
 
         <!-- Dinner Slot -->
         <section class="space-y-4">
-            <div class="flex items-center gap-2">
-                <span class="bg-purple-100 text-purple-600 p-1 rounded">🌙</span>
-                <h2 class="font-bold">夕食</h2>
-            </div>
-            
-            <div class="flex p-1 bg-gray-100 rounded-lg">
-                <button onclick="setMode('dinner', 'auto')" id="dinner-auto-btn" class="flex-1 py-2 text-sm font-medium rounded-md tab-active">おまかせ</button>
-                <button onclick="setMode('dinner', 'fixed')" id="dinner-fixed-btn" class="flex-1 py-2 text-sm font-medium rounded-md text-gray-600">固定</button>
-                <button onclick="setMode('dinner', 'custom')" id="dinner-custom-btn" class="flex-1 py-2 text-sm font-medium rounded-md text-gray-600">こだわり</button>
-            </div>
+          <div class="flex items-center gap-2">
+            <span class="bg-purple-100 text-purple-600 p-1 rounded">🌙</span>
+            <h2 class="font-bold">夕食</h2>
+          </div>
 
-            <div id="dinner-input-area" class="space-y-3 hidden animate-fade-in">
-                <label id="dinner-label" class="text-xs font-bold text-gray-500 uppercase">要望を入力</label>
-                <textarea id="dinner-textarea" rows="2" class="w-full p-3 border rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-sm" placeholder="例: 200kcal以下のサラダのみ、炭水化物抜き"></textarea>
-                <p id="dinner-hint" class="text-[10px] text-gray-400">💡 軽くした分、他の食事で栄養を補填します</p>
-            </div>
+          <div class="flex p-1 bg-gray-100 rounded-lg">
+            <button
+              onclick="setMode('dinner', 'auto')"
+              id="dinner-auto-btn"
+              class="flex-1 py-2 text-sm font-medium rounded-md tab-active"
+            >
+              おまかせ
+            </button>
+            <button
+              onclick="setMode('dinner', 'fixed')"
+              id="dinner-fixed-btn"
+              class="flex-1 py-2 text-sm font-medium rounded-md text-gray-600"
+            >
+              固定
+            </button>
+            <button
+              onclick="setMode('dinner', 'custom')"
+              id="dinner-custom-btn"
+              class="flex-1 py-2 text-sm font-medium rounded-md text-gray-600"
+            >
+              こだわり
+            </button>
+          </div>
+
+          <div id="dinner-input-area" class="space-y-3 hidden animate-fade-in">
+            <label
+              id="dinner-label"
+              class="text-xs font-bold text-gray-500 uppercase"
+              >要望を入力</label
+            >
+            <textarea
+              id="dinner-textarea"
+              rows="2"
+              class="w-full p-3 border rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-sm"
+              placeholder="例: 200kcal以下のサラダのみ、炭水化物抜き"
+            ></textarea>
+            <p id="dinner-hint" class="text-[10px] text-gray-400">
+              💡 軽くした分、他の食事で栄養を補填します
+            </p>
+          </div>
         </section>
-    </main>
+      </main>
 
-    <!-- Footer -->
-    <footer class="p-6 border-t bg-gray-50">
-        <button class="w-full bg-orange-500 text-white font-bold py-4 rounded-full shadow-lg hover:bg-orange-600 transition-colors">
-            次へ進む
+      <!-- Footer -->
+      <footer class="p-6 border-t bg-gray-50">
+        <button
+          class="w-full bg-orange-500 text-white font-bold py-4 rounded-full shadow-lg hover:bg-orange-600 transition-colors"
+        >
+          次へ進む
         </button>
-    </footer>
-</div>
+      </footer>
+    </div>
 
-<script>
-    function setMode(meal, mode) {
+    <script>
+      function setMode(meal, mode) {
         // ボタンのスタイル更新
-        const modes = ['auto', 'fixed', 'custom'];
-        modes.forEach(m => {
-            const btn = document.getElementById(`${meal}-${m}-btn`);
-            if (m === mode) {
-                btn.classList.add('tab-active');
-                btn.classList.remove('text-gray-600');
-            } else {
-                btn.classList.remove('tab-active');
-                btn.classList.add('text-gray-600');
-            }
+        const modes = ["auto", "fixed", "custom"];
+        modes.forEach((m) => {
+          const btn = document.getElementById(`${meal}-${m}-btn`);
+          if (m === mode) {
+            btn.classList.add("tab-active");
+            btn.classList.remove("text-gray-600");
+          } else {
+            btn.classList.remove("tab-active");
+            btn.classList.add("text-gray-600");
+          }
         });
 
         // 入力エリアの表示制御
@@ -114,22 +220,22 @@
         const textarea = document.getElementById(`${meal}-textarea`);
         const hint = document.getElementById(`${meal}-hint`);
 
-        if (mode === 'auto') {
-            inputArea.classList.add('hidden');
+        if (mode === "auto") {
+          inputArea.classList.add("hidden");
         } else {
-            inputArea.classList.remove('hidden');
-            if (mode === 'fixed') {
-                label.innerText = '固定メニュー (要望があればお書きください)';
-                textarea.placeholder = '例: 納豆ご飯、味噌汁。ご飯の量は100g以下';
-                hint.innerText = '💡 指定されたメニューをベースに、要望を考慮して1日の栄養を調整します';
-            } else {
-                label.innerText = 'こだわり要望（自由入力）';
-                textarea.placeholder = '例: コンビニで買う、800kcal以下にする';
-                hint.innerText = '💡 要望に合わせた献立をAIが提案します';
-            }
+          inputArea.classList.remove("hidden");
+          if (mode === "fixed") {
+            label.innerText = "固定メニュー (要望があればお書きください)";
+            textarea.placeholder = "例: 納豆ご飯、味噌汁。ご飯の量は100g以下";
+            hint.innerText =
+              "💡 指定されたメニューをベースに、要望を考慮して1日の栄養を調整します";
+          } else {
+            label.innerText = "こだわり要望（自由入力）";
+            textarea.placeholder = "例: コンビニで買う、800kcal以下にする";
+            hint.innerText = "💡 要望に合わせた献立をAIが提案します";
+          }
         }
-    }
-</script>
-
-</body>
+      }
+    </script>
+  </body>
 </html>

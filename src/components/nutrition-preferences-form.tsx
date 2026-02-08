@@ -11,7 +11,9 @@ interface NutritionPreferencesFormProps {
     gainStrategy?: "lean" | "standard" | "aggressive";
     macroPreset?: "balanced" | "lowfat" | "lowcarb" | "highprotein";
   };
-  onFormChange: (updates: Partial<NutritionPreferencesFormProps["formData"]>) => void;
+  onFormChange: (
+    updates: Partial<NutritionPreferencesFormProps["formData"]>
+  ) => void;
   selectClassName?: string;
 }
 
@@ -29,7 +31,9 @@ export function NutritionPreferencesForm({
           <select
             className={selectClassName}
             value={formData.lossPaceKgPerMonth}
-            onChange={(e) => onFormChange({ lossPaceKgPerMonth: Number(e.target.value) })}
+            onChange={(e) =>
+              onFormChange({ lossPaceKgPerMonth: Number(e.target.value) })
+            }
           >
             <option value={0.5}>0.5 kg/月（ゆるめ）</option>
             <option value={1}>1.0 kg/月（標準）</option>
@@ -44,7 +48,11 @@ export function NutritionPreferencesForm({
           <select
             className={selectClassName}
             value={formData.maintenanceAdjustKcalPerDay}
-            onChange={(e) => onFormChange({ maintenanceAdjustKcalPerDay: Number(e.target.value) })}
+            onChange={(e) =>
+              onFormChange({
+                maintenanceAdjustKcalPerDay: Number(e.target.value),
+              })
+            }
           >
             <option value={-200}>-200（少し絞る）</option>
             <option value={-100}>-100（微減）</option>
@@ -62,7 +70,9 @@ export function NutritionPreferencesForm({
             <select
               className={selectClassName}
               value={formData.gainPaceKgPerMonth}
-              onChange={(e) => onFormChange({ gainPaceKgPerMonth: Number(e.target.value) })}
+              onChange={(e) =>
+                onFormChange({ gainPaceKgPerMonth: Number(e.target.value) })
+              }
             >
               <option value={0.25}>0.25 kg/月（ゆっくり）</option>
               <option value={0.5}>0.5 kg/月（標準）</option>
@@ -75,7 +85,12 @@ export function NutritionPreferencesForm({
               className={selectClassName}
               value={formData.gainStrategy}
               onChange={(e) =>
-                onFormChange({ gainStrategy: e.target.value as "lean" | "standard" | "aggressive" })
+                onFormChange({
+                  gainStrategy: e.target.value as
+                    | "lean"
+                    | "standard"
+                    | "aggressive",
+                })
               }
             >
               <option value="lean">リーン（脂肪増を抑えたい）</option>
@@ -93,7 +108,11 @@ export function NutritionPreferencesForm({
           value={formData.macroPreset}
           onChange={(e) =>
             onFormChange({
-              macroPreset: e.target.value as "balanced" | "lowfat" | "lowcarb" | "highprotein",
+              macroPreset: e.target.value as
+                | "balanced"
+                | "lowfat"
+                | "lowcarb"
+                | "highprotein",
             })
           }
         >

@@ -79,13 +79,15 @@ export type SingleMeal = z.infer<typeof SingleMealSchema>;
 /**
  * エージェント実行結果の型
  */
-export type AgentResult<T> = {
-  success: true;
-  data: T;
-} | {
-  success: false;
-  error: string;
-};
+export type AgentResult<T> =
+  | {
+      success: true;
+      data: T;
+    }
+  | {
+      success: false;
+      error: string;
+    };
 
 /**
  * 成功結果を作成

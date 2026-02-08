@@ -34,11 +34,16 @@ export interface ShoppingListNormalizerInput {
   fridgeItems: IngredientItem[];
 }
 
-export function getShoppingListNormalizerPrompt(input: ShoppingListNormalizerInput) {
-  const ingredientsText = input.ingredients.map(i => `- ${i.name}: ${i.amount}`).join('\n');
-  const fridgeText = input.fridgeItems.length > 0 
-    ? input.fridgeItems.map(f => `- ${f.name}: ${f.amount}`).join('\n') 
-    : '特になし';
+export function getShoppingListNormalizerPrompt(
+  input: ShoppingListNormalizerInput
+) {
+  const ingredientsText = input.ingredients
+    .map((i) => `- ${i.name}: ${i.amount}`)
+    .join("\n");
+  const fridgeText =
+    input.fridgeItems.length > 0
+      ? input.fridgeItems.map((f) => `- ${f.name}: ${f.amount}`).join("\n")
+      : "特になし";
 
   return `
 以下の食材リストを、買い物をしやすいように正規化して集計してください。

@@ -17,12 +17,12 @@ export async function callModelWithSchema<TSchema extends z.ZodType>(
   instructions: string,
   prompt: string,
   schema: TSchema,
-  model: string,
+  model: string
 ): Promise<z.infer<TSchema>> {
   // JSON Schema 生成 (Gemini は $ref をサポートしていないため、参照を無効化してインライン展開する)
-  const jsonSchema = zodToJsonSchema(schema, { 
+  const jsonSchema = zodToJsonSchema(schema, {
     target: "openApi3",
-    $refStrategy: "none" 
+    $refStrategy: "none",
   });
 
   try {
@@ -80,7 +80,7 @@ export async function callModelWithSchema<TSchema extends z.ZodType>(
  */
 export function formatPreferences(
   cuisines?: Record<string, number>,
-  flavorProfile?: Record<string, number>,
+  flavorProfile?: Record<string, number>
 ): string {
   const topCuisines = formatTopEntries(cuisines, 3);
   const topFlavors = formatTopEntries(flavorProfile, 3);
@@ -93,7 +93,7 @@ export function formatPreferences(
  */
 function formatTopEntries(
   record: Record<string, number> | undefined,
-  n: number,
+  n: number
 ): string {
   if (!record) return "";
 
@@ -109,7 +109,7 @@ function formatTopEntries(
  */
 export function formatArray(
   arr: string[] | undefined,
-  fallback = "特になし",
+  fallback = "特になし"
 ): string {
   return arr && arr.length > 0 ? arr.join(", ") : fallback;
 }

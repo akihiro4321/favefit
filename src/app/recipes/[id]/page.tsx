@@ -1,13 +1,19 @@
-'use client';
+"use client";
 
-import { useAuth } from '@/components/auth-provider';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { Separator } from '@/components/ui/separator';
-import { ChevronLeft, Clock, Flame, Loader2, UtensilsCrossed } from 'lucide-react';
-import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useAuth } from "@/components/auth-provider";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
+import {
+  ChevronLeft,
+  Clock,
+  Flame,
+  Loader2,
+  UtensilsCrossed,
+} from "lucide-react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 interface SavedRecipe {
   id: string;
@@ -28,7 +34,7 @@ export default function RecipeDetailPage() {
   const { id } = useParams() as { id: string };
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  
+
   const [recipe, setRecipe] = useState<SavedRecipe | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -37,20 +43,20 @@ export default function RecipeDetailPage() {
       if (user && id) {
         setLoading(true);
         try {
-          const response = await fetch('/api/recipe/get-saved', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+          const response = await fetch("/api/recipe/get-saved", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ userId: user.uid, recipeId: id }),
           });
 
           if (!response.ok) {
-            throw new Error('Failed to fetch recipe');
+            throw new Error("Failed to fetch recipe");
           }
 
           const result = await response.json();
           setRecipe(result.data.recipe);
         } catch (error) {
-          console.error('Error loading recipe:', error);
+          console.error("Error loading recipe:", error);
           setRecipe(null);
         } finally {
           setLoading(false);
@@ -59,7 +65,7 @@ export default function RecipeDetailPage() {
     }
     if (!authLoading) {
       if (!user) {
-        router.push('/');
+        router.push("/");
       } else {
         loadRecipe();
       }
@@ -78,7 +84,9 @@ export default function RecipeDetailPage() {
   if (!recipe) {
     return (
       <div className="flex flex-col items-center justify-center py-20 space-y-4">
-        <p className="text-xl font-medium text-muted-foreground">レシピが見つかりませんでした。</p>
+        <p className="text-xl font-medium text-muted-foreground">
+          レシピが見つかりませんでした。
+        </p>
         <Button asChild variant="outline">
           <Link href="/recipes">一覧に戻る</Link>
         </Button>
@@ -87,10 +95,14 @@ export default function RecipeDetailPage() {
   }
 
   // PFCバランスの計算
-  const totalGrams = recipe.nutrition.protein + recipe.nutrition.fat + recipe.nutrition.carbs;
-  const proteinPercent = totalGrams > 0 ? (recipe.nutrition.protein / totalGrams) * 100 : 0;
-  const fatPercent = totalGrams > 0 ? (recipe.nutrition.fat / totalGrams) * 100 : 0;
-  const carbPercent = totalGrams > 0 ? (recipe.nutrition.carbs / totalGrams) * 100 : 0;
+  const totalGrams =
+    recipe.nutrition.protein + recipe.nutrition.fat + recipe.nutrition.carbs;
+  const proteinPercent =
+    totalGrams > 0 ? (recipe.nutrition.protein / totalGrams) * 100 : 0;
+  const fatPercent =
+    totalGrams > 0 ? (recipe.nutrition.fat / totalGrams) * 100 : 0;
+  const carbPercent =
+    totalGrams > 0 ? (recipe.nutrition.carbs / totalGrams) * 100 : 0;
 
   return (
     <div className="max-w-3xl mx-auto pb-20">
@@ -101,7 +113,9 @@ export default function RecipeDetailPage() {
             <ChevronLeft className="h-6 w-6" />
           </Link>
         </Button>
-        <h1 className="text-lg md:text-xl font-bold line-clamp-1">{recipe.title}</h1>
+        <h1 className="text-lg md:text-xl font-bold line-clamp-1">
+          {recipe.title}
+        </h1>
       </div>
 
       <div className="space-y-6 md:space-y-8">
@@ -115,11 +129,15 @@ export default function RecipeDetailPage() {
           <div className="flex gap-4 md:gap-6 items-center bg-muted/30 p-3 md:p-4 rounded-xl">
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 md:h-5 md:w-5 text-primary" />
-              <span className="font-medium text-sm md:text-base">{recipe.cookingTime}分</span>
+              <span className="font-medium text-sm md:text-base">
+                {recipe.cookingTime}分
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <Flame className="h-4 w-4 md:h-5 md:w-5 text-secondary" />
-              <span className="font-medium text-sm md:text-base">{recipe.nutrition.calories}kcal</span>
+              <span className="font-medium text-sm md:text-base">
+                {recipe.nutrition.calories}kcal
+              </span>
             </div>
           </div>
         </section>
@@ -138,14 +156,20 @@ export default function RecipeDetailPage() {
                 <span>タンパク質 (P)</span>
                 <span className="font-medium">{recipe.nutrition.protein}g</span>
               </div>
-              <Progress value={proteinPercent} className="h-2 bg-muted [&>div]:bg-primary" />
+              <Progress
+                value={proteinPercent}
+                className="h-2 bg-muted [&>div]:bg-primary"
+              />
             </div>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span>脂質 (F)</span>
                 <span className="font-medium">{recipe.nutrition.fat}g</span>
               </div>
-              <Progress value={fatPercent} className="h-2 bg-muted [&>div]:bg-secondary" />
+              <Progress
+                value={fatPercent}
+                className="h-2 bg-muted [&>div]:bg-secondary"
+              />
             </div>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
@@ -166,7 +190,9 @@ export default function RecipeDetailPage() {
             {recipe.ingredients.map((ing, i) => (
               <li key={i} className="flex justify-between p-4">
                 <span>{ing.name}</span>
-                <span className="text-muted-foreground font-medium">{ing.amount}</span>
+                <span className="text-muted-foreground font-medium">
+                  {ing.amount}
+                </span>
               </li>
             ))}
           </ul>
@@ -181,9 +207,7 @@ export default function RecipeDetailPage() {
                 <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">
                   {i + 1}
                 </div>
-                <p className="pt-1 text-foreground leading-relaxed">
-                  {step}
-                </p>
+                <p className="pt-1 text-foreground leading-relaxed">{step}</p>
               </div>
             ))}
           </div>

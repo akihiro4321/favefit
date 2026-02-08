@@ -30,7 +30,7 @@ JSONを出力する前に、以下の順序で論理的に計画を立ててく�
 
 export function getPlanSkeletonPrompt(
   input: PlanGeneratorInput,
-  duration: number = 7,
+  duration: number = 7
 ) {
   const fridgeInfo =
     input.fridgeIngredients && input.fridgeIngredients.length > 0

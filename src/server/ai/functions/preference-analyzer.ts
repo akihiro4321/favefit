@@ -40,17 +40,17 @@ export const PreferenceLearnerOutputSchema = z.object({
       z.object({
         category: z.string(),
         score: z.number(),
-      }),
+      })
     )
     .describe(
-      "ジャンルごとのスコア変動 (例: [{ category: 'japanese', score: 5 }])",
+      "ジャンルごとのスコア変動 (例: [{ category: 'japanese', score: 5 }])"
     ),
   flavorUpdates: z
     .array(
       z.object({
         flavor: z.string(),
         score: z.number(),
-      }),
+      })
     )
     .describe("味付けごとのスコア変動 (例: [{ flavor: 'spicy', score: 3 }])"),
   summary: z.string().describe("学習内容の要約"),
@@ -85,12 +85,12 @@ import { GEMINI_3_FLASH_MODEL } from "../config";
  * Preference Analysis を実行
  */
 export async function analyzePreferenceData(
-  prompt: string,
+  prompt: string
 ): Promise<PreferenceLearnerOutput> {
   return callModelWithSchema(
     PREFERENCE_LEARNER_INSTRUCTIONS,
     prompt,
     PreferenceLearnerOutputSchema,
-    GEMINI_3_FLASH_MODEL,
+    GEMINI_3_FLASH_MODEL
   );
 }

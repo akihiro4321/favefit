@@ -55,14 +55,13 @@ export interface Feedback {
 /**
  * Firestore 用の汎用データコンバーター
  */
-const createConverter = <T extends DocumentData>(): FirestoreDataConverter<T> => ({
+const createConverter = <
+  T extends DocumentData,
+>(): FirestoreDataConverter<T> => ({
   toFirestore(data: T): DocumentData {
     return data;
   },
-  fromFirestore(
-    snapshot: QueryDocumentSnapshot,
-    options: SnapshotOptions
-  ): T {
+  fromFirestore(snapshot: QueryDocumentSnapshot, options: SnapshotOptions): T {
     return snapshot.data(options) as T;
   },
 });
@@ -85,7 +84,11 @@ export const COLLECTIONS = {
 export const getCollection = <T extends DocumentData>(
   ...pathSegments: string[]
 ): CollectionReference<T> => {
-  return collection(db, pathSegments[0], ...pathSegments.slice(1)).withConverter(createConverter<T>());
+  return collection(
+    db,
+    pathSegments[0],
+    ...pathSegments.slice(1)
+  ).withConverter(createConverter<T>());
 };
 
 /**
@@ -94,7 +97,9 @@ export const getCollection = <T extends DocumentData>(
 export const getDocRef = <T extends DocumentData>(
   ...pathSegments: string[]
 ): DocumentReference<T> => {
-  return doc(db, pathSegments[0], ...pathSegments.slice(1)).withConverter(createConverter<T>());
+  return doc(db, pathSegments[0], ...pathSegments.slice(1)).withConverter(
+    createConverter<T>()
+  );
 };
 
 /**
@@ -103,21 +108,31 @@ export const getDocRef = <T extends DocumentData>(
 export const collections = {
   users: getCollection<UserDocument>(COLLECTIONS.USERS),
   plans: getCollection<PlanDocument>(COLLECTIONS.PLANS),
-  shoppingLists: getCollection<ShoppingListDocument>(COLLECTIONS.SHOPPING_LISTS),
+  shoppingLists: getCollection<ShoppingListDocument>(
+    COLLECTIONS.SHOPPING_LISTS
+  ),
   marketPrices: getCollection<MarketPriceDocument>(COLLECTIONS.MARKET_PRICES),
-  
+
   // サブコレクションへの参照を生成する関数
-  recipeHistory: (userId: string) => 
-    getCollection<RecipeHistoryItem>(COLLECTIONS.RECIPE_HISTORY, userId, "recipes"),
-    
-  favoriteRecipes: (userId: string) => 
-    getCollection<FavoriteRecipe>(COLLECTIONS.FAVORITE_RECIPES, userId, "recipes"),
+  recipeHistory: (userId: string) =>
+    getCollection<RecipeHistoryItem>(
+      COLLECTIONS.RECIPE_HISTORY,
+      userId,
+      "recipes"
+    ),
+
+  favoriteRecipes: (userId: string) =>
+    getCollection<FavoriteRecipe>(
+      COLLECTIONS.FAVORITE_RECIPES,
+      userId,
+      "recipes"
+    ),
 
   // ユーザー配下の固有データ
-  userRecipes: (userId: string) => 
+  userRecipes: (userId: string) =>
     getCollection<SavedRecipe>(COLLECTIONS.USERS, userId, "recipes"),
-    
-  userFeedbacks: (userId: string) => 
+
+  userFeedbacks: (userId: string) =>
     getCollection<Feedback>(COLLECTIONS.USERS, userId, "feedbacks"),
 };
 
@@ -127,16 +142,28 @@ export const collections = {
 export const docRefs = {
   user: (userId: string) => getDocRef<UserDocument>(COLLECTIONS.USERS, userId),
   plan: (planId: string) => getDocRef<PlanDocument>(COLLECTIONS.PLANS, planId),
-  recipeHistoryItem: (userId: string, recipeId: string) => 
-    getDocRef<RecipeHistoryItem>(COLLECTIONS.RECIPE_HISTORY, userId, "recipes", recipeId),
-  favoriteRecipe: (userId: string, recipeId: string) => 
-    getDocRef<FavoriteRecipe>(COLLECTIONS.FAVORITE_RECIPES, userId, "recipes", recipeId),
-  shoppingList: (listId: string) => getDocRef<ShoppingListDocument>(COLLECTIONS.SHOPPING_LISTS, listId),
-  marketPrices: () => getDocRef<MarketPriceDocument>(COLLECTIONS.MARKET_PRICES, "latest"),
-  
-  userRecipe: (userId: string, recipeId: string) => 
+  recipeHistoryItem: (userId: string, recipeId: string) =>
+    getDocRef<RecipeHistoryItem>(
+      COLLECTIONS.RECIPE_HISTORY,
+      userId,
+      "recipes",
+      recipeId
+    ),
+  favoriteRecipe: (userId: string, recipeId: string) =>
+    getDocRef<FavoriteRecipe>(
+      COLLECTIONS.FAVORITE_RECIPES,
+      userId,
+      "recipes",
+      recipeId
+    ),
+  shoppingList: (listId: string) =>
+    getDocRef<ShoppingListDocument>(COLLECTIONS.SHOPPING_LISTS, listId),
+  marketPrices: () =>
+    getDocRef<MarketPriceDocument>(COLLECTIONS.MARKET_PRICES, "latest"),
+
+  userRecipe: (userId: string, recipeId: string) =>
     getDocRef<SavedRecipe>(COLLECTIONS.USERS, userId, "recipes", recipeId),
-    
-  userFeedback: (userId: string, feedbackId: string) => 
+
+  userFeedback: (userId: string, feedbackId: string) =>
     getDocRef<Feedback>(COLLECTIONS.USERS, userId, "feedbacks", feedbackId),
 };

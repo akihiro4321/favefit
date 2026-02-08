@@ -10,7 +10,7 @@ export const DIET_BASELINE_ESTIMATOR_INSTRUCTIONS = `あなたはプロの管理
  * 1日の食事内容から栄養価を推定するためのプロンプト生成
  */
 export const getDailyDietBaselinePrompt = (
-  currentDiet?: UserProfile["lifestyle"]["currentDiet"],
+  currentDiet?: UserProfile["lifestyle"]["currentDiet"]
 ) => `
 以下の1日の食事内容から、それぞれのスロットごとのおおよその栄養価（カロリー、タンパク質、脂質、炭水化物）を推定してください。
 

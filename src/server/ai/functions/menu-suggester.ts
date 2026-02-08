@@ -19,7 +19,9 @@ import {
  * 入力スキーマ
  */
 export const MenuAdjusterInputSchema = z.object({
-  availableIngredients: z.array(IngredientItemSchema).describe("手元にある食材リスト（分量込み）"),
+  availableIngredients: z
+    .array(IngredientItemSchema)
+    .describe("手元にある食材リスト（分量込み）"),
   targetNutrition: NutritionValuesSchema.describe("本日の残り目標栄養素"),
   userComment: z
     .string()
@@ -79,12 +81,12 @@ import { GEMINI_3_FLASH_MODEL } from "../config";
  * Menu Suggestions を生成
  */
 export async function generateMenuSuggestions(
-  prompt: string,
+  prompt: string
 ): Promise<MenuAdjusterOutput> {
   return callModelWithSchema(
     MENU_ADJUSTER_INSTRUCTIONS,
     prompt,
     MenuAdjusterOutputSchema,
-    GEMINI_3_FLASH_MODEL,
+    GEMINI_3_FLASH_MODEL
   );
 }

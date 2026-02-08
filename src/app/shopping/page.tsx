@@ -39,9 +39,9 @@ export default function ShoppingPage() {
     const fetchData = async () => {
       if (!user) return;
       try {
-        const planRes = await fetch('/api/plan/get-active', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const planRes = await fetch("/api/plan/get-active", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId: user.uid }),
         });
         const planData = await planRes.json();
@@ -53,9 +53,9 @@ export default function ShoppingPage() {
           setPlanDuration(daysCount);
 
           // カテゴリ別表示用のアイテム取得
-          const itemsRes = await fetch('/api/shopping/get-by-category', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+          const itemsRes = await fetch("/api/shopping/get-by-category", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ planId: plan.id }),
           });
           const itemsData = await itemsRes.json();
@@ -85,7 +85,10 @@ export default function ShoppingPage() {
     setItemsByCategory((prev) => {
       const updated = { ...prev };
       updated[category] = [...updated[category]];
-      updated[category][indexInItems] = { ...updated[category][indexInItems], checked };
+      updated[category][indexInItems] = {
+        ...updated[category][indexInItems],
+        checked,
+      };
       return updated;
     });
 
@@ -93,9 +96,9 @@ export default function ShoppingPage() {
       // getShoppingList を使用して、全アイテムの中での正しいインデックスを見つける必要がある
       // もしくは toggleItemCheck をカテゴリベースのAPIにアップグレードするのが理想的だが、
       // ここでは既存のAPIに合わせて、全アイテム内のインデックスを計算する
-      const listRes = await fetch('/api/shopping/get-list', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const listRes = await fetch("/api/shopping/get-list", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ planId }),
       });
       const listData = await listRes.json();
@@ -104,13 +107,15 @@ export default function ShoppingPage() {
       if (list) {
         const itemToUpdate = itemsByCategory[category][indexInItems];
         const globalIndex = list.items.findIndex(
-          (i: ShoppingItem) => i.ingredient === itemToUpdate.ingredient && i.amount === itemToUpdate.amount
+          (i: ShoppingItem) =>
+            i.ingredient === itemToUpdate.ingredient &&
+            i.amount === itemToUpdate.amount
         );
 
         if (globalIndex !== -1) {
-          await fetch('/api/shopping/toggle-item', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+          await fetch("/api/shopping/toggle-item", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ planId, itemIndex: globalIndex, checked }),
           });
         }
@@ -215,7 +220,10 @@ export default function ShoppingPage() {
               const categoryChecked = items.filter((i) => i.checked).length;
 
               return (
-                <div key={category} className="border-l-2 border-primary/20 pl-4 py-1">
+                <div
+                  key={category}
+                  className="border-l-2 border-primary/20 pl-4 py-1"
+                >
                   <div
                     className="flex items-center justify-between cursor-pointer select-none py-2"
                     onClick={() => toggleCategory(category)}
@@ -273,4 +281,3 @@ export default function ShoppingPage() {
     </div>
   );
 }
-

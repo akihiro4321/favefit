@@ -38,7 +38,11 @@ export function PreferenceForm({
   const handleSave = async () => {
     // バリデーション
     const diet = localProfile.lifestyle?.currentDiet;
-    if (!diet?.breakfast?.trim() || !diet?.lunch?.trim() || !diet?.dinner?.trim()) {
+    if (
+      !diet?.breakfast?.trim() ||
+      !diet?.lunch?.trim() ||
+      !diet?.dinner?.trim()
+    ) {
       alert("いつもの食事（朝食・昼食・夕食）を入力してください。");
       return;
     }
@@ -47,18 +51,20 @@ export function PreferenceForm({
     setSuccess(false);
 
     try {
-      await fetch('/api/user/update-profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      await fetch("/api/user/update-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId,
           profileData: {
             physical: {
-              favoriteIngredients: localProfile.physical?.favoriteIngredients || [],
+              favoriteIngredients:
+                localProfile.physical?.favoriteIngredients || [],
               allergies: localProfile.physical?.allergies || [],
             },
             lifestyle: {
-              cookingSkillLevel: localProfile.lifestyle?.cookingSkillLevel || "intermediate",
+              cookingSkillLevel:
+                localProfile.lifestyle?.cookingSkillLevel || "intermediate",
               availableTime: localProfile.lifestyle?.availableTime || "medium",
               currentDiet: {
                 breakfast: localProfile.lifestyle?.currentDiet?.breakfast || "",
@@ -82,7 +88,11 @@ export function PreferenceForm({
     }
   };
 
-  const addTag = (type: "favorite" | "allergy", value: string, setter: (val: string) => void) => {
+  const addTag = (
+    type: "favorite" | "allergy",
+    value: string,
+    setter: (val: string) => void
+  ) => {
     if (!value.trim()) return;
     const cleanValue = value.trim();
 
@@ -119,9 +129,8 @@ export function PreferenceForm({
       ...prev,
       physical: {
         ...prev.physical,
-        [type === "favorite" ? "favoriteIngredients" : "allergies"]: currentList.filter(
-          (_: string, i: number) => i !== index
-        ),
+        [type === "favorite" ? "favoriteIngredients" : "allergies"]:
+          currentList.filter((_: string, i: number) => i !== index),
       },
     }));
   };
@@ -153,27 +162,31 @@ export function PreferenceForm({
             <Button
               size="icon"
               variant="secondary"
-              onClick={() => addTag("favorite", inputFavorite, setInputFavorite)}
+              onClick={() =>
+                addTag("favorite", inputFavorite, setInputFavorite)
+              }
             >
               <Plus className="h-4 w-4" />
             </Button>
           </div>
           <div className="flex flex-wrap gap-2 min-h-[24px]">
-            {(localProfile.physical.favoriteIngredients || []).map((tag: string, i: number) => (
-              <Badge
-                key={i}
-                variant="default"
-                className="gap-1 pr-1 bg-green-600 hover:bg-green-700"
-              >
-                {tag}
-                <button
-                  onClick={() => removeTag("favorite", i)}
-                  className="hover:text-red-200"
+            {(localProfile.physical.favoriteIngredients || []).map(
+              (tag: string, i: number) => (
+                <Badge
+                  key={i}
+                  variant="default"
+                  className="gap-1 pr-1 bg-green-600 hover:bg-green-700"
                 >
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            ))}
+                  {tag}
+                  <button
+                    onClick={() => removeTag("favorite", i)}
+                    className="hover:text-red-200"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )
+            )}
           </div>
         </div>
 
@@ -204,14 +217,16 @@ export function PreferenceForm({
             </Button>
           </div>
           <div className="flex flex-wrap gap-2 min-h-[24px]">
-            {(localProfile.physical.allergies || []).map((tag: string, i: number) => (
-              <Badge key={i} variant="destructive" className="gap-1 pr-1">
-                {tag}
-                <button onClick={() => removeTag("allergy", i)}>
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            ))}
+            {(localProfile.physical.allergies || []).map(
+              (tag: string, i: number) => (
+                <Badge key={i} variant="destructive" className="gap-1 pr-1">
+                  {tag}
+                  <button onClick={() => removeTag("allergy", i)}>
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )
+            )}
           </div>
         </div>
 
@@ -226,7 +241,10 @@ export function PreferenceForm({
                   ...localProfile,
                   lifestyle: {
                     ...localProfile.lifestyle,
-                    cookingSkillLevel: e.target.value as "beginner" | "intermediate" | "advanced",
+                    cookingSkillLevel: e.target.value as
+                      | "beginner"
+                      | "intermediate"
+                      | "advanced",
                   },
                 })
               }
@@ -246,7 +264,10 @@ export function PreferenceForm({
                   ...localProfile,
                   lifestyle: {
                     ...localProfile.lifestyle,
-                    availableTime: e.target.value as "short" | "medium" | "long",
+                    availableTime: e.target.value as
+                      | "short"
+                      | "medium"
+                      | "long",
                   },
                 })
               }
@@ -260,49 +281,72 @@ export function PreferenceForm({
 
         {/* いつもの食事 */}
         <div className="space-y-4 pt-4 border-t">
-          <h3 className="text-sm font-bold">いつもの食事 (適応型プランの基準)</h3>
+          <h3 className="text-sm font-bold">
+            いつもの食事 (適応型プランの基準)
+          </h3>
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <Label className="text-xs">朝食 <span className="text-red-500">(必須)</span></Label>
+              <Label className="text-xs">
+                朝食 <span className="text-red-500">(必須)</span>
+              </Label>
               <Input
                 value={localProfile.lifestyle.currentDiet?.breakfast || ""}
-                onChange={(e) => setLocalProfile({
-                  ...localProfile,
-                  lifestyle: {
-                    ...localProfile.lifestyle,
-                    currentDiet: { ...localProfile.lifestyle.currentDiet, breakfast: e.target.value }
-                  }
-                })}
+                onChange={(e) =>
+                  setLocalProfile({
+                    ...localProfile,
+                    lifestyle: {
+                      ...localProfile.lifestyle,
+                      currentDiet: {
+                        ...localProfile.lifestyle.currentDiet,
+                        breakfast: e.target.value,
+                      },
+                    },
+                  })
+                }
                 placeholder="例: トースト、コーヒー"
                 className="text-sm"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">昼食 <span className="text-red-500">(必須)</span></Label>
+              <Label className="text-xs">
+                昼食 <span className="text-red-500">(必須)</span>
+              </Label>
               <Input
                 value={localProfile.lifestyle.currentDiet?.lunch || ""}
-                onChange={(e) => setLocalProfile({
-                  ...localProfile,
-                  lifestyle: {
-                    ...localProfile.lifestyle,
-                    currentDiet: { ...localProfile.lifestyle.currentDiet, lunch: e.target.value }
-                  }
-                })}
+                onChange={(e) =>
+                  setLocalProfile({
+                    ...localProfile,
+                    lifestyle: {
+                      ...localProfile.lifestyle,
+                      currentDiet: {
+                        ...localProfile.lifestyle.currentDiet,
+                        lunch: e.target.value,
+                      },
+                    },
+                  })
+                }
                 placeholder="例: コンビニのお弁当"
                 className="text-sm"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">夕食 <span className="text-red-500">(必須)</span></Label>
+              <Label className="text-xs">
+                夕食 <span className="text-red-500">(必須)</span>
+              </Label>
               <Input
                 value={localProfile.lifestyle.currentDiet?.dinner || ""}
-                onChange={(e) => setLocalProfile({
-                  ...localProfile,
-                  lifestyle: {
-                    ...localProfile.lifestyle,
-                    currentDiet: { ...localProfile.lifestyle.currentDiet, dinner: e.target.value }
-                  }
-                })}
+                onChange={(e) =>
+                  setLocalProfile({
+                    ...localProfile,
+                    lifestyle: {
+                      ...localProfile.lifestyle,
+                      currentDiet: {
+                        ...localProfile.lifestyle.currentDiet,
+                        dinner: e.target.value,
+                      },
+                    },
+                  })
+                }
                 placeholder="例: 自炊（ご飯、一汁三菜）"
                 className="text-sm"
               />
@@ -311,13 +355,18 @@ export function PreferenceForm({
               <Label className="text-xs">間食</Label>
               <Input
                 value={localProfile.lifestyle.currentDiet?.snack || ""}
-                onChange={(e) => setLocalProfile({
-                  ...localProfile,
-                  lifestyle: {
-                    ...localProfile.lifestyle,
-                    currentDiet: { ...localProfile.lifestyle.currentDiet, snack: e.target.value }
-                  }
-                })}
+                onChange={(e) =>
+                  setLocalProfile({
+                    ...localProfile,
+                    lifestyle: {
+                      ...localProfile.lifestyle,
+                      currentDiet: {
+                        ...localProfile.lifestyle.currentDiet,
+                        snack: e.target.value,
+                      },
+                    },
+                  })
+                }
                 placeholder="例: ナッツ、特に食べない"
                 className="text-sm"
               />

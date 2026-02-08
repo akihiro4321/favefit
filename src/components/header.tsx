@@ -1,26 +1,29 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { User, Bug } from 'lucide-react';
-import { useAuth } from './auth-provider';
-import { usePathname } from 'next/navigation';
+import Link from "next/link";
+import { User, Bug } from "lucide-react";
+import { useAuth } from "./auth-provider";
+import { usePathname } from "next/navigation";
 
 export function Header() {
   const { user, loading } = useAuth();
   const pathname = usePathname();
 
   // トップページ（LP）ではヘッダーを表示しない
-  if (pathname === '/') {
+  if (pathname === "/") {
     return null;
   }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b-4 border-primary/30 bg-gradient-to-r from-background via-background/98 to-background backdrop-blur supports-[backdrop-filter]:bg-background/80 shadow-lg">
       <div className="container flex h-16 items-center justify-between px-6 max-w-screen-md mx-auto">
-        <Link href="/home" className="font-extrabold text-2xl text-primary tracking-tight hover:text-primary/80 transition-colors">
+        <Link
+          href="/home"
+          className="font-extrabold text-2xl text-primary tracking-tight hover:text-primary/80 transition-colors"
+        >
           FaveFit
         </Link>
-        
+
         <div className="flex items-center gap-2">
           {/* Debug Button */}
           <Link
@@ -40,9 +43,13 @@ export function Header() {
             >
               <User className="h-4 w-4" />
               <span>
-                {user.isAnonymous 
-                  ? 'ゲスト' 
-                  : (user.displayName || user.providerData?.find(p => p.displayName)?.displayName || user.email || 'ユーザー')}
+                {user.isAnonymous
+                  ? "ゲスト"
+                  : user.displayName ||
+                    user.providerData?.find((p) => p.displayName)
+                      ?.displayName ||
+                    user.email ||
+                    "ユーザー"}
               </span>
             </Link>
           ) : (

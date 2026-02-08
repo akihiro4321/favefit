@@ -18,15 +18,15 @@
   --card-foreground: #1e293b;
   --popover: #ffffff;
   --popover-foreground: #1e293b;
-  
+
   /* Primary: Fresh Orange */
   --primary: #f97316;
   --primary-foreground: #ffffff;
-  
+
   /* Secondary: Lime Green */
   --secondary: #a3e635;
   --secondary-foreground: #1e293b;
-  
+
   --muted: #f7fee7;
   --muted-foreground: #65a30d;
   --accent: #fef3c7;
@@ -35,14 +35,14 @@
   --border: #fde68a;
   --input: #fff7ed;
   --ring: #f97316;
-  
+
   /* Charts */
   --chart-1: #f97316;
   --chart-2: #a3e635;
   --chart-3: #fbbf24;
   --chart-4: #84cc16;
   --chart-5: #fb923c;
-  
+
   /* Sidebar */
   --sidebar: #fffcf9;
   --sidebar-foreground: #1e293b;
@@ -103,20 +103,32 @@
 
 /* Custom animations for Pop & Active theme */
 @keyframes pop-in {
-  0% { transform: scale(0.95); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 @keyframes slide-up {
-  0% { transform: translateY(10px); opacity: 0; }
-  100% { transform: translateY(0); opacity: 1; }
+  0% {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 @layer utilities {
   .animate-pop-in {
     animation: pop-in 0.3s ease-out;
   }
-  
+
   .animate-slide-up {
     animation: slide-up 0.3s ease-out;
   }

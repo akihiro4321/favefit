@@ -16,7 +16,7 @@ import {
   getOrCreateUser,
   updateUserProfile as updateUserProfileRepo,
   completeOnboarding as completeOnboardingRepo,
-  setPlanCreating as setPlanCreatingRepo
+  setPlanCreating as setPlanCreatingRepo,
 } from "@/server/db/firestore/userRepository";
 import { getHistoryItem } from "@/server/db/firestore/recipeHistoryRepository";
 import { calculatePersonalizedMacroGoals } from "@/lib/tools/calculateMacroGoals";
@@ -173,7 +173,7 @@ export async function learnPreference(
 ): Promise<LearnPreferenceResponse> {
   const { userId, recipeId, feedback } = request;
 
-  const recipe = await getHistoryItem(userId, recipeId) as RecipeHistoryItem;
+  const recipe = (await getHistoryItem(userId, recipeId)) as RecipeHistoryItem;
   if (!recipe) {
     throw new Error("Recipe not found");
   }
@@ -207,7 +207,7 @@ export async function learnPreference(
   await updateLearnedPreferences({
     userId,
     cuisineUpdates,
-    flavorUpdates
+    flavorUpdates,
   });
 
   return { analysis };

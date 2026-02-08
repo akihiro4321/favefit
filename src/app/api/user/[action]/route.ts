@@ -14,7 +14,7 @@ import {
   updateUserProfile,
   completeOnboarding,
   setPlanCreating,
-  updateLearnedPreferences
+  updateLearnedPreferences,
 } from "@/server/services/user-service";
 import { HttpError, successResponse } from "@/server/api-utils";
 import {
@@ -81,7 +81,10 @@ export async function POST(
       }
       case "update-nutrition-preferences": {
         const validated = UpdateNutritionPreferencesSchema.parse(body);
-        await updateNutritionPreferences(validated.userId, validated.preferences);
+        await updateNutritionPreferences(
+          validated.userId,
+          validated.preferences
+        );
         return successResponse({ ok: true });
       }
       case "learn-preference": {
@@ -109,7 +112,10 @@ export async function POST(
 
     // ビジネスロジックエラー
     if (error instanceof Error) {
-      if (error.message === "ユーザーが見つかりません" || error.message === "Recipe not found") {
+      if (
+        error.message === "ユーザーが見つかりません" ||
+        error.message === "Recipe not found"
+      ) {
         return HttpError.notFound(error.message);
       }
       return HttpError.internalError(error.message);

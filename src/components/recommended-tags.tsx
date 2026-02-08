@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useAuth } from '@/components/auth-provider';
-import { Badge } from '@/components/ui/badge';
-import { Sparkles } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { useAuth } from "@/components/auth-provider";
+import { Badge } from "@/components/ui/badge";
+import { Sparkles } from "lucide-react";
 
 interface RecommendedTagsProps {
   onSelect: (tag: string) => void;
@@ -17,9 +17,9 @@ export function RecommendedTags({ onSelect }: RecommendedTagsProps) {
     if (!user) return;
 
     const fetchTags = async () => {
-      const res = await fetch('/api/user/get-profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/user/get-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: user.uid }),
       });
       const data = await res.json();
@@ -33,7 +33,8 @@ export function RecommendedTags({ onSelect }: RecommendedTagsProps) {
       const extractTop = (record?: Record<string, number>) => {
         if (!record) return;
         Object.entries(record).forEach(([tag, score]) => {
-          if (score > 1) { // 閾値調整 (V2では整数スコアを想定)
+          if (score > 1) {
+            // 閾値調整 (V2では整数スコアを想定)
             candidates.push({ tag, score });
           }
         });
@@ -46,7 +47,7 @@ export function RecommendedTags({ onSelect }: RecommendedTagsProps) {
       const topTags = candidates
         .sort((a, b) => b.score - a.score)
         .slice(0, 5)
-        .map(c => c.tag);
+        .map((c) => c.tag);
 
       setTags(topTags);
     };

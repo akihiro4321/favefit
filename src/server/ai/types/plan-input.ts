@@ -10,7 +10,9 @@ import { NutritionValuesSchema, PreferencesProfileSchema } from "./common";
  */
 export const PlanGeneratorInputSchema = z.object({
   targetCalories: z.number().describe("1日の目標摂取カロリー"),
-  pfc: NutritionValuesSchema.omit({ calories: true }).describe("目標PFCバランス(g)"),
+  pfc: NutritionValuesSchema.omit({ calories: true }).describe(
+    "目標PFCバランス(g)"
+  ),
   mealTargets: z
     .object({
       breakfast: NutritionValuesSchema,
@@ -30,7 +32,7 @@ export const PlanGeneratorInputSchema = z.object({
         id: z.string(),
         title: z.string(),
         tags: z.array(z.string()),
-      }),
+      })
     )
     .describe("お気に入りレシピのリスト（これを参考にプランに組み込む）"),
   cheapIngredients: z

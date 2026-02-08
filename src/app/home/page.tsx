@@ -45,14 +45,14 @@ export default function HomePage() {
       if (!user) return;
       try {
         const [activeRes, pendingRes] = await Promise.all([
-          fetch('/api/plan/get-active', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+          fetch("/api/plan/get-active", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ userId: user.uid }),
           }),
-          fetch('/api/plan/get-pending', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+          fetch("/api/plan/get-pending", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ userId: user.uid }),
           }),
         ]);
@@ -89,14 +89,14 @@ export default function HomePage() {
         await refreshProfile();
         // プランも再取得
         const [activeRes, pendingRes] = await Promise.all([
-          fetch('/api/plan/get-active', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+          fetch("/api/plan/get-active", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ userId: user.uid }),
           }),
-          fetch('/api/plan/get-pending', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+          fetch("/api/plan/get-pending", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ userId: user.uid }),
           }),
         ]);
@@ -137,7 +137,9 @@ export default function HomePage() {
   if (!activePlan && !pendingPlan) {
     // オンボーディング完了済みならプラン作成ページへ、未完了ならオンボーディングへ
     const targetPath = profile?.onboardingCompleted ? "/plan" : "/onboarding";
-    const buttonText = profile?.onboardingCompleted ? "プランを作成する" : "オンボーディングを開始する";
+    const buttonText = profile?.onboardingCompleted
+      ? "プランを作成する"
+      : "オンボーディングを開始する";
 
     return (
       <div className="container max-w-2xl mx-auto py-8 px-4 space-y-8">
@@ -167,7 +169,9 @@ export default function HomePage() {
       <div className="container max-w-2xl mx-auto py-8 px-4 space-y-8">
         <div className="text-center space-y-4 animate-pop-in">
           <Sparkles className="w-16 h-16 mx-auto text-primary" />
-          <h1 className="text-3xl font-bold text-primary">プランが承認待ちです</h1>
+          <h1 className="text-3xl font-bold text-primary">
+            プランが承認待ちです
+          </h1>
           <p className="text-muted-foreground">
             プランが作成されました。
             <br />
@@ -205,12 +209,15 @@ export default function HomePage() {
   }
 
   // 通常のホーム画面
-  const mealEntries = todaysMeals?.meals ? Object.entries(todaysMeals.meals) : [];
+  const mealEntries = todaysMeals?.meals
+    ? Object.entries(todaysMeals.meals)
+    : [];
   const completedMeals = mealEntries.filter(
     ([, m]) => m.status === "completed"
   ).length;
   const totalMeals = mealEntries.length;
-  const progressPercent = totalMeals > 0 ? (completedMeals / totalMeals) * 100 : 0;
+  const progressPercent =
+    totalMeals > 0 ? (completedMeals / totalMeals) * 100 : 0;
 
   return (
     <div className="container max-w-2xl mx-auto py-8 px-4 space-y-6 pb-24">
@@ -221,8 +228,11 @@ export default function HomePage() {
           <Flame className="w-4 h-4 text-primary" />
           <span>
             目標: {profile?.nutrition?.dailyCalories || 0} kcal / 残り:{" "}
-            {Math.max(0, (profile?.nutrition?.dailyCalories || 0) -
-              (todaysMeals?.totalNutrition?.calories || 0)).toFixed(1)}{" "}
+            {Math.max(
+              0,
+              (profile?.nutrition?.dailyCalories || 0) -
+                (todaysMeals?.totalNutrition?.calories || 0)
+            ).toFixed(1)}{" "}
             kcal
           </span>
         </div>
@@ -234,53 +244,55 @@ export default function HomePage() {
 
       {/* 食事カード */}
       <div className="space-y-4">
-        {(["breakfast", "lunch", "dinner", "snack"] as const).map((mealType) => {
-          const meal = todaysMeals?.meals?.[mealType];
-          if (!meal) return null;
+        {(["breakfast", "lunch", "dinner", "snack"] as const).map(
+          (mealType) => {
+            const meal = todaysMeals?.meals?.[mealType];
+            if (!meal) return null;
 
-          const isCompleted = meal.status === "completed";
-          const mealLabels = {
-            breakfast: "🍳 朝食",
-            lunch: "🍱 昼食",
-            dinner: "🍽️ 夕食",
-            snack: "🍪 間食・調整食",
-          };
+            const isCompleted = meal.status === "completed";
+            const mealLabels = {
+              breakfast: "🍳 朝食",
+              lunch: "🍱 昼食",
+              dinner: "🍽️ 夕食",
+              snack: "🍪 間食・調整食",
+            };
 
-          return (
-            <Link key={mealType} href={`/recipe/${meal.recipeId}`}>
-              <Card
-                className={`cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 ${
-                  isCompleted ? "opacity-60" : ""
-                }`}
-              >
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">
-                      {mealLabels[mealType]}
-                    </span>
-                    {isCompleted && (
-                      <span className="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded-full">
-                        完了
+            return (
+              <Link key={mealType} href={`/recipe/${meal.recipeId}`}>
+                <Card
+                  className={`cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 ${
+                    isCompleted ? "opacity-60" : ""
+                  }`}
+                >
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-muted-foreground">
+                        {mealLabels[mealType]}
                       </span>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Utensils className="w-5 h-5 text-primary" />
-                    <div>
-                      <p className="font-medium">{meal.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {Number(meal.nutrition.calories).toFixed(1)} kcal
-                      </p>
+                      {isCompleted && (
+                        <span className="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded-full">
+                          完了
+                        </span>
+                      )}
                     </div>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                </CardContent>
-              </Card>
-            </Link>
-          );
-        })}
+                  </CardHeader>
+                  <CardContent className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Utensils className="w-5 h-5 text-primary" />
+                      <div>
+                        <p className="font-medium">{meal.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {Number(meal.nutrition.calories).toFixed(1)} kcal
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          }
+        )}
       </div>
 
       {/* クイックアクション */}

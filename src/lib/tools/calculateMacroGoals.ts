@@ -13,7 +13,9 @@ export const CalculateMacroGoalsInputSchema = z.object({
   weight_kg: z.number().min(30).max(200).describe("体重(kg)"),
   activity_level: z
     .enum(["sedentary", "light", "moderate", "active", "very_active"])
-    .describe("活動レベル: sedentary=ほぼ運動しない, light=軽い運動(週1-2回), moderate=中度の運動(週3-5回), active=激しい運動(週6-7回), very_active=非常に激しい運動(1日2回)"),
+    .describe(
+      "活動レベル: sedentary=ほぼ運動しない, light=軽い運動(週1-2回), moderate=中度の運動(週3-5回), active=激しい運動(週6-7回), very_active=非常に激しい運動(1日2回)"
+    ),
   goal: z
     .enum(["lose", "maintain", "gain"])
     .describe("目標: lose=減量, maintain=維持, gain=増量"),
@@ -24,12 +26,15 @@ export const NutritionPreferencesSchema = z.object({
   maintenanceAdjustKcalPerDay: z.number().min(-500).max(500).optional(),
   gainPaceKgPerMonth: z.number().min(0.1).max(5).optional(),
   gainStrategy: z.enum(["lean", "standard", "aggressive"]).optional(),
-  macroPreset: z.enum(["balanced", "lowfat", "lowcarb", "highprotein"]).optional(),
+  macroPreset: z
+    .enum(["balanced", "lowfat", "lowcarb", "highprotein"])
+    .optional(),
 });
 
-export const CalculatePersonalizedMacroGoalsInputSchema = CalculateMacroGoalsInputSchema.extend({
-  preferences: NutritionPreferencesSchema.optional(),
-});
+export const CalculatePersonalizedMacroGoalsInputSchema =
+  CalculateMacroGoalsInputSchema.extend({
+    preferences: NutritionPreferencesSchema.optional(),
+  });
 
 // 出力型
 export interface MacroGoalsResult {
@@ -62,17 +67,19 @@ const calculateBMR = (
 /**
  * 活動レベル係数
  * Mifflin-St Jeor式と組み合わせて使用される標準的な活動係数
- * 
+ *
  * 参考:
  * - Inch Calculator: https://www.inchcalculator.com/mifflin-st-jeor-calculator/
  * - Medscape: https://reference.medscape.com/calculator/846/mifflin-st-jeor
  * - ACE Fitness: https://www.acefitness.org/certifiednewsarticle/2882/resting-metabolic-rate-best-ways-to-measure-it-and-raise-it-too/
- * 
+ *
  * 元論文:
  * - Mifflin MD, et al. A new predictive equation for resting energy expenditure in healthy individuals.
  *   Am J Clin Nutr. 1990;51(2):241-7. https://doi.org/10.1093/ajcn/51.2.241
  */
-const getActivityMultiplier = (level: "sedentary" | "light" | "moderate" | "active" | "very_active"): number => {
+const getActivityMultiplier = (
+  level: "sedentary" | "light" | "moderate" | "active" | "very_active"
+): number => {
   switch (level) {
     case "sedentary":
       return 1.2; // ほぼ運動しない
@@ -152,8 +159,8 @@ const calculatePersonalizedTargetCalories = (
 
   const pace =
     goal === "lose"
-      ? preferences.lossPaceKgPerMonth ?? 1
-      : preferences.gainPaceKgPerMonth ?? 0.5;
+      ? (preferences.lossPaceKgPerMonth ?? 1)
+      : (preferences.gainPaceKgPerMonth ?? 0.5);
   const kcalPerDay = (KCAL_PER_KG * pace) / DAYS_PER_MONTH;
 
   return Math.round(goal === "lose" ? tdee - kcalPerDay : tdee + kcalPerDay);
@@ -173,7 +180,10 @@ const calculatePersonalizedPFC = (
   const fatCalories = Math.round(targetCalories * fatPercent);
   const fat = Math.round(fatCalories / 9);
 
-  const carbsCalories = Math.max(0, targetCalories - proteinCalories - fatCalories);
+  const carbsCalories = Math.max(
+    0,
+    targetCalories - proteinCalories - fatCalories
+  );
   const carbs = Math.round(carbsCalories / 4);
 
   return { protein, fat, carbs };
@@ -182,11 +192,28 @@ const calculatePersonalizedPFC = (
 export const calculatePersonalizedMacroGoals = (
   input: z.infer<typeof CalculatePersonalizedMacroGoalsInputSchema>
 ): MacroGoalsResult => {
-  const { age, gender, height_cm, weight_kg, activity_level, goal, preferences } = input;
+  const {
+    age,
+    gender,
+    height_cm,
+    weight_kg,
+    activity_level,
+    goal,
+    preferences,
+  } = input;
   const bmr = calculateBMR(age, gender, height_cm, weight_kg);
   const tdee = Math.round(bmr * getActivityMultiplier(activity_level));
-  const targetCalories = calculatePersonalizedTargetCalories(tdee, goal, preferences);
-  const pfc = calculatePersonalizedPFC(targetCalories, weight_kg, goal, preferences);
+  const targetCalories = calculatePersonalizedTargetCalories(
+    tdee,
+    goal,
+    preferences
+  );
+  const pfc = calculatePersonalizedPFC(
+    targetCalories,
+    weight_kg,
+    goal,
+    preferences
+  );
 
   return {
     bmr: Math.round(bmr),

@@ -21,9 +21,12 @@ export const CalculateNutritionRequestSchema = z.object({
       .number({ required_error: "weight_kg は必須です" })
       .min(10, "weight_kg は10以上である必要があります")
       .max(500, "weight_kg は500以下である必要があります"),
-    activity_level: z.enum(["sedentary", "light", "moderate", "active", "very_active"], {
-      required_error: "activity_level は必須です",
-    }),
+    activity_level: z.enum(
+      ["sedentary", "light", "moderate", "active", "very_active"],
+      {
+        required_error: "activity_level は必須です",
+      }
+    ),
     goal: z.enum(["lose", "maintain", "gain"], {
       required_error: "goal は必須です",
     }),
@@ -52,7 +55,15 @@ export const UpdateLearnedPreferencesRequestSchema = z.object({
   newDisliked: z.array(z.string()).optional(),
 });
 
-export type CalculateNutritionRequest = z.infer<typeof CalculateNutritionRequestSchema>;
-export type UpdateNutritionPreferencesRequest = z.infer<typeof UpdateNutritionPreferencesSchema>;
-export type LearnPreferenceRequest = z.infer<typeof LearnPreferenceRequestSchema>;
-export type UpdateLearnedPreferencesRequest = z.infer<typeof UpdateLearnedPreferencesRequestSchema>;
+export type CalculateNutritionRequest = z.infer<
+  typeof CalculateNutritionRequestSchema
+>;
+export type UpdateNutritionPreferencesRequest = z.infer<
+  typeof UpdateNutritionPreferencesSchema
+>;
+export type LearnPreferenceRequest = z.infer<
+  typeof LearnPreferenceRequestSchema
+>;
+export type UpdateLearnedPreferencesRequest = z.infer<
+  typeof UpdateLearnedPreferencesRequestSchema
+>;

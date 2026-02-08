@@ -20,7 +20,9 @@ JSON形式で出力してください。cuisineUpdates と flavorUpdates はキ�
 /**
  * 嗜好学習用プロンプトを構築
  */
-export function getPreferenceLearningPrompt(input: PreferenceLearnerInput): string {
+export function getPreferenceLearningPrompt(
+  input: PreferenceLearnerInput
+): string {
   const { recipe, feedback } = input;
   return `
 【分析対象データ】

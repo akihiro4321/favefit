@@ -23,6 +23,6 @@ export async function generateChunkDetails(
     CHUNK_DETAIL_GENERATOR_INSTRUCTIONS,
     prompt,
     ChunkDetailedPlanSchema,
-    GEMINI_3_FLASH_MODEL,
+    GEMINI_3_FLASH_MODEL
   );
 }

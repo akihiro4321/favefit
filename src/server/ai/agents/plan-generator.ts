@@ -3,7 +3,10 @@
  */
 
 import { PlanGeneratorInput } from "../types/plan-input";
-import { MealTargetNutrition, NutritionValues } from "@/lib/tools/mealNutritionCalculator";
+import {
+  MealTargetNutrition,
+  NutritionValues,
+} from "@/lib/tools/mealNutritionCalculator";
 import { DayPlan, MealSlot } from "@/lib/schema";
 import { generatePlanSkeleton } from "../functions/plan-skeleton-generator";
 import { generateChunkDetails } from "../functions/chunk-detail-generator";
@@ -14,11 +17,12 @@ import { recalculateDayNutrition } from "@/lib/tools/nutritionValidator";
  */
 function adjustTargetsToSkeleton(
   skeletonMeal: { approxCalories: number },
-  originalTarget: NutritionValues,
+  originalTarget: NutritionValues
 ): NutritionValues {
-  const ratio = originalTarget.calories > 0 
-    ? skeletonMeal.approxCalories / originalTarget.calories 
-    : 1;
+  const ratio =
+    originalTarget.calories > 0
+      ? skeletonMeal.approxCalories / originalTarget.calories
+      : 1;
 
   return {
     calories: skeletonMeal.approxCalories,
@@ -33,33 +37,50 @@ function adjustTargetsToSkeleton(
  */
 export async function runPlanGenerator(
   input: PlanGeneratorInput,
-  mealTargets: MealTargetNutrition,
+  mealTargets: MealTargetNutrition
 ): Promise<{
   days: Record<string, DayPlan>;
   isValid: boolean;
   invalidMealsCount: number;
 }> {
   // Phase 1: スケルトン生成
-  console.log("[PlanGenerator] Phase 1: Generating weekly skeleton with ingredient pools...");
+  console.log(
+    "[PlanGenerator] Phase 1: Generating weekly skeleton with ingredient pools..."
+  );
   const skeleton = await generatePlanSkeleton(input);
 
   // Phase 2: 詳細生成（チャンク単位並列実行）
-  console.log("[PlanGenerator] Phase 2: Generating chunk details in parallel...");
+  console.log(
+    "[PlanGenerator] Phase 2: Generating chunk details in parallel..."
+  );
 
   const chunkPromises = skeleton.ingredientPools.map(async (pool) => {
     const [start, end] = pool.period.split(" to ");
     // このプールに属する日を抽出
-    const targetDays = skeleton.days.filter(d => d.date >= start && d.date <= end);
+    const targetDays = skeleton.days.filter(
+      (d) => d.date >= start && d.date <= end
+    );
 
     if (targetDays.length === 0) return [];
 
-    console.log(`[PlanGenerator] Processing chunk: ${pool.period} (${targetDays.length} days)`);
+    console.log(
+      `[PlanGenerator] Processing chunk: ${pool.period} (${targetDays.length} days)`
+    );
 
-    const daysInput = targetDays.map(daySkeleton => {
+    const daysInput = targetDays.map((daySkeleton) => {
       const dailyTargets: Record<string, NutritionValues> = {
-        breakfast: adjustTargetsToSkeleton(daySkeleton.meals.breakfast, mealTargets.breakfast),
-        lunch: adjustTargetsToSkeleton(daySkeleton.meals.lunch, mealTargets.lunch),
-        dinner: adjustTargetsToSkeleton(daySkeleton.meals.dinner, mealTargets.dinner),
+        breakfast: adjustTargetsToSkeleton(
+          daySkeleton.meals.breakfast,
+          mealTargets.breakfast
+        ),
+        lunch: adjustTargetsToSkeleton(
+          daySkeleton.meals.lunch,
+          mealTargets.lunch
+        ),
+        dinner: adjustTargetsToSkeleton(
+          daySkeleton.meals.dinner,
+          mealTargets.dinner
+        ),
       };
 
       if (daySkeleton.meals.snack) {
@@ -81,13 +102,13 @@ export async function runPlanGenerator(
 
     const chunkResult = await generateChunkDetails({
       pool,
-      days: daysInput
+      days: daysInput,
     });
 
     // 内部形式への変換
     return chunkResult.days.map((dailyDetail, idx) => {
       const daySkeleton = targetDays[idx]; // 順序は保証されている前提
-      
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const convertToSlot = (meal: any, skeletonMeal: any): MealSlot => ({
         ...meal,
@@ -99,35 +120,47 @@ export async function runPlanGenerator(
       const dayPlan: DayPlan = {
         isCheatDay: false,
         meals: {
-          breakfast: convertToSlot(dailyDetail.meals.breakfast, daySkeleton.meals.breakfast),
-          lunch: convertToSlot(dailyDetail.meals.lunch, daySkeleton.meals.lunch),
-          dinner: convertToSlot(dailyDetail.meals.dinner, daySkeleton.meals.dinner),
+          breakfast: convertToSlot(
+            dailyDetail.meals.breakfast,
+            daySkeleton.meals.breakfast
+          ),
+          lunch: convertToSlot(
+            dailyDetail.meals.lunch,
+            daySkeleton.meals.lunch
+          ),
+          dinner: convertToSlot(
+            dailyDetail.meals.dinner,
+            daySkeleton.meals.dinner
+          ),
         },
-        totalNutrition: { calories: 0, protein: 0, fat: 0, carbs: 0 }
+        totalNutrition: { calories: 0, protein: 0, fat: 0, carbs: 0 },
       };
 
       if (dailyDetail.meals.snack && daySkeleton.meals.snack) {
-        dayPlan.meals.snack = convertToSlot(dailyDetail.meals.snack, daySkeleton.meals.snack);
+        dayPlan.meals.snack = convertToSlot(
+          dailyDetail.meals.snack,
+          daySkeleton.meals.snack
+        );
       }
 
-      return { 
-        date: daySkeleton.date, 
-        plan: recalculateDayNutrition(dayPlan) 
+      return {
+        date: daySkeleton.date,
+        plan: recalculateDayNutrition(dayPlan),
       };
     });
   });
 
   const chunkResults = await Promise.all(chunkPromises);
   const flatResults = chunkResults.flat();
-  
+
   const days: Record<string, DayPlan> = {};
-  flatResults.forEach(res => {
+  flatResults.forEach((res) => {
     days[res.date] = res.plan;
   });
 
   return {
     days,
-    isValid: true, 
+    isValid: true,
     invalidMealsCount: 0,
   };
 }

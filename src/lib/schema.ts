@@ -9,7 +9,13 @@ import { Timestamp, FieldValue } from "firebase/firestore";
 // Mood & Cuisine Types
 // ========================================
 
-export type CuisineGenre = '和食' | '洋食' | '中華' | 'イタリアン' | 'エスニック' | 'その他';
+export type CuisineGenre =
+  | "和食"
+  | "洋食"
+  | "中華"
+  | "イタリアン"
+  | "エスニック"
+  | "その他";
 
 export interface Mood {
   genre: CuisineGenre;
@@ -44,7 +50,12 @@ export interface UserProfile {
 
   // ライフスタイル（生活習慣・設定）
   lifestyle: {
-    activityLevel?: "sedentary" | "light" | "moderate" | "active" | "very_active";
+    activityLevel?:
+      | "sedentary"
+      | "light"
+      | "moderate"
+      | "active"
+      | "very_active";
     cookingSkillLevel?: "beginner" | "intermediate" | "advanced";
     availableTime?: "short" | "medium" | "long";
     cheatDayFrequency: "weekly" | "biweekly";

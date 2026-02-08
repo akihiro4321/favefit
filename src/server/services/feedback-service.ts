@@ -28,7 +28,8 @@ export interface SaveFeedbackResponse {
 export async function saveFeedback(
   request: SaveFeedbackRequest
 ): Promise<SaveFeedbackResponse> {
-  const { userId, recipeId, cooked, ratings, repeatPreference, comment } = request;
+  const { userId, recipeId, cooked, ratings, repeatPreference, comment } =
+    request;
 
   const feedbackId = await saveFeedbackRepo(userId, {
     recipeId,

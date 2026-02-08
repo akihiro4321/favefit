@@ -31,7 +31,12 @@ function RecipeContent() {
   const [completing, setCompleting] = useState(false);
   const [favoriting, setFavoriting] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
-  const [planInfo, setPlanInfo] = useState<{ planId: string; date: string; mealType: string; status: string } | null>(null);
+  const [planInfo, setPlanInfo] = useState<{
+    planId: string;
+    date: string;
+    mealType: string;
+    status: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -46,8 +51,8 @@ function RecipeContent() {
         // planIdが指定されていればそれを使用、なければ get-active/get-pending の両方を確認
         const fetchPlan = async (apiPath: string) => {
           const res = await fetch(apiPath, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ userId: user.uid }),
           });
           const data = await res.json();
@@ -58,33 +63,40 @@ function RecipeContent() {
         if (urlPlanId) {
           // 指定された planId のプランを探す
           const [activePlan, pendingPlan] = await Promise.all([
-            fetchPlan('/api/plan/get-active'),
-            fetchPlan('/api/plan/get-pending')
+            fetchPlan("/api/plan/get-active"),
+            fetchPlan("/api/plan/get-pending"),
           ]);
-          targetPlan = (activePlan?.id === urlPlanId) ? activePlan : (pendingPlan?.id === urlPlanId ? pendingPlan : null);
+          targetPlan =
+            activePlan?.id === urlPlanId
+              ? activePlan
+              : pendingPlan?.id === urlPlanId
+                ? pendingPlan
+                : null;
         } else {
           // 指定がない場合は active -> pending の順に探す
-          targetPlan = await fetchPlan('/api/plan/get-active');
+          targetPlan = await fetchPlan("/api/plan/get-active");
           if (!targetPlan) {
-            targetPlan = await fetchPlan('/api/plan/get-pending');
+            targetPlan = await fetchPlan("/api/plan/get-pending");
           }
         }
 
         if (targetPlan) {
           // プランから該当レシピを検索
-          for (const [date, dayPlan] of Object.entries(targetPlan.days as Record<string, DayPlan>)) {
+          for (const [date, dayPlan] of Object.entries(
+            targetPlan.days as Record<string, DayPlan>
+          )) {
             for (const [slot, meal] of Object.entries(dayPlan.meals)) {
               if ((meal as MealSlot).recipeId === recipeId) {
                 const currentRecipe = meal as MealSlot;
-                
+
                 // プラン情報を保存
-                setPlanInfo({ 
-                  planId: targetPlan.id, 
-                  date, 
+                setPlanInfo({
+                  planId: targetPlan.id,
+                  date,
                   mealType: slot,
-                  status: targetPlan.status 
+                  status: targetPlan.status,
                 });
-                
+
                 setRecipe(currentRecipe);
                 return;
               }
@@ -106,9 +118,9 @@ function RecipeContent() {
     if (!user || !recipe) return;
     setCompleting(true);
     try {
-      await fetch('/api/history/mark-as-cooked', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      await fetch("/api/history/mark-as-cooked", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: user.uid, recipeId }),
       });
       setRecipe((prev) => (prev ? { ...prev, status: "completed" } : null));
@@ -125,9 +137,9 @@ function RecipeContent() {
     if (!user) return;
     setFavoriting(true);
     try {
-      await fetch('/api/history/add-to-favorites', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      await fetch("/api/history/add-to-favorites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: user.uid, recipeId }),
       });
       alert("また作りたいリストに追加しました！");
@@ -142,7 +154,9 @@ function RecipeContent() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <p className="text-sm text-muted-foreground animate-pulse">レシピの詳細を準備中...</p>
+        <p className="text-sm text-muted-foreground animate-pulse">
+          レシピの詳細を準備中...
+        </p>
       </div>
     );
   }
@@ -228,7 +242,10 @@ function RecipeContent() {
             {recipe.ingredients && recipe.ingredients.length > 0 ? (
               <ul className="space-y-1 text-sm">
                 {recipe.ingredients.map((item, i) => (
-                  <li key={i} className="flex justify-between items-center border-b border-dashed border-muted py-1 last:border-0">
+                  <li
+                    key={i}
+                    className="flex justify-between items-center border-b border-dashed border-muted py-1 last:border-0"
+                  >
                     <span>{item.name}</span>
                     <span className="text-muted-foreground">{item.amount}</span>
                   </li>
@@ -302,7 +319,11 @@ function RecipeContent() {
               <Button
                 variant="outline"
                 className="flex-1 h-12 rounded-full"
-                onClick={() => router.push(`/fridge?swap=${recipeId}&planId=${planInfo?.planId}&date=${planInfo?.date}&mealType=${planInfo?.mealType}`)}
+                onClick={() =>
+                  router.push(
+                    `/fridge?swap=${recipeId}&planId=${planInfo?.planId}&date=${planInfo?.date}&mealType=${planInfo?.mealType}`
+                  )
+                }
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
                 別のレシピに変更
@@ -328,7 +349,7 @@ function RecipeContent() {
           )}
         </div>
       )}
-      
+
       {isPendingPlan && (
         <div className="bg-muted/30 p-4 rounded-xl text-center border border-dashed">
           <p className="text-sm text-muted-foreground">
@@ -342,12 +363,14 @@ function RecipeContent() {
 
 export default function RecipePage() {
   return (
-    <Suspense fallback={
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <p className="text-sm text-muted-foreground">読み込み中...</p>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">読み込み中...</p>
+        </div>
+      }
+    >
       <RecipeContent />
     </Suspense>
   );

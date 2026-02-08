@@ -4,7 +4,10 @@
  */
 
 import { DayPlan, MealSlot } from "@/lib/schema";
-import { NutritionValues, MealTargetNutrition } from "./mealNutritionCalculator";
+import {
+  NutritionValues,
+  MealTargetNutrition,
+} from "./mealNutritionCalculator";
 
 /**
  * バリデーション結果の詳細
@@ -159,7 +162,10 @@ export function validatePlanNutrition(
       // 固定メニュー判定:
       // Auditorによって正規化されたタイトルと完全一致するか、あるいは部分一致する場合
       // 固定メニューはユーザーの選択を優先するため、栄養素バリデーションをスキップする
-      if (fixedMeal?.title && (meal.title === fixedMeal.title || meal.title.includes(fixedMeal.title))) {
+      if (
+        fixedMeal?.title &&
+        (meal.title === fixedMeal.title || meal.title.includes(fixedMeal.title))
+      ) {
         continue;
       }
 
@@ -209,8 +215,8 @@ export function recalculateDayNutrition(dayPlan: DayPlan): DayPlan {
       dinner.nutrition.protein +
       (snack?.nutrition.protein || 0),
     fat:
-      breakfast.nutrition.fat + 
-      lunch.nutrition.fat + 
+      breakfast.nutrition.fat +
+      lunch.nutrition.fat +
       dinner.nutrition.fat +
       (snack?.nutrition.fat || 0),
     carbs:

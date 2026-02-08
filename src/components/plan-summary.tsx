@@ -13,50 +13,58 @@ interface PlanSummaryProps {
   };
 }
 
-const getStatusColor = (current: number, target: number, type: 'calories' | 'protein' | 'fat' | 'carbs') => {
+const getStatusColor = (
+  current: number,
+  target: number,
+  type: "calories" | "protein" | "fat" | "carbs"
+) => {
   const ratio = current / target;
-  if (type === 'fat') {
-    if (ratio > 1.2) return 'bg-[#f44336]';
-    if (ratio > 1.0) return 'bg-[#ff9800]';
-    return 'bg-[#4CAF50]';
+  if (type === "fat") {
+    if (ratio > 1.2) return "bg-[#f44336]";
+    if (ratio > 1.0) return "bg-[#ff9800]";
+    return "bg-[#4CAF50]";
   }
-  if (type === 'protein') {
-    if (ratio < 0.9) return 'bg-[#ffc107]';
-    return 'bg-[#4CAF50]';
+  if (type === "protein") {
+    if (ratio < 0.9) return "bg-[#ffc107]";
+    return "bg-[#4CAF50]";
   }
-  if (ratio > 1.1) return 'bg-[#f44336]';
-  if (ratio < 0.9) return 'bg-[#ff9800]';
-  return 'bg-[#4CAF50]';
+  if (ratio > 1.1) return "bg-[#f44336]";
+  if (ratio < 0.9) return "bg-[#ff9800]";
+  return "bg-[#4CAF50]";
 };
 
-const getTextColor = (current: number, target: number, type: 'calories' | 'protein' | 'fat' | 'carbs') => {
+const getTextColor = (
+  current: number,
+  target: number,
+  type: "calories" | "protein" | "fat" | "carbs"
+) => {
   const ratio = current / target;
-  if (type === 'fat') {
-    if (ratio > 1.2) return 'text-[#f44336]';
-    if (ratio > 1.0) return 'text-[#ff9800]';
-    return 'text-[#4CAF50]';
+  if (type === "fat") {
+    if (ratio > 1.2) return "text-[#f44336]";
+    if (ratio > 1.0) return "text-[#ff9800]";
+    return "text-[#4CAF50]";
   }
-  if (type === 'protein') {
-    if (ratio < 0.9) return 'text-[#ffc107]';
-    return 'text-[#4CAF50]';
+  if (type === "protein") {
+    if (ratio < 0.9) return "text-[#ffc107]";
+    return "text-[#4CAF50]";
   }
-  if (ratio > 1.1) return 'text-[#f44336]';
-  if (ratio < 0.9) return 'text-[#ff9800]';
-  return 'text-[#4CAF50]';
+  if (ratio > 1.1) return "text-[#f44336]";
+  if (ratio < 0.9) return "text-[#ff9800]";
+  return "text-[#4CAF50]";
 };
 
-const NutrientRow = ({ 
-  label, 
-  current, 
-  target, 
-  unit, 
-  type 
-}: { 
-  label: string, 
-  current: number, 
-  target: number, 
-  unit: string,
-  type: 'calories' | 'protein' | 'fat' | 'carbs'
+const NutrientRow = ({
+  label,
+  current,
+  target,
+  unit,
+  type,
+}: {
+  label: string;
+  current: number;
+  target: number;
+  unit: string;
+  type: "calories" | "protein" | "fat" | "carbs";
 }) => {
   const ratio = Math.min(current / target, 1.5);
   const progressWidth = Math.min(ratio * 100, 100);
@@ -68,20 +76,22 @@ const NutrientRow = ({
       <div className="flex justify-between text-[0.75rem] font-bold">
         <span>{label}</span>
         <span className={getTextColor(current, target, type)}>
-          {current.toFixed(1)}{unit} / 目標 {target}{unit}
+          {current.toFixed(1)}
+          {unit} / 目標 {target}
+          {unit}
         </span>
       </div>
       <div className="relative h-2.5 w-full bg-[#edf2f7] rounded-full overflow-hidden">
-        <div 
+        <div
           className={`h-full transition-all duration-1000 ease-out ${getStatusColor(current, target, type)}`}
           style={{ width: `${progressWidth}%` }}
         />
-        <div 
+        <div
           className="absolute top-0 w-[3px] h-full bg-[#2d3436] z-10 shadow-[0_0_4px_rgba(0,0,0,0.2)]"
           style={{ left: `${markerLeft}%` }}
         />
       </div>
-      {(isOver || (type === 'fat' && current > target)) && (
+      {(isOver || (type === "fat" && current > target)) && (
         <div className="flex items-center gap-1 text-[0.7rem] text-[#f44336] font-medium">
           <AlertCircle className="w-3 h-3" />
           目標を{current > target * 1.5 ? "大幅に" : ""}超過しています
@@ -94,13 +104,9 @@ const NutrientRow = ({
 export function PlanSummary({ days, targetMacros }: PlanSummaryProps) {
   // チートデイを除外した通常日のみを抽出
   const normalDays = Object.values(days).filter((day) => !day.isCheatDay);
-  
+
   const allMeals = normalDays.flatMap((day) => {
-    const meals = [
-      day.meals.breakfast,
-      day.meals.lunch,
-      day.meals.dinner,
-    ];
+    const meals = [day.meals.breakfast, day.meals.lunch, day.meals.dinner];
     if (day.meals.snack) {
       meals.push(day.meals.snack);
     }
@@ -150,7 +156,9 @@ export function PlanSummary({ days, targetMacros }: PlanSummaryProps) {
     .sort(([, a], [, b]) => b - a)
     .slice(0, 8);
 
-  const cheatDaysCount = Object.values(days).filter((day) => day.isCheatDay).length;
+  const cheatDaysCount = Object.values(days).filter(
+    (day) => day.isCheatDay
+  ).length;
 
   return (
     <Card className="mb-6 border border-[#edf2f7] shadow-[0_4px_12px_rgba(0,0,0,0.02)] rounded-[24px] overflow-hidden">
@@ -172,18 +180,28 @@ export function PlanSummary({ days, targetMacros }: PlanSummaryProps) {
             <span className="text-[0.7rem] text-[#636e72]">kcal</span>
           </div>
           <div className="flex flex-col">
-            <span 
+            <span
               className="text-[1.2rem] font-[800] leading-tight"
-              style={{ color: targetMacros && avgPFC.protein >= targetMacros.protein * 0.9 ? "#4CAF50" : "#ff9800" }}
+              style={{
+                color:
+                  targetMacros && avgPFC.protein >= targetMacros.protein * 0.9
+                    ? "#4CAF50"
+                    : "#ff9800",
+              }}
             >
               {Math.round(avgPFC.protein)}g
             </span>
             <span className="text-[0.7rem] text-[#636e72]">Protein</span>
           </div>
           <div className="flex flex-col">
-            <span 
+            <span
               className="text-[1.2rem] font-[800] leading-tight"
-              style={{ color: targetMacros && avgPFC.fat > targetMacros.fat ? "#f44336" : "#4CAF50" }}
+              style={{
+                color:
+                  targetMacros && avgPFC.fat > targetMacros.fat
+                    ? "#f44336"
+                    : "#4CAF50",
+              }}
             >
               {Math.round(avgPFC.fat)}g
             </span>
@@ -194,25 +212,25 @@ export function PlanSummary({ days, targetMacros }: PlanSummaryProps) {
         <div className="grid gap-5">
           {targetMacros && (
             <>
-              <NutrientRow 
-                label="脂質 (F)" 
-                current={avgPFC.fat} 
-                target={targetMacros.fat} 
-                unit="g" 
+              <NutrientRow
+                label="脂質 (F)"
+                current={avgPFC.fat}
+                target={targetMacros.fat}
+                unit="g"
                 type="fat"
               />
-              <NutrientRow 
-                label="炭水化物 (C)" 
-                current={avgPFC.carbs} 
-                target={targetMacros.carbs} 
-                unit="g" 
+              <NutrientRow
+                label="炭水化物 (C)"
+                current={avgPFC.carbs}
+                target={targetMacros.carbs}
+                unit="g"
                 type="carbs"
               />
-              <NutrientRow 
-                label="タンパク質 (P)" 
-                current={avgPFC.protein} 
-                target={targetMacros.protein} 
-                unit="g" 
+              <NutrientRow
+                label="タンパク質 (P)"
+                current={avgPFC.protein}
+                target={targetMacros.protein}
+                unit="g"
                 type="protein"
               />
             </>
@@ -220,18 +238,21 @@ export function PlanSummary({ days, targetMacros }: PlanSummaryProps) {
         </div>
 
         <div className="pt-2 border-t border-[#f1f3f5] flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap gap-1.5">
-              {sortedTags.slice(0, 4).map(([tag]) => (
-                <span key={tag} className="text-[0.65rem] bg-[#f1f3f5] px-2 py-0.5 rounded-[4px] text-[#636e72]">
-                  {tag}
-                </span>
-              ))}
-            </div>
-            {cheatDaysCount > 0 && (
-              <span className="text-[0.65rem] font-bold bg-[#fff8e1] text-[#b8860b] px-2 py-0.5 rounded-full border border-[#fff3cd]">
-                チートデイ {cheatDaysCount}日間
+          <div className="flex flex-wrap gap-1.5">
+            {sortedTags.slice(0, 4).map(([tag]) => (
+              <span
+                key={tag}
+                className="text-[0.65rem] bg-[#f1f3f5] px-2 py-0.5 rounded-[4px] text-[#636e72]"
+              >
+                {tag}
               </span>
-            )}
+            ))}
+          </div>
+          {cheatDaysCount > 0 && (
+            <span className="text-[0.65rem] font-bold bg-[#fff8e1] text-[#b8860b] px-2 py-0.5 rounded-full border border-[#fff3cd]">
+              チートデイ {cheatDaysCount}日間
+            </span>
+          )}
         </div>
       </CardContent>
     </Card>

@@ -18,12 +18,16 @@ export class DietBaselineService {
   async createAdaptiveDirective(
     profile: UserProfile,
     target: UserNutrition,
-    currentCalories?: number,
+    currentCalories?: number
   ): Promise<AdaptiveDirective> {
     const currentDiet = profile.lifestyle.currentDiet;
 
     // 現状データがない場合や、推定値が取得できなかった場合は、標準の目標値をそのまま使用
-    if (!currentDiet || currentCalories === undefined || currentCalories === 0) {
+    if (
+      !currentDiet ||
+      currentCalories === undefined ||
+      currentCalories === 0
+    ) {
       return {
         baseCalories: target.dailyCalories,
         instructions: [
@@ -50,24 +54,24 @@ export class DietBaselineService {
     if (profile.physical.goal === "gain" && diff > 500) {
       baseCalories = currentCalories + 300; // 無理のない範囲で+300
       instructions.push(
-        `現在の摂取量(${currentCalories}kcal)に対し目標(${target.dailyCalories}kcal)が高いため、まずは無理なく食べられる量（約${baseCalories}kcal）を目指してください。`,
+        `現在の摂取量(${currentCalories}kcal)に対し目標(${target.dailyCalories}kcal)が高いため、まずは無理なく食べられる量（約${baseCalories}kcal）を目指してください。`
       );
       instructions.push(
-        "一度に量を増やすのではなく、間食を活用したり、消化の良い炭水化物を増やす提案をしてください。",
+        "一度に量を増やすのではなく、間食を活用したり、消化の良い炭水化物を増やす提案をしてください。"
       );
     }
     // 減量目標だが、現状が多すぎる場合 -> いきなり減らさず、中間地点を設定
     else if (profile.physical.goal === "lose" && diff < -500) {
       baseCalories = currentCalories - 300; // 無理のない範囲で-300
       instructions.push(
-        `現在の摂取量(${currentCalories}kcal)に対し目標(${target.dailyCalories}kcal)が低いため、急激な制限を避け、まずは約${baseCalories}kcalを目指してください。`,
+        `現在の摂取量(${currentCalories}kcal)に対し目標(${target.dailyCalories}kcal)が低いため、急激な制限を避け、まずは約${baseCalories}kcalを目指してください。`
       );
       instructions.push(
-        "満腹感を得やすい野菜や食物繊維を多めに取り入れ、ストレスの少ない減量プランにしてください。",
+        "満腹感を得やすい野菜や食物繊維を多めに取り入れ、ストレスの少ない減量プランにしてください。"
       );
     } else {
       instructions.push(
-        `現在の食生活(${currentCalories}kcal)と目標(${target.dailyCalories}kcal)のギャップは適正範囲内です。`,
+        `現在の食生活(${currentCalories}kcal)と目標(${target.dailyCalories}kcal)のギャップは適正範囲内です。`
       );
     }
 
@@ -78,7 +82,7 @@ export class DietBaselineService {
         currentDiet.breakfast.includes("コーヒー"))
     ) {
       instructions.push(
-        "朝食を食べない習慣があるようです。どうしても必要な栄養摂取以外は、無理に重い朝食を提案せず、スムージーやプロテインなど軽いものを提案してください。",
+        "朝食を食べない習慣があるようです。どうしても必要な栄養摂取以外は、無理に重い朝食を提案せず、スムージーやプロテインなど軽いものを提案してください。"
       );
     }
 

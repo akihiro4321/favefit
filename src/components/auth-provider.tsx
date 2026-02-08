@@ -1,9 +1,15 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { signInAnonymously, onAuthStateChanged, User, signInWithPopup, linkWithPopup } from 'firebase/auth';
-import { auth, googleProvider } from '@/lib/firebase-client';
-import { UserDocument } from '@/lib/schema';
+import React, { createContext, useContext, useEffect, useState } from "react";
+import {
+  signInAnonymously,
+  onAuthStateChanged,
+  User,
+  signInWithPopup,
+  linkWithPopup,
+} from "firebase/auth";
+import { auth, googleProvider } from "@/lib/firebase-client";
+import { UserDocument } from "@/lib/schema";
 
 export interface AuthContextType {
   user: User | null;
@@ -35,20 +41,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const refreshProfile = async () => {
     if (auth.currentUser) {
       try {
-        const response = await fetch('/api/user/get-profile', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const response = await fetch("/api/user/get-profile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId: auth.currentUser.uid }),
         });
 
         if (!response.ok) {
-          throw new Error('Failed to fetch user profile');
+          throw new Error("Failed to fetch user profile");
         }
 
         const result = await response.json();
         setProfile(result.data.user);
       } catch (error) {
-        console.error('Error refreshing profile:', error);
+        console.error("Error refreshing profile:", error);
       }
     }
   };
@@ -57,7 +63,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (error) {
-      console.error('Google sign-in failed:', error);
+      console.error("Google sign-in failed:", error);
       throw error;
     }
   };
@@ -66,7 +72,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       await signInAnonymously(auth);
     } catch (error) {
-      console.error('Guest sign-in failed:', error);
+      console.error("Guest sign-in failed:", error);
       throw error;
     }
   };
@@ -82,7 +88,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // プロファイル情報も再取得
       await refreshProfile();
     } catch (error) {
-      console.error('Account linking failed:', error);
+      console.error("Account linking failed:", error);
       throw error;
     }
   };
@@ -93,9 +99,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (currentUser) {
         try {
-          const response = await fetch('/api/user/get-profile', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+          const response = await fetch("/api/user/get-profile", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ userId: currentUser.uid }),
           });
 
@@ -104,12 +110,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setProfile(result.data.user);
           }
         } catch (error) {
-          console.error('Error fetching user profile:', error);
+          console.error("Error fetching user profile:", error);
         }
       } else {
         setProfile(null);
       }
-      
+
       setLoading(false);
     });
 
@@ -117,7 +123,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signInWithGoogle, signInGuest, linkGoogleAccount, refreshProfile }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        profile,
+        loading,
+        signInWithGoogle,
+        signInGuest,
+        linkGoogleAccount,
+        refreshProfile,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

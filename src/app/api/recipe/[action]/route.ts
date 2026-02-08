@@ -9,7 +9,7 @@ import {
   getRecipeDetail,
   swapMealRecipe,
   getSavedRecipe,
-  getSavedRecipes
+  getSavedRecipes,
 } from "@/server/services/recipe-service";
 import { HttpError, successResponse } from "@/server/api-utils";
 import { MealSlot } from "@/lib/schema";
@@ -78,7 +78,7 @@ export async function POST(
     }
   } catch (error: unknown) {
     console.error("Recipe API error:", error);
-    
+
     // Zodバリデーションエラー
     if (error instanceof z.ZodError) {
       return HttpError.badRequest("バリデーションエラー", {

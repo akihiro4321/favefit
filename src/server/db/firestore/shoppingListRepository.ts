@@ -3,12 +3,7 @@
  * プランに連動した買い物リスト管理
  */
 
-import {
-  getDoc,
-  setDoc,
-  updateDoc,
-  serverTimestamp,
-} from "firebase/firestore";
+import { getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { docRefs } from "./collections";
 import { ShoppingListDocument, ShoppingItem } from "@/lib/schema";
 
@@ -134,14 +129,17 @@ export const getItemsByCategory = async (
       return {};
     }
 
-    return list.items.reduce((acc, item) => {
-      const category = item.category || "その他";
-      if (!acc[category]) {
-        acc[category] = [];
-      }
-      acc[category].push(item);
-      return acc;
-    }, {} as Record<string, ShoppingItem[]>);
+    return list.items.reduce(
+      (acc, item) => {
+        const category = item.category || "その他";
+        if (!acc[category]) {
+          acc[category] = [];
+        }
+        acc[category].push(item);
+        return acc;
+      },
+      {} as Record<string, ShoppingItem[]>
+    );
   } catch (error) {
     console.error("Error getting items by category:", error);
     return {};

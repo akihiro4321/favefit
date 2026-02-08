@@ -25,9 +25,13 @@ if (process.env.NODE_ENV === "development") {
     "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID",
     "NEXT_PUBLIC_FIREBASE_APP_ID",
   ];
-  const missingVars = requiredEnvVars.filter((varName) => !process.env[varName]);
+  const missingVars = requiredEnvVars.filter(
+    (varName) => !process.env[varName]
+  );
   if (missingVars.length > 0) {
-    console.warn(`[Firebase Client] Missing environment variables: ${missingVars.join(", ")}`);
+    console.warn(
+      `[Firebase Client] Missing environment variables: ${missingVars.join(", ")}`
+    );
   }
 }
 

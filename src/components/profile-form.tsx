@@ -28,7 +28,12 @@ interface ProfileFormProps {
   onUpdate: () => void;
 }
 
-export function ProfileForm({ userId, profile, nutritionPreferences, onUpdate }: ProfileFormProps) {
+export function ProfileForm({
+  userId,
+  profile,
+  nutritionPreferences,
+  onUpdate,
+}: ProfileFormProps) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [formData, setFormData] = useState({
@@ -40,7 +45,8 @@ export function ProfileForm({ userId, profile, nutritionPreferences, onUpdate }:
     activity_level: profile.lifestyle.activityLevel || "moderate",
     goal: profile.physical.goal || "lose",
     lossPaceKgPerMonth: nutritionPreferences?.lossPaceKgPerMonth ?? 1,
-    maintenanceAdjustKcalPerDay: nutritionPreferences?.maintenanceAdjustKcalPerDay ?? 0,
+    maintenanceAdjustKcalPerDay:
+      nutritionPreferences?.maintenanceAdjustKcalPerDay ?? 0,
     gainPaceKgPerMonth: nutritionPreferences?.gainPaceKgPerMonth ?? 0.5,
     gainStrategy: nutritionPreferences?.gainStrategy || "lean",
     macroPreset: nutritionPreferences?.macroPreset || "balanced",
@@ -80,9 +86,9 @@ export function ProfileForm({ userId, profile, nutritionPreferences, onUpdate }:
       if (result.error) throw new Error(result.error);
 
       // 2. プロファイルを更新（栄養情報はAPIで保存済み）
-      await fetch('/api/user/update-profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      await fetch("/api/user/update-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId,
           profileData: {
@@ -118,7 +124,9 @@ export function ProfileForm({ userId, profile, nutritionPreferences, onUpdate }:
     <Card>
       <CardHeader>
         <CardTitle className="text-lg">身体情報とダイエット目標</CardTitle>
-        <CardDescription>入力内容に基づいて栄養プランを算出します。</CardDescription>
+        <CardDescription>
+          入力内容に基づいて栄養プランを算出します。
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -163,7 +171,10 @@ export function ProfileForm({ userId, profile, nutritionPreferences, onUpdate }:
                 type="number"
                 value={formData.height_cm}
                 onChange={(e) =>
-                  setFormData({ ...formData, height_cm: Number(e.target.value) })
+                  setFormData({
+                    ...formData,
+                    height_cm: Number(e.target.value),
+                  })
                 }
                 required
               />
@@ -214,7 +225,12 @@ export function ProfileForm({ userId, profile, nutritionPreferences, onUpdate }:
               onChange={(e) =>
                 setFormData({
                   ...formData,
-                  activity_level: e.target.value as "sedentary" | "light" | "moderate" | "active" | "very_active",
+                  activity_level: e.target.value as
+                    | "sedentary"
+                    | "light"
+                    | "moderate"
+                    | "active"
+                    | "very_active",
                 })
               }
             >
@@ -222,7 +238,9 @@ export function ProfileForm({ userId, profile, nutritionPreferences, onUpdate }:
               <option value="light">軽い運動 週に1-2回運動</option>
               <option value="moderate">中度の運動 週に3-5回運動</option>
               <option value="active">激しい運動やスポーツ 週に6-7回運動</option>
-              <option value="very_active">非常に激しい運動・肉体労働 1日に2回運動</option>
+              <option value="very_active">
+                非常に激しい運動・肉体労働 1日に2回運動
+              </option>
             </select>
           </div>
 

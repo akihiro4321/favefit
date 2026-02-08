@@ -36,13 +36,11 @@ import { GEMINI_3_FLASH_MODEL } from "../config";
 /**
  * レシピデータを生成
  */
-export async function generateRecipeData(
-  prompt: string,
-): Promise<Recipe> {
+export async function generateRecipeData(prompt: string): Promise<Recipe> {
   return callModelWithSchema(
     RECIPE_CREATOR_INSTRUCTIONS,
     prompt,
     RecipeOutputSchema,
-    GEMINI_3_FLASH_MODEL,
+    GEMINI_3_FLASH_MODEL
   );
 }

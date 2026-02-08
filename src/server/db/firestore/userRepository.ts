@@ -292,7 +292,9 @@ export const getLearnedPreferences = async (
 /**
  * プラン拒否時のフィードバックをクリア
  */
-export const clearUserRejectionFeedback = async (uid: string): Promise<void> => {
+export const clearUserRejectionFeedback = async (
+  uid: string
+): Promise<void> => {
   try {
     const userRef = docRefs.user(uid);
     await updateDoc(userRef, {

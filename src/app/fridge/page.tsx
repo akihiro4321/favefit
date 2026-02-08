@@ -73,8 +73,6 @@ function FridgePageContent() {
 
     setGenerating(true);
 
-
-
     // 入力文字列を構造化データに変換（例：「キャベツ 1/4個」 -> { name: "キャベツ", amount: "1/4個" }）
     const structuredIngredients = ingredients
       .split(/[,、\n]/)
@@ -99,7 +97,8 @@ function FridgePageContent() {
           userId: user.uid,
           ingredients: structuredIngredients,
           comment: comment || undefined,
-          previousSuggestions: previousSuggestions.length > 0 ? previousSuggestions : undefined,
+          previousSuggestions:
+            previousSuggestions.length > 0 ? previousSuggestions : undefined,
         }),
       });
 
@@ -170,7 +169,11 @@ function FridgePageContent() {
         router.push("/home");
       } catch (error) {
         console.error("Swap meal error:", error);
-        alert(error instanceof Error ? error.message : "レシピの差し替えに失敗しました");
+        alert(
+          error instanceof Error
+            ? error.message
+            : "レシピの差し替えに失敗しました"
+        );
       } finally {
         setSwapping(false);
       }
@@ -273,7 +276,11 @@ function FridgePageContent() {
                     </p>
                     <div className="flex flex-wrap gap-1">
                       {recipe.tags.map((tag) => (
-                        <Badge key={tag} variant="secondary" className="text-xs">
+                        <Badge
+                          key={tag}
+                          variant="secondary"
+                          className="text-xs"
+                        >
                           {tag}
                         </Badge>
                       ))}

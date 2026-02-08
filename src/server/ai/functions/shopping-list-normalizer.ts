@@ -21,7 +21,9 @@ export const NormalizedShoppingListSchema = z.object({
       items: z.array(
         z.object({
           name: z.string().describe("食材名"),
-          amount: z.string().describe("購入単位での分量（例: 1パック, 2個, 1本）"),
+          amount: z
+            .string()
+            .describe("購入単位での分量（例: 1パック, 2個, 1本）"),
           note: z.string().optional().describe("補足事項"),
         })
       ),
@@ -29,7 +31,9 @@ export const NormalizedShoppingListSchema = z.object({
   ),
 });
 
-export type NormalizedShoppingList = z.infer<typeof NormalizedShoppingListSchema>;
+export type NormalizedShoppingList = z.infer<
+  typeof NormalizedShoppingListSchema
+>;
 
 /**
  * 食材リストを正規化して集計
@@ -43,6 +47,6 @@ export async function normalizeShoppingList(
     SHOPPING_LIST_NORMALIZER_INSTRUCTIONS,
     prompt,
     NormalizedShoppingListSchema,
-    GEMINI_2_5_FLASH_MODEL,
+    GEMINI_2_5_FLASH_MODEL
   );
 }

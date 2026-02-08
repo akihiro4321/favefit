@@ -33,9 +33,9 @@ export default function CheatDayPage() {
     const fetchData = async () => {
       if (!user) return;
       try {
-        const res = await fetch('/api/plan/get-active', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const res = await fetch("/api/plan/get-active", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId: user.uid }),
         });
         const data = await res.json();

@@ -1,10 +1,16 @@
-'use client';
+"use client";
 
-import { useAuth } from '@/components/auth-provider';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useAuth } from "@/components/auth-provider";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function Home() {
   const { user, loading, signInGuest, signInWithGoogle } = useAuth();
@@ -12,27 +18,27 @@ export default function Home() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.push('/home');
+      router.push("/home");
     }
   }, [user, loading, router]);
 
   const handleGuestLogin = async () => {
     try {
       await signInGuest();
-      router.push('/home');
+      router.push("/home");
     } catch (error) {
       console.error(error);
-      alert('ゲストログインに失敗しました。');
+      alert("ゲストログインに失敗しました。");
     }
   };
 
   const handleGoogleLogin = async () => {
     try {
       await signInWithGoogle();
-      router.push('/home');
+      router.push("/home");
     } catch (error) {
       console.error(error);
-      alert('Googleログインに失敗しました。');
+      alert("Googleログインに失敗しました。");
     }
   };
 
@@ -48,16 +54,22 @@ export default function Home() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-md space-y-8 mt-12">
       <div className="text-center space-y-4">
-        <h1 className="text-5xl font-extrabold tracking-tight text-primary">FaveFit</h1>
+        <h1 className="text-5xl font-extrabold tracking-tight text-primary">
+          FaveFit
+        </h1>
         <p className="text-muted-foreground text-xl">
-          今の気分に合わせて、<br />あなたにぴったりのレシピを提案します。
+          今の気分に合わせて、
+          <br />
+          あなたにぴったりのレシピを提案します。
         </p>
       </div>
 
       <Card className="border-2">
         <CardHeader>
           <CardTitle className="text-center text-2xl">はじめる</CardTitle>
-          <CardDescription className="text-center">利用方法を選択してください</CardDescription>
+          <CardDescription className="text-center">
+            利用方法を選択してください
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Button onClick={handleGoogleLogin} className="w-full" size="lg">
@@ -68,10 +80,17 @@ export default function Home() {
               <span className="w-full border-t" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">Or</span>
+              <span className="bg-background px-2 text-muted-foreground">
+                Or
+              </span>
             </div>
           </div>
-          <Button onClick={handleGuestLogin} variant="outline" className="w-full" size="lg">
+          <Button
+            onClick={handleGuestLogin}
+            variant="outline"
+            className="w-full"
+            size="lg"
+          >
             ゲストとして試す
           </Button>
           <p className="text-xs text-muted-foreground text-center mt-4 bg-muted/50 p-3 rounded">
@@ -82,4 +101,3 @@ export default function Home() {
     </div>
   );
 }
-

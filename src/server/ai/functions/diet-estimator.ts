@@ -32,12 +32,12 @@ export type DailyDietAnalysis = z.infer<typeof DailyDietAnalysisSchema>;
  * 1日の食事内容から栄養価を推定する
  */
 export async function estimateDailyDietBaseline(
-  currentDiet: UserProfile["lifestyle"]["currentDiet"],
+  currentDiet: UserProfile["lifestyle"]["currentDiet"]
 ): Promise<DailyDietAnalysis> {
   return await callModelWithSchema(
     DIET_BASELINE_ESTIMATOR_INSTRUCTIONS,
     getDailyDietBaselinePrompt(currentDiet),
     DailyDietAnalysisSchema,
-    GEMINI_3_FLASH_MODEL,
+    GEMINI_3_FLASH_MODEL
   );
 }

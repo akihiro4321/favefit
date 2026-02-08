@@ -32,18 +32,20 @@ export interface ChunkDetailPromptInput {
 }
 
 export function getChunkDetailPrompt(input: ChunkDetailPromptInput) {
-  const daysInfo = input.days.map(d => {
-    const snackInfo = d.meals.snack 
-      ? `- 間食: "${d.meals.snack.title}" (目標: ${JSON.stringify(d.targets.snack)})` 
-      : "";
-    return `
+  const daysInfo = input.days
+    .map((d) => {
+      const snackInfo = d.meals.snack
+        ? `- 間食: "${d.meals.snack.title}" (目標: ${JSON.stringify(d.targets.snack)})`
+        : "";
+      return `
 【${d.date}】
 - 朝食: "${d.meals.breakfast.title}" (目標: ${JSON.stringify(d.targets.breakfast)})
 - 昼食: "${d.meals.lunch.title}" (目標: ${JSON.stringify(d.targets.lunch)})
 - 夕食: "${d.meals.dinner.title}" (目標: ${JSON.stringify(d.targets.dinner)})
 ${snackInfo}
 `;
-  }).join("\n");
+    })
+    .join("\n");
 
   return `
 【対象期間と戦略】

@@ -80,17 +80,17 @@ export function successResponse<T>(data: T): NextResponse {
 
 /**
  * バリデーション付き API ハンドラを作成
- * 
+ *
  * Spring Boot の @Valid @RequestBody に相当する機能を提供
  * コントローラー側でバリデーション処理を書く必要がなくなる
- * 
+ *
  * @example
  * // スキーマを定義（DTO に相当）
  * const MyRequestSchema = z.object({
  *   userId: z.string().min(1),
  *   data: z.object({ ... }),
  * });
- * 
+ *
  * // ハンドラを export（バリデーションは自動実行）
  * export const POST = withValidation(MyRequestSchema, async (data, req) => {
  *   // data は型安全（z.infer<typeof MyRequestSchema>）

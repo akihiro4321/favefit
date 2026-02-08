@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useAuth } from '@/components/auth-provider';
-import { RecipeCard } from '@/components/recipe-card';
-import { Button } from '@/components/ui/button';
-import { ChevronLeft, Loader2 } from 'lucide-react';
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useAuth } from "@/components/auth-provider";
+import { RecipeCard } from "@/components/recipe-card";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 interface SavedRecipe {
   id: string;
@@ -34,9 +34,9 @@ export default function RecipesPage() {
     async function loadRecipes() {
       if (user) {
         setLoading(true);
-        const res = await fetch('/api/recipe/get-saved-list', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const res = await fetch("/api/recipe/get-saved-list", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId: user.uid, pageSize: 20, page: 1 }),
         });
         const data = await res.json();
@@ -56,9 +56,9 @@ export default function RecipesPage() {
 
     setLoadingMore(true);
     const nextPage = currentPage + 1;
-    const res = await fetch('/api/recipe/get-saved-list', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const res = await fetch("/api/recipe/get-saved-list", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: user.uid, pageSize: 20, page: nextPage }),
     });
     const data = await res.json();
@@ -112,7 +112,7 @@ export default function RecipesPage() {
                 読み込み中...
               </>
             ) : (
-              'さらに読み込む'
+              "さらに読み込む"
             )}
           </Button>
         </div>
@@ -120,7 +120,9 @@ export default function RecipesPage() {
 
       {recipes.length === 0 && (
         <div className="text-center py-20 space-y-4 bg-muted/30 rounded-2xl border-2 border-dashed">
-          <p className="text-xl font-medium">まだ保存されたレシピがありません。</p>
+          <p className="text-xl font-medium">
+            まだ保存されたレシピがありません。
+          </p>
           <p className="text-sm text-muted-foreground">
             ホーム画面で今の気分を入力して、レシピを生成してみましょう。
           </p>

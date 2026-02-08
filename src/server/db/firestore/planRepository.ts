@@ -38,7 +38,9 @@ export const createPlan = async (
   status: PlanStatus = "active"
 ): Promise<string> => {
   try {
-    console.log(`[createPlan] Starting plan creation for user ${userId}, status: ${status}, days count: ${Object.keys(days).length}`);
+    console.log(
+      `[createPlan] Starting plan creation for user ${userId}, status: ${status}, days count: ${Object.keys(days).length}`
+    );
     const plansRef = collections.plans;
     const planDoc = docRefs.plan(doc(plansRef).id); // 既存の doc(plansRef) で ID 生成するロジックを docRefs に合わせる
     const planId = planDoc.id;
@@ -53,25 +55,37 @@ export const createPlan = async (
       updatedAt: serverTimestamp(),
     };
 
-    console.log(`[createPlan] Attempting to write plan document to Firestore: plans/${planId}`);
+    console.log(
+      `[createPlan] Attempting to write plan document to Firestore: plans/${planId}`
+    );
     await setDoc(planDoc, newPlan);
-    console.log(`[createPlan] Successfully created plan ${planId} in Firestore for user ${userId}`);
-    
+    console.log(
+      `[createPlan] Successfully created plan ${planId} in Firestore for user ${userId}`
+    );
+
     // 書き込みが成功したことを確認するために、読み取りを試みる（オプション）
     try {
       const verificationDoc = await getDoc(planDoc);
       if (verificationDoc.exists()) {
         console.log(`[createPlan] Verified plan ${planId} exists in Firestore`);
       } else {
-        console.warn(`[createPlan] Warning: Plan ${planId} was created but verification read returned empty`);
+        console.warn(
+          `[createPlan] Warning: Plan ${planId} was created but verification read returned empty`
+        );
       }
     } catch (verifyError) {
-      console.warn(`[createPlan] Could not verify plan ${planId} (non-critical):`, verifyError);
+      console.warn(
+        `[createPlan] Could not verify plan ${planId} (non-critical):`,
+        verifyError
+      );
     }
-    
+
     return planId;
   } catch (error) {
-    console.error(`[createPlan] Error creating plan for user ${userId}:`, error);
+    console.error(
+      `[createPlan] Error creating plan for user ${userId}:`,
+      error
+    );
     if (error instanceof Error) {
       console.error(`[createPlan] Error details:`, {
         message: error.message,
@@ -79,8 +93,11 @@ export const createPlan = async (
         name: error.name,
       });
       // Firebaseエラーの詳細情報を確認
-      if ('code' in error) {
-        console.error(`[createPlan] Firebase error code:`, (error as { code?: string }).code);
+      if ("code" in error) {
+        console.error(
+          `[createPlan] Firebase error code:`,
+          (error as { code?: string }).code
+        );
       }
     }
     throw error;
@@ -90,7 +107,9 @@ export const createPlan = async (
 /**
  * プランを取得
  */
-export const getPlan = async (planId: string): Promise<(PlanDocument & { id: string }) | null> => {
+export const getPlan = async (
+  planId: string
+): Promise<(PlanDocument & { id: string }) | null> => {
   try {
     const planRef = docRefs.plan(planId);
     const planSnap = await getDoc(planRef);
@@ -199,12 +218,12 @@ export const updateMealSlot = async (
 ): Promise<void> => {
   try {
     const planRef = docRefs.plan(planId);
-    
+
     // ネストされたオブジェクトの個別フィールドを更新
     const firebaseUpdates: Record<string, unknown> = {
       updatedAt: serverTimestamp(),
     };
-    
+
     Object.entries(updates).forEach(([key, value]) => {
       firebaseUpdates[`days.${date}.meals.${mealType}.${key}`] = value;
     });

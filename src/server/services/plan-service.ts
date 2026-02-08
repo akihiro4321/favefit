@@ -8,7 +8,12 @@ import {
   generateMealPlan,
   normalizeShoppingList,
 } from "@/server/ai";
-import { getOrCreateUser, setPlanCreating, setPlanCreated, clearUserRejectionFeedback } from "@/server/db/firestore/userRepository";
+import {
+  getOrCreateUser,
+  setPlanCreating,
+  setPlanCreated,
+  clearUserRejectionFeedback,
+} from "@/server/db/firestore/userRepository";
 import {
   createPlan,
   updatePlanStatus,
@@ -21,7 +26,6 @@ import { getFavorites } from "@/server/db/firestore/recipeHistoryRepository";
 import { DayPlan, ShoppingItem, PlanDocument } from "@/lib/schema";
 import { calculatePersonalizedMacroGoals } from "@/lib/tools/calculateMacroGoals";
 import { calculateMealTargets } from "@/lib/tools/mealNutritionCalculator";
-
 
 export interface GeneratePlanRequest {
   userId: string;
@@ -115,7 +119,10 @@ export async function generatePlan(
   console.log(`[generatePlan] Started plan generation for user ${userId}`);
 
   generatePlanBackground(userId, userDoc).catch((error) => {
-    console.error(`[generatePlan] Background plan generation failed for user ${userId}:`, error);
+    console.error(
+      `[generatePlan] Background plan generation failed for user ${userId}:`,
+      error
+    );
     if (error instanceof Error) {
       console.error(`[generatePlan] Error details:`, {
         message: error.message,
@@ -125,7 +132,10 @@ export async function generatePlan(
     }
     // エラーが発生した場合でも、ステータスをクリア
     setPlanCreated(userId).catch((statusError) => {
-      console.error(`[generatePlan] Failed to clear plan creation status after error:`, statusError);
+      console.error(
+        `[generatePlan] Failed to clear plan creation status after error:`,
+        statusError
+      );
     });
   });
 
@@ -146,7 +156,11 @@ async function generatePlanBackground(
 
   try {
     const favorites = await getFavorites(userId);
-    const favoriteRecipes = favorites.map((f) => ({ id: f.id, title: f.title, tags: f.tags }));
+    const favoriteRecipes = favorites.map((f) => ({
+      id: f.id,
+      title: f.title,
+      tags: f.tags,
+    }));
     const cheapIngredients = ["キャベツ", "もやし", "鶏むね肉", "卵", "豆腐"]; // TODO: DBから取得
     const startDate = new Date().toISOString().split("T")[0];
 
@@ -158,7 +172,10 @@ async function generatePlanBackground(
 
     // 栄養目標の計算
     const { targetCalories, pfc } = calculateUserMacroGoals(userDoc);
-    const mealTargets = calculateMealTargets({ calories: targetCalories, ...pfc });
+    const mealTargets = calculateMealTargets({
+      calories: targetCalories,
+      ...pfc,
+    });
 
     const input: PlanGeneratorInput = {
       targetCalories,
@@ -171,7 +188,8 @@ async function generatePlanBackground(
       },
       favoriteRecipes,
       cheapIngredients,
-      cheatDayFrequency: userDoc.profile.lifestyle.cheatDayFrequency || "weekly",
+      cheatDayFrequency:
+        userDoc.profile.lifestyle.cheatDayFrequency || "weekly",
       startDate,
       mealSettings: userDoc.profile.lifestyle.mealSettings,
       mealPrep: userDoc.profile.lifestyle.mealPrepConfig
@@ -198,7 +216,9 @@ async function generatePlanBackground(
     });
 
     if (!result.isValid && result.invalidMealsCount > 0) {
-      console.warn(`[generatePlanBackground] ${result.invalidMealsCount} meals had fallback applied`);
+      console.warn(
+        `[generatePlanBackground] ${result.invalidMealsCount} meals had fallback applied`
+      );
     }
 
     const days = result.days;
@@ -206,7 +226,6 @@ async function generatePlanBackground(
     // 保存
     await createPlan(userId, startDate, days, "pending");
     await clearUserRejectionFeedback(userId);
-
   } catch (error) {
     console.error(`[Plan Generation] Failed for user ${userId}:`, error);
     throw error;
@@ -218,7 +237,9 @@ async function generatePlanBackground(
 /**
  * ユーザーのプロファイルから栄養目標（マクロ）を計算
  */
-function calculateUserMacroGoals(userDoc: NonNullable<Awaited<ReturnType<typeof getOrCreateUser>>>) {
+function calculateUserMacroGoals(
+  userDoc: NonNullable<Awaited<ReturnType<typeof getOrCreateUser>>>
+) {
   const { physical, lifestyle } = userDoc.profile;
   const hasRequiredProfileData =
     physical.age &&
@@ -232,7 +253,7 @@ function calculateUserMacroGoals(userDoc: NonNullable<Awaited<ReturnType<typeof 
   if (!hasRequiredProfileData) {
     return {
       targetCalories: 1800,
-      pfc: { protein: 100, fat: 50, carbs: 200 }
+      pfc: { protein: 100, fat: 50, carbs: 200 },
     };
   }
 
@@ -258,7 +279,7 @@ function calculateUserMacroGoals(userDoc: NonNullable<Awaited<ReturnType<typeof 
   ) {
     return {
       targetCalories: userDoc.nutrition.dailyCalories,
-      pfc: userDoc.nutrition.pfc
+      pfc: userDoc.nutrition.pfc,
     };
   }
 
@@ -273,10 +294,6 @@ function calculateUserMacroGoals(userDoc: NonNullable<Awaited<ReturnType<typeof 
   });
 }
 
-
-
-
-
 /**
  * 買い物リストを生成
  */
@@ -287,9 +304,9 @@ async function generateShoppingListFromRecipes(
 ): Promise<void> {
   // 1. 全レシピから食材を抽出
   const rawIngredients = Object.values(days)
-    .filter(dayPlan => !dayPlan.isCheatDay)
-    .flatMap(dayPlan => Object.values(dayPlan.meals))
-    .flatMap(meal => meal.ingredients ?? []);
+    .filter((dayPlan) => !dayPlan.isCheatDay)
+    .flatMap((dayPlan) => Object.values(dayPlan.meals))
+    .flatMap((meal) => meal.ingredients ?? []);
 
   if (rawIngredients.length === 0) return;
 
@@ -298,7 +315,9 @@ async function generateShoppingListFromRecipes(
   const fridgeItems = user?.profile.lifestyle.fridgeIngredients || [];
 
   // 3. AIによる正規化を実行
-  console.log(`[PlanService] Normalizing shopping list for ${rawIngredients.length} items...`);
+  console.log(
+    `[PlanService] Normalizing shopping list for ${rawIngredients.length} items...`
+  );
   const normalized = await normalizeShoppingList({
     ingredients: rawIngredients,
     fridgeItems,
@@ -306,8 +325,8 @@ async function generateShoppingListFromRecipes(
 
   // 4. Firestore 形式に変換
   const shoppingItems: ShoppingItem[] = [];
-  normalized.categories.forEach(category => {
-    category.items.forEach(item => {
+  normalized.categories.forEach((category) => {
+    category.items.forEach((item) => {
       shoppingItems.push({
         ingredient: item.name,
         amount: item.amount,
@@ -404,7 +423,8 @@ export async function rejectPlan(
   // フィードバックがある場合はユーザードキュメントに保存
   if (feedback && feedback.trim()) {
     const { db } = await import("@/server/db/firestore/client");
-    const { doc, updateDoc, serverTimestamp } = await import("firebase/firestore");
+    const { doc, updateDoc, serverTimestamp } =
+      await import("firebase/firestore");
     const userRef = doc(db, "users", userId);
     await updateDoc(userRef, {
       planRejectionFeedback: feedback.trim(),

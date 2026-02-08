@@ -37,14 +37,14 @@ export default function HistoryPage() {
       if (!user) return;
       try {
         const [historyRes, favoritesRes] = await Promise.all([
-          fetch('/api/history/get-history', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+          fetch("/api/history/get-history", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ userId: user.uid }),
           }),
-          fetch('/api/history/get-favorites', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+          fetch("/api/history/get-favorites", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ userId: user.uid }),
           }),
         ]);
@@ -131,12 +131,12 @@ function RecipeCard({ recipe }: { recipe: RecipeHistoryItem }) {
     e.preventDefault();
     e.stopPropagation();
     if (!user || recipe.isFavorite) return;
-    
+
     setAdding(true);
     try {
-      await fetch('/api/history/add-to-favorites', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      await fetch("/api/history/add-to-favorites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: user.uid, recipeId: recipe.id }),
       });
       // 状態を更新するためにページをリロード

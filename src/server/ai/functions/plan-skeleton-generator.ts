@@ -16,7 +16,7 @@ import { GEMINI_3_FLASH_MODEL } from "../config";
  */
 export async function generatePlanSkeleton(
   input: PlanGeneratorInput,
-  duration: number = 7,
+  duration: number = 7
 ): Promise<WeeklySkeleton> {
   const prompt = getPlanSkeletonPrompt(input, duration);
 
@@ -24,6 +24,6 @@ export async function generatePlanSkeleton(
     PLAN_SKELETON_GENERATOR_INSTRUCTIONS,
     prompt,
     WeeklySkeletonSchema,
-    GEMINI_3_FLASH_MODEL,
+    GEMINI_3_FLASH_MODEL
   );
 }

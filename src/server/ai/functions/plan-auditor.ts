@@ -21,7 +21,7 @@ const AuditorOutputSchema = z.object({
         carbs: z.number(),
       }),
       reason: z.string().describe("推定の根拠や調整内容"),
-    }),
+    })
   ),
 });
 
@@ -42,7 +42,7 @@ export async function auditPlanAnchors(
     protein: number;
     fat: number;
     carbs: number;
-  },
+  }
 ): Promise<AuditorOutput> {
   // 固定またはこだわりが設定されているスロットを抽出
   const inputs = Object.entries(mealSettings)
@@ -67,7 +67,7 @@ export async function auditPlanAnchors(
       AUDITOR_INSTRUCTIONS,
       getAuditorPrompt({ inputs, dailyTarget }),
       AuditorOutputSchema,
-      GEMINI_2_5_FLASH_MODEL,
+      GEMINI_2_5_FLASH_MODEL
     );
   } catch (error) {
     console.error("Plan Auditor Error:", error);

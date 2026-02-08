@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { ...workflowInput } = body;
-    
+
     // 入力のバリデーション（簡易）
     if (!workflowInput.input || !workflowInput.mealTargets) {
       return NextResponse.json(
@@ -19,10 +19,12 @@ export async function POST(req: NextRequest) {
 
     console.log(`[Debug API] Starting meal plan generation...`);
     const startTime = Date.now();
-    
+
     // ワークフローを実行
-    const result = await generateMealPlan(workflowInput as MealPlanWorkflowInput);
-    
+    const result = await generateMealPlan(
+      workflowInput as MealPlanWorkflowInput
+    );
+
     const executionTime = Date.now() - startTime;
     console.log(`[Debug API] Completed in ${executionTime}ms`);
 
@@ -30,13 +32,15 @@ export async function POST(req: NextRequest) {
       ...result,
       debug: {
         executionTimeMs: executionTime,
-        version: "standard"
-      }
+        version: "standard",
+      },
     });
   } catch (error) {
     console.error("[Debug API] Error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal Server Error" },
+      {
+        error: error instanceof Error ? error.message : "Internal Server Error",
+      },
       { status: 500 }
     );
   }

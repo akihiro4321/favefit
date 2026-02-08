@@ -37,7 +37,7 @@ const MEAL_RATIOS = {
  * @param dailyTarget - 1日の目標栄養素
  * @returns 各食事の目標栄養素
  */
-export function calculateMealTargets(// TODO: ユーザーの食生活に合わせて配分比率を調整できるようにする
+export function calculateMealTargets( // TODO: ユーザーの食生活に合わせて配分比率を調整できるようにする
   dailyTarget: NutritionValues
 ): MealTargetNutrition {
   return {

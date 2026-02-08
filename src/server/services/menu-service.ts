@@ -105,7 +105,7 @@ export async function suggestMenu(
       additionalIngredients: s.additionalIngredients || [],
       steps: s.steps || [],
       nutrition: s.nutrition,
-    }),
+    })
   );
 
   return {

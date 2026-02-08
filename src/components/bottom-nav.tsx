@@ -49,10 +49,14 @@ export function BottomNav() {
                   isActive && "animate-pop-in scale-110"
                 )}
               />
-              <span className={cn(
-                "text-xs font-medium transition-all",
-                isActive && "font-semibold"
-              )}>{item.label}</span>
+              <span
+                className={cn(
+                  "text-xs font-medium transition-all",
+                  isActive && "font-semibold"
+                )}
+              >
+                {item.label}
+              </span>
             </Link>
           );
         })}
