@@ -37,7 +37,8 @@ function adjustTargetsToSkeleton(
  */
 export async function runPlanGenerator(
   input: PlanGeneratorInput,
-  mealTargets: MealTargetNutrition
+  mealTargets: MealTargetNutrition,
+  duration: number = 7
 ): Promise<{
   days: Record<string, DayPlan>;
   isValid: boolean;
@@ -45,9 +46,9 @@ export async function runPlanGenerator(
 }> {
   // Phase 1: スケルトン生成
   console.log(
-    "[PlanGenerator] Phase 1: Generating weekly skeleton with ingredient pools..."
+    `[PlanGenerator] Phase 1: Generating weekly skeleton for ${duration} days...`
   );
-  const skeleton = await generatePlanSkeleton(input);
+  const skeleton = await generatePlanSkeleton(input, duration);
 
   // Phase 2: 詳細生成（チャンク単位並列実行）
   console.log(

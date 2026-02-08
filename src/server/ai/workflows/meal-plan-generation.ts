@@ -17,7 +17,7 @@ import { estimateDailyDietBaseline } from "../functions/diet-estimator";
 export async function generateMealPlan(
   workflowInput: MealPlanWorkflowInput
 ): Promise<MealPlanWorkflowResult> {
-  const { input, mealTargets } = workflowInput;
+  const { input, mealTargets, duration = 7 } = workflowInput;
 
   // 1. 現状の食生活を分析
   console.log("[Workflow] Analyzing current diet intake...");
@@ -50,7 +50,8 @@ export async function generateMealPlan(
       ...input,
       adaptiveDirective,
     },
-    mealTargets
+    mealTargets,
+    duration
   );
 
   return result;

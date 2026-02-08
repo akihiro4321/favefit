@@ -21,6 +21,9 @@ import { toast } from "sonner";
 import { PlanCreatingScreen } from "@/components/plan-creating-screen";
 import { Textarea } from "@/components/ui/textarea";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
 
 export default function PlanPage() {
   const { user, profile, loading, refreshProfile } = useAuth();
@@ -39,6 +42,18 @@ export default function PlanPage() {
   >();
   const [feedback, setFeedback] = useState("");
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
+
+  // プラン作成ダイアログ用のステート
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [createSettings, setCreateSettings] = useState<{
+    startDate: string; // YYYY-MM-DD
+    duration: number;
+    feedback: string;
+  }>({
+    startDate: new Date().toISOString().split("T")[0],
+    duration: 1, // デフォルトを1日に変更
+    feedback: "",
+  });
 
   // プラン作成中かどうか
   const isPlanCreating = profile?.planCreationStatus === "creating";
@@ -157,6 +172,35 @@ export default function PlanPage() {
         throw new Error(error.error || "プラン生成に失敗しました");
       }
       await refreshProfile();
+    } catch (error) {
+      console.error("Generate plan error:", error);
+      toast.error(
+        error instanceof Error ? error.message : "プラン生成に失敗しました"
+      );
+      setFetching(false);
+    }
+  };
+
+  const handleUserGeneratePlan = async () => {
+    setFetching(true);
+    setShowCreateDialog(false);
+    try {
+      const res = await fetch("/api/plan/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.uid,
+          startDate: createSettings.startDate,
+          duration: createSettings.duration,
+          feedback: createSettings.feedback.trim(),
+        }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "プラン生成に失敗しました");
+      }
+      await refreshProfile();
+      toast.success("リクエストを受け付けました。プランを作成中です...");
     } catch (error) {
       console.error("Generate plan error:", error);
       toast.error(
@@ -310,9 +354,96 @@ export default function PlanPage() {
               {planToDisplay.startDate} 〜 7日間のプラン内容
             </p>
           </div>
-          <div className="flex gap-2"></div>
+          <div className="flex gap-2">
+            {!isPending && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 text-xs h-8"
+                onClick={() => {
+                  setCreateSettings({
+                    startDate: new Date().toISOString().split("T")[0],
+                    duration: 1, // デフォルト1日
+                    feedback: "",
+                  });
+                  setShowCreateDialog(true);
+                }}
+              >
+                <RotateCw className="w-3.5 h-3.5" />
+                作り直す
+              </Button>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* プラン作成設定ダイアログ */}
+      <ConfirmDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        title="プランを新しく作成"
+        description="現在のプランはアーカイブされ、新しい条件でプランを作成します。"
+        confirmText="作成を開始"
+        onConfirm={handleUserGeneratePlan}
+      >
+        <div className="grid gap-6 py-4">
+          <div className="space-y-3">
+            <div className="flex justify-between">
+              <Label>期間（日数）</Label>
+              <span className="text-sm font-bold text-primary">
+                {createSettings.duration}日間
+              </span>
+            </div>
+            <Slider
+              min={1}
+              max={7}
+              step={1}
+              value={[createSettings.duration]}
+              onValueChange={(val) =>
+                setCreateSettings({ ...createSettings, duration: val[0] })
+              }
+              className="py-2"
+            />
+            <p className="text-[10px] text-muted-foreground text-right">
+              ※1日〜7日まで指定可能
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="start-date">開始日</Label>
+            <Input
+              id="start-date"
+              type="date"
+              value={createSettings.startDate}
+              min={new Date().toISOString().split("T")[0]}
+              onChange={(e) =>
+                setCreateSettings({
+                  ...createSettings,
+                  startDate: e.target.value,
+                })
+              }
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="feedback">
+              AIへの要望 <span className="text-xs font-normal">(任意)</span>
+            </Label>
+            <Textarea
+              id="feedback"
+              placeholder="例: 明日は忙しいので朝食はコンビニで済ませたい、鶏肉を多めに使ってほしい、など"
+              value={createSettings.feedback}
+              onChange={(e) =>
+                setCreateSettings({
+                  ...createSettings,
+                  feedback: e.target.value,
+                })
+              }
+              className="min-h-[100px]"
+            />
+          </div>
+        </div>
+      </ConfirmDialog>
 
       {/* プラン概要（pending状態の時のみ表示） */}
       {isPending && (

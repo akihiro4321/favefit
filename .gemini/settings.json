@@ -28,7 +28,7 @@
           },
           {
             "type": "command",
-            "command": "npx prettier --check . 2>&1 || { echo 'Prettier formatting issues found' >&2; exit 2; }"
+            "command": "npx prettier --write ."
           }
         ]
       }

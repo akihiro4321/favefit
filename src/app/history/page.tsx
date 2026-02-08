@@ -77,47 +77,51 @@ export default function HistoryPage() {
   if (!user) return null;
 
   return (
-    <div className="container max-w-2xl mx-auto py-8 px-4 space-y-6 pb-24">
-      {/* ヘッダー */}
-      <div className="space-y-2 animate-slide-up">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
+    <div className="container max-w-2xl mx-auto py-8 px-4 space-y-8 pb-24">
+      <div className="animate-slide-up space-y-6">
+        {/* ヘッダー */}
+        <div className="flex items-center gap-2 px-1">
           <History className="w-6 h-6 text-primary" />
-          レシピ履歴
-        </h1>
+          <h1 className="text-2xl font-bold">レシピ履歴</h1>
+        </div>
+
+        <Tabs defaultValue="history" className="w-full">
+          <TabsList className="flex w-full">
+            <TabsTrigger value="history" className="flex-1">
+              すべて
+            </TabsTrigger>
+            <TabsTrigger value="favorites" className="flex-1">
+              また作りたい
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="history" className="space-y-3 mt-6">
+            {history.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <ChefHat className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>まだレシピがありません</p>
+              </div>
+            ) : (
+              history.map((recipe) => (
+                <RecipeCard key={recipe.id} recipe={recipe} />
+              ))
+            )}
+          </TabsContent>
+
+          <TabsContent value="favorites" className="space-y-3 mt-6">
+            {favorites.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Heart className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>また作りたいレシピがありません</p>
+              </div>
+            ) : (
+              favorites.map((recipe) => (
+                <FavoriteCard key={recipe.id} recipe={recipe} />
+              ))
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
-
-      <Tabs defaultValue="history" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="history">すべて</TabsTrigger>
-          <TabsTrigger value="favorites">また作りたい</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="history" className="space-y-3 mt-4">
-          {history.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <ChefHat className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>まだレシピがありません</p>
-            </div>
-          ) : (
-            history.map((recipe) => (
-              <RecipeCard key={recipe.id} recipe={recipe} />
-            ))
-          )}
-        </TabsContent>
-
-        <TabsContent value="favorites" className="space-y-3 mt-4">
-          {favorites.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <Heart className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>また作りたいレシピがありません</p>
-            </div>
-          ) : (
-            favorites.map((recipe) => (
-              <FavoriteCard key={recipe.id} recipe={recipe} />
-            ))
-          )}
-        </TabsContent>
-      </Tabs>
     </div>
   );
 }

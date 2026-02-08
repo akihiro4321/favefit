@@ -15,6 +15,7 @@ export interface MealPlanWorkflowInput {
   mealTargets: MealTargetNutrition;
   dislikedIngredients: string[];
   userId?: string;
+  duration?: number;
 }
 
 /**

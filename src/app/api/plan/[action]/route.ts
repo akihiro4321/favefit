@@ -16,6 +16,12 @@ import { HttpError, successResponse } from "@/server/api-utils";
 
 const GeneratePlanRequestSchema = z.object({
   userId: z.string().min(1, "userId は必須です"),
+  startDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format")
+    .optional(),
+  duration: z.number().min(1).max(7).optional(),
+  feedback: z.string().optional(),
 });
 
 const GetActivePlanRequestSchema = z.object({

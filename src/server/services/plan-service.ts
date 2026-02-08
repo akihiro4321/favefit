@@ -29,6 +29,9 @@ import { calculateMealTargets } from "@/lib/tools/mealNutritionCalculator";
 
 export interface GeneratePlanRequest {
   userId: string;
+  startDate?: string;
+  duration?: number;
+  feedback?: string;
 }
 
 export interface GeneratePlanResponse {
@@ -118,7 +121,7 @@ export async function generatePlan(
   await setPlanCreating(userId);
   console.log(`[generatePlan] Started plan generation for user ${userId}`);
 
-  generatePlanBackground(userId, userDoc).catch((error) => {
+  generatePlanBackground(userId, userDoc, request).catch((error) => {
     console.error(
       `[generatePlan] Background plan generation failed for user ${userId}:`,
       error
@@ -150,7 +153,8 @@ export async function generatePlan(
  */
 async function generatePlanBackground(
   userId: string,
-  userDoc: Awaited<ReturnType<typeof getOrCreateUser>>
+  userDoc: Awaited<ReturnType<typeof getOrCreateUser>>,
+  options: Partial<GeneratePlanRequest> = {}
 ) {
   if (!userDoc) return;
 
@@ -162,7 +166,11 @@ async function generatePlanBackground(
       tags: f.tags,
     }));
     const cheapIngredients = ["キャベツ", "もやし", "鶏むね肉", "卵", "豆腐"]; // TODO: DBから取得
-    const startDate = new Date().toISOString().split("T")[0];
+
+    // オプションの開始日があればそれを使用、なければ今日
+    const startDate =
+      options.startDate || new Date().toISOString().split("T")[0];
+    const duration = options.duration || 7;
 
     // 既存のプランをアーカイブ
     const existingPlanResult = await getActivePlanRepo(userId);
@@ -205,13 +213,20 @@ async function generatePlanBackground(
       currentDiet: userDoc.profile.lifestyle.currentDiet, // 適応型プランニング用
     };
 
+    // フィードバックの結合
+    // options.feedback（今回の一時的な指示）と userDoc.planRejectionFeedback（以前の拒否理由）を結合
+    const combinedFeedback = [userDoc.planRejectionFeedback, options.feedback]
+      .filter(Boolean)
+      .join("\n\n");
+
     // AI ワークフロー を実行
     const result = await generateMealPlan({
       input,
-      feedbackText: userDoc.planRejectionFeedback || "",
+      feedbackText: combinedFeedback,
       mealTargets,
       dislikedIngredients: userDoc.learnedPreferences.dislikedIngredients,
       userId,
+      duration, // ワークフローにも期間を渡す
     });
 
     if (!result.isValid && result.invalidMealsCount > 0) {

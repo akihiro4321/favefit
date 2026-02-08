@@ -83,7 +83,7 @@ export default function DebugMealPlanPage() {
   const [scenarios, setScenarios] = useState<Scenario[]>([
     {
       id: "1",
-      name: "Scenario 1",
+      name: "シナリオ 1",
       json: JSON.stringify(INITIAL_SAMPLE, null, 2),
       result: null,
       isLoading: false,
@@ -91,7 +91,6 @@ export default function DebugMealPlanPage() {
     },
   ]);
   const [activeScenarioId, setActiveScenarioId] = useState<string>("1");
-  const [version, setVersion] = useState<"v1" | "v2">("v2");
 
   const addScenario = () => {
     const newId = Date.now().toString();
@@ -99,7 +98,7 @@ export default function DebugMealPlanPage() {
       ...scenarios,
       {
         id: newId,
-        name: `Scenario ${scenarios.length + 1}`,
+        name: `シナリオ ${scenarios.length + 1}`,
         json: scenarios[scenarios.length - 1].json, // 前のスロットをコピー
         result: null,
         isLoading: false,
@@ -137,11 +136,11 @@ export default function DebugMealPlanPage() {
       const response = await fetch("/api/debug/generate-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...parsedInput, version }),
+        body: JSON.stringify({ ...parsedInput, version: "v2" }),
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Failed to generate");
+      if (!response.ok) throw new Error(data.error || "生成に失敗しました");
 
       setScenarios((prev) =>
         prev.map((s) =>
@@ -154,7 +153,8 @@ export default function DebugMealPlanPage() {
           s.id === id
             ? {
                 ...s,
-                error: err instanceof Error ? err.message : "Error",
+                error:
+                  err instanceof Error ? err.message : "エラーが発生しました",
                 isLoading: false,
               }
             : s
@@ -175,36 +175,16 @@ export default function DebugMealPlanPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
-            Multi-Scenario Debugger
+            マルチシナリオ・デバッガー
           </h1>
           <p className="text-muted-foreground">
-            Test and compare different input patterns. Current version:{" "}
-            {version.toUpperCase()}
+            様々な入力パターンでプラン生成をテスト・比較できます。
           </p>
         </div>
 
         <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex bg-muted p-1 rounded-lg">
-            <Button
-              variant={version === "v1" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setVersion("v1")}
-              className="text-xs h-8"
-            >
-              V1 (Batch)
-            </Button>
-            <Button
-              variant={version === "v2" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setVersion("v2")}
-              className="text-xs h-8"
-            >
-              V2 (2-Stage)
-            </Button>
-          </div>
-
           <Button variant="outline" onClick={addScenario} className="gap-2">
-            <Plus className="w-4 h-4" /> Add Slot
+            <Plus className="w-4 h-4" /> シナリオ追加
           </Button>
 
           <Button
@@ -214,7 +194,7 @@ export default function DebugMealPlanPage() {
             className="gap-2 bg-primary text-primary-foreground"
           >
             <Play className="w-4 h-4 fill-current" />
-            Run All
+            すべて実行
           </Button>
         </div>
       </div>
@@ -223,7 +203,7 @@ export default function DebugMealPlanPage() {
         {/* Scenario Sidebar - Narrower */}
         <div className="col-span-12 lg:col-span-2 space-y-2 border-r pr-4">
           <div className="font-semibold text-xs text-muted-foreground mb-4 px-2 uppercase tracking-widest">
-            Scenarios
+            シナリオ一覧
           </div>
           {scenarios.map((s) => (
             <div
@@ -252,8 +232,8 @@ export default function DebugMealPlanPage() {
                     {s.result
                       ? `${s.result.debug?.executionTimeMs}ms`
                       : s.isLoading
-                        ? "RUN"
-                        : "READY"}
+                        ? "実行中"
+                        : "準備完了"}
                   </span>
                 </div>
               </div>
@@ -278,7 +258,7 @@ export default function DebugMealPlanPage() {
         <div className="col-span-12 lg:col-span-3 space-y-4">
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2 font-bold text-xs uppercase text-muted-foreground tracking-tighter">
-              <Code className="w-3.5 h-3.5" /> Input JSON
+              <Code className="w-3.5 h-3.5" /> 入力 JSON
             </div>
             <Button
               variant="secondary"
@@ -287,7 +267,7 @@ export default function DebugMealPlanPage() {
               onClick={() => runSingleScenario(activeScenario.id)}
               disabled={activeScenario.isLoading}
             >
-              Run This
+              実行
             </Button>
           </div>
           <Textarea
@@ -302,7 +282,7 @@ export default function DebugMealPlanPage() {
         {/* Result Preview - Maximized Width */}
         <div className="col-span-12 lg:col-span-7 space-y-4">
           <div className="flex items-center gap-2 font-bold text-xs uppercase text-muted-foreground tracking-tighter px-1">
-            <Layout className="w-3.5 h-3.5" /> Result ({activeScenario.name})
+            <Layout className="w-3.5 h-3.5" /> 結果 ({activeScenario.name})
           </div>
 
           <div className="bg-muted/20 rounded-2xl border-2 border-dashed min-h-[750px] p-6 overflow-auto max-h-[850px] shadow-inner">
@@ -310,7 +290,7 @@ export default function DebugMealPlanPage() {
               <div className="bg-destructive/10 border border-destructive/20 text-destructive p-4 rounded-xl flex gap-3">
                 <AlertCircle className="w-5 h-5 flex-shrink-0" />
                 <div className="space-y-1">
-                  <p className="text-sm font-bold">Failed to Generate</p>
+                  <p className="text-sm font-bold">生成に失敗しました</p>
                   <p className="text-xs font-mono break-all">
                     {activeScenario.error}
                   </p>
@@ -322,7 +302,7 @@ export default function DebugMealPlanPage() {
               <div className="flex flex-col items-center justify-center h-[600px] space-y-4">
                 <Loader2 className="w-10 h-10 animate-spin text-primary opacity-50" />
                 <p className="text-sm font-bold animate-pulse text-muted-foreground">
-                  AI is brainstorming...
+                  AIが考え中...
                 </p>
               </div>
             )}
@@ -335,10 +315,10 @@ export default function DebugMealPlanPage() {
                       value="preview"
                       className="text-[10px] px-4 h-6"
                     >
-                      Preview
+                      プレビュー
                     </TabsTrigger>
                     <TabsTrigger value="json" className="text-[10px] px-4 h-6">
-                      Raw JSON
+                      生データ(JSON)
                     </TabsTrigger>
                   </TabsList>
                   <div className="flex gap-2">
@@ -351,8 +331,8 @@ export default function DebugMealPlanPage() {
                       className="text-[10px]"
                     >
                       {activeScenario.result.isValid
-                        ? "Valid"
-                        : `Fix: ${activeScenario.result.invalidMealsCount}`}
+                        ? "有効"
+                        : `修正が必要: ${activeScenario.result.invalidMealsCount}`}
                     </Badge>
                     <Badge
                       variant="secondary"
@@ -452,7 +432,7 @@ export default function DebugMealPlanPage() {
                 <div className="flex flex-col items-center justify-center h-[600px] text-muted-foreground opacity-20">
                   <Play className="w-12 h-12 mb-4" />
                   <p className="text-xs font-bold tracking-widest uppercase">
-                    Awaiting Execution
+                    実行待ち
                   </p>
                 </div>
               )}
