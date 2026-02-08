@@ -6,6 +6,7 @@
 import {
   PlanGeneratorInput,
   generateMealPlan,
+  normalizeShoppingList,
 } from "@/server/ai";
 import { getOrCreateUser, setPlanCreating, setPlanCreated, clearUserRejectionFeedback } from "@/server/db/firestore/userRepository";
 import {
@@ -280,132 +281,46 @@ function calculateUserMacroGoals(userDoc: NonNullable<Awaited<ReturnType<typeof 
  * 買い物リストを生成
  */
 async function generateShoppingListFromRecipes(
+  userId: string,
   planId: string,
   days: Record<string, DayPlan>
 ): Promise<void> {
-  // TypeScriptによる高度な事前集計
-  // Map<食材名, { amounts: string[]; category: string }>
-  const ingredientGroups = new Map<string, { amounts: string[]; category: string }>();
-
-  Object.values(days)
+  // 1. 全レシピから食材を抽出
+  const rawIngredients = Object.values(days)
     .filter(dayPlan => !dayPlan.isCheatDay)
     .flatMap(dayPlan => Object.values(dayPlan.meals))
-    .flatMap(meal => meal.ingredients ?? [])
-    .forEach(ing => {
-      const normalizedName = ing.name.trim();
-      const amount = ing.amount.trim();
+    .flatMap(meal => meal.ingredients ?? []);
 
-      if (ingredientGroups.has(normalizedName)) {
-        ingredientGroups.get(normalizedName)!.amounts.push(amount);
-      } else {
-        ingredientGroups.set(normalizedName, {
-          amounts: [amount],
-          category: categorizeIngredient(normalizedName, amount),
-        });
-      }
-    });
+  if (rawIngredients.length === 0) return;
 
-  // 集計結果を ShoppingItem 形式に変換
+  // 2. ユーザーの冷蔵庫在庫を取得
+  const user = await getOrCreateUser(userId);
+  const fridgeItems = user?.profile.lifestyle.fridgeIngredients || [];
+
+  // 3. AIによる正規化を実行
+  console.log(`[PlanService] Normalizing shopping list for ${rawIngredients.length} items...`);
+  const normalized = await normalizeShoppingList({
+    ingredients: rawIngredients,
+    fridgeItems,
+  });
+
+  // 4. Firestore 形式に変換
   const shoppingItems: ShoppingItem[] = [];
-
-  for (const [name, data] of ingredientGroups.entries()) {
-    const totalAmount = sumAmounts(data.amounts);
-    shoppingItems.push({
-      ingredient: name,
-      amount: totalAmount,
-      category: data.category,
-      checked: false,
+  normalized.categories.forEach(category => {
+    category.items.forEach(item => {
+      shoppingItems.push({
+        ingredient: item.name,
+        amount: item.amount,
+        category: category.name,
+        checked: false,
+      });
     });
-  }
+  });
 
-  // Firestoreに保存
+  // 5. 保存
   if (shoppingItems.length > 0) {
     await createShoppingList(planId, shoppingItems);
   }
-}
-
-/**
- * 分量の数値合算ロジック (TypeScript)
- */
-function sumAmounts(amounts: string[]): string {
-  const summary: Record<string, number> = {};
-  const strings: string[] = [];
-
-  for (const amt of amounts) {
-    // 数値と単位を分離 (例: "200g", "1.5個", "1/2個")
-    const match = amt.match(/^(\d*(?:\.\d+)?|\d+\/\d+)\s*([a-zA-Zぁ-んァ-ヶー一-龠]*)$/);
-
-    if (match) {
-      const [, valueStr, unit] = match;
-      if (valueStr) {
-        const value = parseValue(valueStr);
-        summary[unit] = (summary[unit] || 0) + value;
-      } else {
-        // 数値がないが単位（または文字列）のみの場合（例：「適量」）
-        strings.push(amt);
-      }
-    } else {
-      strings.push(amt);
-    }
-  }
-
-  const results = Object.entries(summary).map(([unit, val]) => {
-    // 小数点以下の整形 (0.5 => 1/2 のような変換はせず、0.5のまま)
-    const displayVal = Number.isInteger(val) ? val.toString() : val.toFixed(1).replace(/\.0$/, "");
-    return `${displayVal}${unit}`;
-  });
-
-  // 重複した文字列を排除して結合
-  const uniqueStrings = Array.from(new Set(strings));
-  return [...results, ...uniqueStrings].join(", ");
-}
-
-/**
- * 文字列の数値をパース（分数対応）
- */
-function parseValue(valStr: string): number {
-  if (valStr.includes("/")) {
-    const [num, den] = valStr.split("/").map(Number);
-    if (den === 0) return 0;
-    return num / den;
-  }
-  return parseFloat(valStr) || 0;
-}
-
-/**
- * 食材カテゴリの簡易判定
- */
-function categorizeIngredient(name: string, amount?: string): string {
-  const lowerName = name.toLowerCase();
-  const lowerAmount = amount?.toLowerCase() || "";
-
-  // 常備品・基本調味料の判定（分量の表現で判断）
-  const stapleMeasureKeywords = ["大さじ", "小さじ", "少々", "適量", "少量", "たっぷり", "ひとつまみ"];
-  if (stapleMeasureKeywords.some((k) => lowerAmount.includes(k))) {
-    return "基本調味料・常備品 (お家にあれば購入不要)";
-  }
-
-  const meatKeywords = ["肉", "牛", "豚", "鶏", "ひき肉", "ベーコン", "ハム", "ウィンナー", "ソーセージ", "ささみ", "チャーシュー"];
-  const fishKeywords = ["魚", "鮭", "マグロ", "海老", "イカ", "タコ", "貝", "刺身", "鯖", "鯛", "あゆ", "ぶり", "カツオ", "しらす", "アサリ"];
-  const veggieKeywords = ["野菜", "玉ねぎ", "人参", "キャベツ", "レタス", "トマト", "ブロッコリー", "ピーマン", "なす", "ほうれん草", "じゃがいも", "大根", "きのこ", "椎茸", "えのき", "セロリ", "パプリカ", "もやし", "キュウリ", "きゅうり", "ニラ", "パセリ", "刻みネギ", "バジル"];
-  const fruitKeywords = ["果物", "フルーツ", "レモン", "バナナ", "ブルーベリー", "イチゴ", "リンゴ", "みかん", "アボカド"];
-  const grainKeywords = ["パスタ", "ラザニア", "パン", "米", "ご飯", "飯", "うどん", "そば", "麺", "ピザ生地", "トースト", "全粒粉"];
-  const dairyEggKeywords = ["卵", "チーズ", "牛乳", "ヨーグルト", "バター", "生クリーム"];
-  const soyKeywords = ["豆腐", "納豆", "豆乳", "油揚げ", "厚揚げ"];
-  const condimentKeywords = ["塩", "胡椒", "醤油", "味噌", "油", "だし", "砂糖", "酢", "みりん", "酒", "マヨネーズ", "ケチャップ", "ソース", "コンソメ", "めんつゆ", "ドレッシング", "ポン酢", "はちみつ", "シロップ", "片栗粉", "豆板醤", "生姜", "わさび", "にんにく", "練りごま", "ハーブ"];
-  const processedKeywords = ["プロテイン", "わかめ", "海苔", "寿司", "茶碗蒸し"];
-
-  if (meatKeywords.some((k) => lowerName.includes(k))) return "肉類";
-  if (fishKeywords.some((k) => lowerName.includes(k))) return "魚介類";
-  if (veggieKeywords.some((k) => lowerName.includes(k))) return "野菜・ハーブ類";
-  if (fruitKeywords.some((k) => lowerName.includes(k))) return "果実類";
-  if (dairyEggKeywords.some((k) => lowerName.includes(k))) return "卵・乳製品";
-  if (soyKeywords.some((k) => lowerName.includes(k))) return "大豆製品";
-  if (grainKeywords.some((k) => lowerName.includes(k))) return "主食・穀類";
-  if (condimentKeywords.some((k) => lowerName.includes(k))) return "調味料・甘味料";
-  if (processedKeywords.some((k) => lowerName.includes(k))) return "加工食品・その他";
-
-  return "その他";
 }
 
 /**
@@ -440,7 +355,7 @@ export async function approvePlan(
 
   return {
     success: true,
-    message: "プランを承認しました。レシピ詳細を生成中です。",
+    message: "プランを承認しました。買い物リストを作成中です。",
   };
 }
 
@@ -453,8 +368,8 @@ async function approvePlanAndGenerateDetails(
   days: Record<string, DayPlan>
 ): Promise<void> {
   try {
-    // 買い物リストを生成（V2ではレシピ詳細は既に生成済み）
-    await generateShoppingListFromRecipes(planId, days);
+    // 買い物リストを生成
+    await generateShoppingListFromRecipes(userId, planId, days);
   } catch (error) {
     console.error("Error in approvePlanAndGenerateDetails:", error);
     throw error;

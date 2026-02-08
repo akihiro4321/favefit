@@ -23,9 +23,7 @@ import {
   Activity,
   Zap,
   UtensilsCrossed,
-  CheckCircle2,
   Sparkles,
-  CalendarDays,
   Clock,
 } from "lucide-react";
 import type { LearnedPreferences, UserDocument } from "@/lib/schema";
@@ -492,41 +490,6 @@ export default function OnboardingPage() {
   /** 「戻る」ボタン押下時の処理 */
   const handleBack = () => {
     setCurrentStep((s) => Math.max(s - 1, 1));
-  };
-
-  /**
-   * プラン作成を開始
-   * 1. オンボーディング完了フラグを立てる
-   * 2. バックグラウンドでプラン生成APIを呼び出す
-   */
-  const handleCreatePlan = async () => {
-    setSubmitting(true);
-    try {
-      // 1. オンボーディング完了をマーク
-      await fetch('/api/user/complete-onboarding', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user!.uid }),
-      });
-
-      // 2. プラン生成をリクエスト（バックグラウンドで実行される）
-      const response = await fetch("/api/plan/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user!.uid }),
-      });
-
-      const result = await response.json();
-      if (result.error) throw new Error(result.error);
-
-      // 3. プロフィールを更新（作成中ステータスが反映される）
-      await refreshProfile();
-    } catch (error) {
-      console.error("Plan creation failed:", error);
-      alert("プラン作成の開始に失敗しました。もう一度お試しください。");
-    } finally {
-      setSubmitting(false);
-    }
   };
 
   /** アレルギー・苦手な食材をリストに追加 */

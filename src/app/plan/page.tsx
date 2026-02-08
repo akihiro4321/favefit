@@ -376,7 +376,6 @@ export default function PlanPage() {
               dayPlan={dayPlan}
               isToday={isToday}
               isPast={isPast}
-              isPending={isPending}
               planId={planToDisplay.id}
             />
           );
@@ -392,7 +391,6 @@ interface DayCardProps {
   dayPlan: DayPlan;
   isToday: boolean;
   isPast: boolean;
-  isPending?: boolean;
   planId: string;
 }
 
@@ -402,7 +400,6 @@ function DayCard({
   dayPlan,
   isToday,
   isPast,
-  isPending = false,
   planId,
 }: DayCardProps) {
   const formatDate = (dateStr: string) => {

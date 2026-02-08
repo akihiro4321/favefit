@@ -76,6 +76,7 @@ export { estimateDailyDietBaseline } from "./functions/diet-estimator";
 export { auditPlanAnchors, type AuditorOutput } from "./functions/plan-auditor";
 export { generatePlanSkeleton } from "./functions/plan-skeleton-generator";
 export { generateChunkDetails } from "./functions/chunk-detail-generator";
+export { normalizeShoppingList, type NormalizedShoppingList } from "./functions/shopping-list-normalizer";
 
 // ============================================
 // Prompts
