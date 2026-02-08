@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { User } from 'lucide-react';
+import { User, Bug } from 'lucide-react';
 import { useAuth } from './auth-provider';
 import { usePathname } from 'next/navigation';
 
@@ -22,6 +22,15 @@ export function Header() {
         </Link>
         
         <div className="flex items-center gap-2">
+          {/* Debug Button */}
+          <Link
+            href="/debug/meal-plan"
+            className="flex items-center justify-center w-10 h-10 bg-secondary/50 hover:bg-secondary border border-border/50 transition-all rounded-full text-secondary-foreground shadow-sm hover:shadow-md"
+            title="Debug Meal Plan"
+          >
+            <Bug className="h-4 w-4" />
+          </Link>
+
           {loading ? (
             <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
           ) : user ? (

@@ -19,8 +19,11 @@ export async function callModelWithSchema<TSchema extends z.ZodType>(
   schema: TSchema,
   model: string,
 ): Promise<z.infer<TSchema>> {
-  // JSON Schema 生成
-  const jsonSchema = zodToJsonSchema(schema, { target: "openApi3" });
+  // JSON Schema 生成 (Gemini は $ref をサポートしていないため、参照を無効化してインライン展開する)
+  const jsonSchema = zodToJsonSchema(schema, { 
+    target: "openApi3",
+    $refStrategy: "none" 
+  });
 
   try {
     const result = await genAI.models.generateContent({
