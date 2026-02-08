@@ -3,7 +3,7 @@
  * レシピ詳細取得・生成・差し替えに関するビジネスロジック
  */
 
-import { generateRecipe } from "@/server/ai";
+import { generateRecipeData, buildRecipePrompt } from "@/server/ai";
 import { getOrCreateUser } from "@/server/db/firestore/userRepository";
 import { getPlan, updateMealSlot, swapMeal } from "@/server/db/firestore/planRepository";
 import { MealSlot } from "@/lib/schema";
@@ -81,13 +81,13 @@ export async function getRecipeDetail(
   // 詳細を生成
   const userDoc = await getOrCreateUser(userId);
 
-  const workflowResult = await generateRecipe({
-    userId,
-    mood: currentMeal.title,
-    targetNutrition: currentMeal.nutrition,
+  const prompt = await buildRecipePrompt(
     userDoc,
-  });
-  const aiResult = workflowResult.recipe;
+    currentMeal.title,
+    currentMeal.nutrition,
+  );
+
+  const aiResult = await generateRecipeData(prompt);
 
   const ingredients = aiResult.ingredients;
   const steps = aiResult.instructions;

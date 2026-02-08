@@ -15,7 +15,7 @@ import {
   DocumentSnapshot,
 } from "firebase/firestore";
 import { collections, docRefs, SavedRecipe } from "./collections";
-import { Recipe } from "@/server/ai/agents/recipe-creator";
+import { Recipe } from "@/server/ai/functions/recipe-generator";
 
 export type { SavedRecipe };
 

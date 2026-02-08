@@ -1,10 +1,10 @@
 /**
- * FaveFit - Recipe Creator Agent
- * レシピ詳細生成エージェント
+ * FaveFit - Recipe Generator Function
+ * レシピ詳細生成関数
  */
 
 import { z } from "zod";
-import { runAgentWithSchema } from "../utils/agent-helpers";
+import { callModelWithSchema } from "../utils/agent-helpers";
 import { NutritionValuesSchema, IngredientItemSchema } from "../types/common";
 
 // ============================================
@@ -26,28 +26,23 @@ export type Recipe = z.infer<typeof RecipeOutputSchema>;
 // プロンプト
 // ============================================
 
-import { RECIPE_CREATOR_INSTRUCTIONS } from "./prompts/recipe-creator";
+import { RECIPE_CREATOR_INSTRUCTIONS } from "../prompts/functions/recipe-generator";
+import { GEMINI_3_FLASH_MODEL } from "../config";
 
 // ============================================
-// エージェント実行
+// 関数実行
 // ============================================
 
 /**
- * Recipe Creator を実行
+ * レシピデータを生成
  */
-export async function runRecipeCreator(
+export async function generateRecipeData(
   prompt: string,
-  userId?: string,
-  processName?: string
 ): Promise<Recipe> {
-  return runAgentWithSchema(
+  return callModelWithSchema(
     RECIPE_CREATOR_INSTRUCTIONS,
     prompt,
     RecipeOutputSchema,
-    "flash",
-    "recipe-creator",
-    userId,
-    processName
+    GEMINI_3_FLASH_MODEL,
   );
 }
-

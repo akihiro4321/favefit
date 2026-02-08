@@ -6,14 +6,12 @@
 // ============================================
 // Config
 // ============================================
-export { google, geminiFlash, geminiPro } from "./config";
-
-// ============================================
-// Observability
-// ============================================
 export {
-  getTelemetryConfig,
-} from "./observability";
+  genAI,
+  GEMINI_3_FLASH_MODEL,
+  GEMINI_3_PRO_MODEL,
+  GEMINI_2_5_FLASH_MODEL,
+} from "./config";
 
 // ============================================
 // Common Types
@@ -38,21 +36,14 @@ export {
 // Helpers
 // ============================================
 export {
-  runAgent,
-  runAgentWithSchema,
-  runTextAgent,
-  parseJsonFromText,
+  callModelWithSchema as runAgentWithSchema,
   formatPreferences,
   formatArray,
-  getModel,
-  type ModelType,
-  type AgentConfig,
 } from "./utils/agent-helpers";
 
 // ============================================
 // Agents
 // ============================================
-
 export {
   runPlanGenerator,
   runPartialPlanGenerator,
@@ -64,72 +55,86 @@ export {
   type PlanGeneratorOutput,
 } from "./agents/plan-generator";
 
+export { runPlanGeneratorV2 } from "./agents/plan-generator-v2";
+
+// ============================================
+// Functions
+// ============================================
 export {
-  runRecipeCreator,
+  generateRecipeData,
   RecipeOutputSchema,
   type Recipe,
-} from "./agents/recipe-creator";
+} from "./functions/recipe-generator";
 
 export {
-  runMenuAdjuster,
+  generateMenuSuggestions,
   MenuAdjusterInputSchema,
   MenuAdjusterOutputSchema,
   type MenuAdjusterInput,
   type MenuAdjusterOutput,
-} from "./agents/menu-adjuster";
+} from "./functions/menu-suggester";
 
 export {
-  runPreferenceLearner,
+  analyzePreferenceData,
   PreferenceLearnerInputSchema,
   PreferenceLearnerOutputSchema,
   type PreferenceLearnerInput,
   type PreferenceLearnerOutput,
   type PreferenceAnalysis,
-} from "./agents/preference-learner";
+} from "./functions/preference-analyzer";
 
-export {
-  runAuditor,
-  type AuditorOutput,
-} from "./agents/auditor";
-
-export {
-  runDietBaselineEstimator,
-} from "./agents/diet-baseline-estimator";
+export { estimateDailyDietBaseline } from "./functions/diet-estimator";
+export { auditPlanAnchors, type AuditorOutput } from "./functions/plan-auditor";
+export { generatePlanSkeleton } from "./functions/plan-skeleton-generator";
+export { generateChunkDetails } from "./functions/chunk-detail-generator";
 
 // ============================================
 // Prompts
 // ============================================
+
+// Agents
 export {
   PLAN_GENERATOR_INSTRUCTIONS,
   getPlanGenerationPrompt,
   getSingleMealFixPrompt,
   getBatchMealFixPrompt,
-} from "./agents/prompts/plan-generator";
+} from "./prompts/agents/plan-generator";
+
+// Functions
+export {
+  AUDITOR_INSTRUCTIONS,
+  getAuditorPrompt,
+} from "./prompts/functions/plan-auditor";
 
 export {
   RECIPE_CREATOR_INSTRUCTIONS,
   buildRecipePrompt,
-} from "./agents/prompts/recipe-creator";
+} from "./prompts/functions/recipe-generator";
 
 export {
   MENU_ADJUSTER_INSTRUCTIONS,
   getMenuAdjustmentPrompt,
-} from "./agents/prompts/menu-adjuster";
+} from "./prompts/functions/menu-suggester";
 
 export {
   PREFERENCE_LEARNER_INSTRUCTIONS,
   getPreferenceLearningPrompt,
-} from "./agents/prompts/preference-learner";
-
-export {
-  AUDITOR_INSTRUCTIONS,
-  getAuditorPrompt,
-} from "./agents/prompts/auditor";
+} from "./prompts/functions/preference-analyzer";
 
 export {
   DIET_BASELINE_ESTIMATOR_INSTRUCTIONS,
-  getDietBaselineEstimationPrompt,
-} from "./agents/prompts/diet-baseline-estimator";
+  getDailyDietBaselinePrompt,
+} from "./prompts/functions/diet-estimator";
+
+export {
+  PLAN_SKELETON_GENERATOR_INSTRUCTIONS,
+  getPlanSkeletonPrompt,
+} from "./prompts/functions/plan-skeleton-generator";
+
+export {
+  CHUNK_DETAIL_GENERATOR_INSTRUCTIONS,
+  getChunkDetailPrompt,
+} from "./prompts/functions/chunk-detail-generator";
 
 // ============================================
 // Workflows
@@ -140,26 +145,4 @@ export {
   type MealPlanWorkflowResult,
 } from "./workflows/meal-plan-generation";
 
-export {
-  generateRecipe,
-  type RecipeGenerationWorkflowInput,
-  type RecipeGenerationWorkflowResult,
-} from "./workflows/recipe-generation";
-
-export {
-  learnPreferences,
-  type PreferenceLearningWorkflowInput,
-  type PreferenceLearningWorkflowResult,
-} from "./workflows/preference-learning";
-
-export {
-  adjustMenu,
-  type MenuAdjustmentWorkflowInput,
-  type MenuAdjustmentWorkflowResult,
-} from "./workflows/menu-adjustment";
-
-export {
-  analyzeCurrentIntake,
-  type DietAnalysisWorkflowInput,
-  type DietAnalysisWorkflowResult,
-} from "./workflows/diet-analysis";
+export { generateMealPlanV2 } from "./workflows/meal-plan-generation-v2";

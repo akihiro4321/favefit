@@ -5,9 +5,7 @@
 
 import {
   PlanGeneratorInput,
-  generateMealPlan,
-  buildRecipePrompt,
-  runRecipeCreator,
+  generateMealPlanV2,
 } from "@/server/ai";
 import { getOrCreateUser, setPlanCreating, setPlanCreated, clearUserRejectionFeedback } from "@/server/db/firestore/userRepository";
 import {
@@ -191,8 +189,8 @@ async function generatePlanBackground(
       currentDiet: userDoc.profile.lifestyle.currentDiet, // 適応型プランニング用
     };
 
-    // Vercel AI SDK ワークフローを実行
-    const result = await generateMealPlan({
+    // AI ワークフロー (V2) を実行
+    const result = await generateMealPlanV2({
       input,
       feedbackText: userDoc.planRejectionFeedback || "",
       mealTargets,
@@ -281,89 +279,7 @@ function calculateUserMacroGoals(userDoc: NonNullable<Awaited<ReturnType<typeof 
 
 
 /**
- * プラン結果をDayPlanに変換（ヘルパー関数）
- */
-
-/**
- * レシピ詳細を1つ生成（内部関数）
- */
-async function generateSingleRecipeDetail(
-  userId: string,
-  planId: string,
-  date: string,
-  mealType: "breakfast" | "lunch" | "dinner",
-  meal: MealSlot
-): Promise<void> {
-  // 既に詳細が存在する場合はスキップ
-  if (meal.ingredients && meal.ingredients.length > 0 && meal.steps && meal.steps.length > 0) {
-    return;
-  }
-
-  const userDoc = await getOrCreateUser(userId);
-  const prompt = buildRecipePrompt(userDoc, meal.title, meal.nutrition);
-
-  const aiResult = await runRecipeCreator(prompt, userId);
-
-  const ingredients = aiResult.ingredients.map(
-    (i: { name: string; amount: string }) => ({ name: i.name, amount: i.amount })
-  );
-  const steps = aiResult.instructions;
-
-  const updates = {
-    ingredients,
-    steps: steps || [],
-  };
-
-  await updateMealSlot(planId, date, mealType, updates);
-}
-
-/**
- * レシピ詳細をバッチ処理で生成
- * 5食ずつ、並列3件、バッチ間に1秒待機
- */
-async function generateRecipeDetailsBatch(
-  userId: string,
-  planId: string,
-  days: Record<string, DayPlan>
-): Promise<void> {
-  const mealTypes = ["breakfast", "lunch", "dinner"] as const;
-  
-  const recipeQueue = Object.entries(days).flatMap(([date, dayPlan]) =>
-    mealTypes
-      .map((mealType) => ({ date, mealType, meal: dayPlan.meals[mealType] }))
-      .filter(({ meal }) => !meal.ingredients || meal.ingredients.length === 0)
-  );
-
-  if (recipeQueue.length === 0) {
-    return;
-  }
-
-  const BATCH_SIZE = 5;
-  const CONCURRENT_LIMIT = 3;
-
-  for (let i = 0; i < recipeQueue.length; i += BATCH_SIZE) {
-    const batch = recipeQueue.slice(i, i + BATCH_SIZE);
-    const concurrentBatch = batch.slice(0, CONCURRENT_LIMIT);
-
-    // 並列実行（制限あり）
-    const promises = concurrentBatch.map(({ date, mealType, meal }) =>
-      generateSingleRecipeDetail(userId, planId, date, mealType, meal).catch((error) => {
-        console.error(`Failed to generate recipe for ${date} ${mealType}:`, error);
-        return null; // エラーでも続行
-      })
-    );
-
-    await Promise.allSettled(promises);
-
-    // バッチ間に待機（APIレート制限対策）
-    if (i + BATCH_SIZE < recipeQueue.length) {
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // 1秒待機
-    }
-  }
-}
-
-/**
- * レシピデータから買い物リストを生成
+ * 買い物リストを生成
  */
 async function generateShoppingListFromRecipes(
   planId: string,
@@ -531,7 +447,7 @@ export async function approvePlan(
 }
 
 /**
- * プラン承認後のレシピ詳細生成（バックグラウンド処理）
+ * プラン承認後の処理（バックグラウンド処理）
  */
 async function approvePlanAndGenerateDetails(
   userId: string,
@@ -539,17 +455,8 @@ async function approvePlanAndGenerateDetails(
   days: Record<string, DayPlan>
 ): Promise<void> {
   try {
-    // レシピ詳細をバッチ処理で生成
-    await generateRecipeDetailsBatch(userId, planId, days);
-
-    // Firestoreから最新のプランデータを再取得（ingredients/stepsが追加されている）
-    const updatedPlan = await getPlan(planId);
-    if (!updatedPlan) {
-      throw new Error("更新されたプランが見つかりません");
-    }
-
-    // 買い物リストを生成（最新のdaysデータを使用）
-    await generateShoppingListFromRecipes(planId, updatedPlan.days);
+    // 買い物リストを生成（V2ではレシピ詳細は既に生成済み）
+    await generateShoppingListFromRecipes(planId, days);
   } catch (error) {
     console.error("Error in approvePlanAndGenerateDetails:", error);
     throw error;

@@ -1,4 +1,4 @@
-import { PreferenceLearnerInput } from "../preference-learner";
+import { PreferenceLearnerInput } from "../../functions/preference-analyzer";
 
 export const PREFERENCE_LEARNER_INSTRUCTIONS = `
 あなたはユーザーの食の好みを分析するAIです。

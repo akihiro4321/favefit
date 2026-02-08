@@ -1,10 +1,10 @@
 /**
- * FaveFit - Menu Adjuster Agent
- * 臨機応変なメニュー提案エージェント
+ * FaveFit - Menu Suggester Function
+ * 臨機応変なメニュー提案関数
  */
 
 import { z } from "zod";
-import { runAgentWithSchema } from "../utils/agent-helpers";
+import { callModelWithSchema } from "../utils/agent-helpers";
 import {
   NutritionValuesSchema,
   IngredientItemSchema,
@@ -29,9 +29,8 @@ export const MenuAdjusterInputSchema = z.object({
     .array(z.string())
     .optional()
     .describe("すでに提案して却下されたレシピ名"),
-  preferences: PreferencesProfileSchema.optional().describe(
-    "学習済み嗜好プロファイル"
-  ),
+  preferences:
+    PreferencesProfileSchema.optional().describe("学習済み嗜好プロファイル"),
 });
 
 /**
@@ -69,27 +68,23 @@ export type MenuAdjusterOutput = z.infer<typeof MenuAdjusterOutputSchema>;
 // プロンプト
 // ============================================
 
-import { MENU_ADJUSTER_INSTRUCTIONS } from "./prompts/menu-adjuster";
+import { MENU_ADJUSTER_INSTRUCTIONS } from "../prompts/functions/menu-suggester";
+import { GEMINI_3_FLASH_MODEL } from "../config";
 
 // ============================================
-// エージェント実行
+// 関数実行
 // ============================================
 
 /**
- * Menu Adjuster を実行
+ * Menu Suggestions を生成
  */
-export async function runMenuAdjuster(
+export async function generateMenuSuggestions(
   prompt: string,
-  userId?: string,
-  processName?: string
 ): Promise<MenuAdjusterOutput> {
-  return runAgentWithSchema(
+  return callModelWithSchema(
     MENU_ADJUSTER_INSTRUCTIONS,
     prompt,
     MenuAdjusterOutputSchema,
-    "flash",
-    "menu-adjuster",
-    userId,
-    processName
+    GEMINI_3_FLASH_MODEL,
   );
 }

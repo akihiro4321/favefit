@@ -2,146 +2,73 @@
  * FaveFit - AIエージェントヘルパー関数
  */
 
-import { generateObject, generateText, LanguageModelV1 } from "ai";
 import { z } from "zod";
-import { geminiFlash, geminiPro, gemini25Flash } from "../config";
-import { getTelemetryConfig } from "../observability";
-
-// ============================================
-// モデル選択
-// ============================================
-
-export type ModelType = "flash" | "pro" | "flash-2.5";
-
-/**
- * モデルを取得
- */
-export function getModel(type: ModelType = "flash"): LanguageModelV1 {
-  if (type === "flash-2.5") return gemini25Flash;
-  return type === "pro" ? geminiPro : geminiFlash;
-}
+import { zodToJsonSchema } from "zod-to-json-schema";
+import { genAI } from "../config";
 
 // ============================================
 // エージェント実行ヘルパー
 // ============================================
 
-export interface AgentConfig<TSchema extends z.ZodType> {
-  /** システムプロンプト */
-  instructions: string;
-  /** 出力スキーマ */
-  schema: TSchema;
-  /** 使用するモデル */
-  model?: ModelType;
-  /** エージェント名（テレメトリ用） */
-  agentName?: string;
-  /** ユーザーID（テレメトリ用） */
-  userId?: string;
-  /** プロセス名（テレメトリ用：どのワークフローか） */
-  processName?: string;
-}
-
-/**
- * 構造化出力を生成するエージェントを実行
- */
-export async function runAgent<TSchema extends z.ZodType>(
-  config: AgentConfig<TSchema>,
-  prompt: string
-): Promise<z.infer<TSchema>> {
-  const { object } = await generateObject({
-    model: getModel(config.model),
-    prompt,
-    schema: config.schema,
-    experimental_telemetry: getTelemetryConfig({
-      agentName: config.agentName || "agent",
-      userId: config.userId,
-      processName: config.processName,
-    }),
-  });
-
-  return object;
-}
-
 /**
  * 複数のスキーマに対応するエージェント実行
  */
-export async function runAgentWithSchema<TSchema extends z.ZodType>(
+export async function callModelWithSchema<TSchema extends z.ZodType>(
   instructions: string,
   prompt: string,
   schema: TSchema,
-  model: ModelType = "flash",
-  agentName?: string,
-  userId?: string,
-  processName?: string
+  model: string,
 ): Promise<z.infer<TSchema>> {
-  const { object } = await generateObject({
-    model: getModel(model),
-    system: instructions,
-    prompt,
-    schema,
-    experimental_telemetry: getTelemetryConfig({
-      agentName: agentName || "agent",
-      userId,
-      processName,
-    }),
+  // JSON Schema 生成 (Gemini は $ref をサポートしていないため、参照を無効化してインライン展開する)
+  const jsonSchema = zodToJsonSchema(schema, { 
+    target: "openApi3",
+    $refStrategy: "none" 
   });
 
-  return object;
-}
-
-// ============================================
-// テキスト生成・パースヘルパー
-// ============================================
-
-export interface TextAgentConfig {
-  instructions: string;
-  model?: ModelType;
-  maxSteps?: number;
-  tools?: Record<string, unknown>;
-  agentName?: string;
-  userId?: string;
-  processName?: string;
-}
-
-/**
- * テキスト生成エージェントを実行
- */
-export async function runTextAgent(
-  config: TextAgentConfig,
-  prompt: string
-): Promise<string> {
-  const result = await generateText({
-    model: getModel(config.model),
-    system: config.instructions,
-    prompt,
-    maxSteps: config.maxSteps,
-    tools: config.tools as Parameters<typeof generateText>[0]["tools"],
-    experimental_telemetry: getTelemetryConfig({
-      agentName: config.agentName || "text-agent",
-      userId: config.userId,
-      processName: config.processName,
-    }),
-  });
-
-  return result.text;
-}
-
-/**
- * テキストからJSONを抽出してパース
- */
-export function parseJsonFromText<TSchema extends z.ZodType>(
-  text: string,
-  schema: TSchema
-): z.infer<TSchema> | null {
   try {
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-      return schema.parse(parsed);
+    const result = await genAI.models.generateContent({
+      model: model,
+      config: {
+        systemInstruction: {
+          parts: [{ text: instructions }],
+          role: "system",
+        },
+        responseMimeType: "application/json",
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        responseSchema: jsonSchema as any,
+      },
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: prompt }],
+        },
+      ],
+    });
+
+    // @google/genai SDK response handling
+    let responseText: string | undefined | null;
+
+    // Check if helper method exists (common in Google SDKs)
+    const resultObj = result as unknown as Record<string, unknown>;
+    if (typeof resultObj.text === "function") {
+      responseText = (resultObj.text as () => string)();
+    } else {
+      // Fallback to direct candidate access
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      responseText = (result as any).candidates?.[0]?.content?.parts?.[0]?.text;
     }
+
+    if (!responseText) {
+      throw new Error("No response from Gemini");
+    }
+
+    const json = JSON.parse(responseText);
+    // Zod でバリデーション
+    return schema.parse(json);
   } catch (error) {
-    console.error("Failed to parse JSON from text:", error);
+    console.error("Gemini API Error:", error);
+    throw error;
   }
-  return null;
 }
 
 // ============================================
@@ -153,7 +80,7 @@ export function parseJsonFromText<TSchema extends z.ZodType>(
  */
 export function formatPreferences(
   cuisines?: Record<string, number>,
-  flavorProfile?: Record<string, number>
+  flavorProfile?: Record<string, number>,
 ): string {
   const topCuisines = formatTopEntries(cuisines, 3);
   const topFlavors = formatTopEntries(flavorProfile, 3);
@@ -166,7 +93,7 @@ export function formatPreferences(
  */
 function formatTopEntries(
   record: Record<string, number> | undefined,
-  n: number
+  n: number,
 ): string {
   if (!record) return "";
 
@@ -182,7 +109,7 @@ function formatTopEntries(
  */
 export function formatArray(
   arr: string[] | undefined,
-  fallback = "特になし"
+  fallback = "特になし",
 ): string {
   return arr && arr.length > 0 ? arr.join(", ") : fallback;
 }

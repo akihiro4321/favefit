@@ -1,12 +1,13 @@
 import { z } from "zod";
-import { runAgentWithSchema } from "../utils/agent-helpers";
-import { 
-  AUDITOR_INSTRUCTIONS, 
-  getAuditorPrompt 
-} from "./prompts/auditor";
+import { callModelWithSchema } from "../utils/agent-helpers";
+import {
+  AUDITOR_INSTRUCTIONS,
+  getAuditorPrompt,
+} from "../prompts/functions/plan-auditor";
+import { GEMINI_2_5_FLASH_MODEL } from "../config";
 
 /**
- * Auditorエージェントの出力スキーマ
+ * Plan Auditor 関数の出力スキーマ
  */
 const AuditorOutputSchema = z.object({
   anchors: z.array(
@@ -20,32 +21,38 @@ const AuditorOutputSchema = z.object({
         carbs: z.number(),
       }),
       reason: z.string().describe("推定の根拠や調整内容"),
-    })
+    }),
   ),
 });
 
 export type AuditorOutput = z.infer<typeof AuditorOutputSchema>;
 
 /**
- * Auditorエージェントの実行
+ * Plan Auditor を実行
  * ユーザーの「固定メニュー」や「こだわり要望」を具体的な栄養素に変換します。
  */
-export async function runAuditor(
+export async function auditPlanAnchors(
   mealSettings: {
     breakfast: { mode: string; text: string };
     lunch: { mode: string; text: string };
     dinner: { mode: string; text: string };
   },
-  dailyTarget: { calories: number; protein: number; fat: number; carbs: number },
-  userId?: string,
-  processName?: string
+  dailyTarget: {
+    calories: number;
+    protein: number;
+    fat: number;
+    carbs: number;
+  },
 ): Promise<AuditorOutput> {
   // 固定またはこだわりが設定されているスロットを抽出
   const inputs = Object.entries(mealSettings)
     .filter(([, setting]) => setting.mode !== "auto" && setting.text)
     .map(([key, setting]) => {
-      const typeLabel = { breakfast: "朝食", lunch: "昼食", dinner: "夕食" }[key as "breakfast" | "lunch" | "dinner"];
-      const modeLabel = setting.mode === "fixed" ? "【固定メニュー】" : "【こだわり要望】";
+      const typeLabel = { breakfast: "朝食", lunch: "昼食", dinner: "夕食" }[
+        key as "breakfast" | "lunch" | "dinner"
+      ];
+      const modeLabel =
+        setting.mode === "fixed" ? "【固定メニュー】" : "【こだわり要望】";
       return `- ${typeLabel}: ${modeLabel} "${setting.text}"`;
     })
     .join("\n");
@@ -56,17 +63,14 @@ export async function runAuditor(
   }
 
   try {
-    return await runAgentWithSchema(
+    return await callModelWithSchema(
       AUDITOR_INSTRUCTIONS,
       getAuditorPrompt({ inputs, dailyTarget }),
       AuditorOutputSchema,
-      "flash-2.5", // gemini-2.5-flashを使用
-      "auditor",
-      userId,
-      processName || "meal-plan-anchor"
+      GEMINI_2_5_FLASH_MODEL,
     );
   } catch (error) {
-    console.error("Auditor Agent Error:", error);
+    console.error("Plan Auditor Error:", error);
     // エラー時は空のアンカーを返して、後続の処理（AIによる全自動生成）に委ねる安全策
     return { anchors: [] };
   }

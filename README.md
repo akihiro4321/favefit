@@ -35,11 +35,6 @@ NEXT_PUBLIC_FIREBASE_APP_ID=...
 
 # Google Gemini API
 GOOGLE_GENERATIVE_AI_API_KEY=your_api_key
-
-# Langfuse (Optional)
-LANGFUSE_PUBLIC_KEY=...
-LANGFUSE_SECRET_KEY=...
-LANGFUSE_HOST=https://cloud.langfuse.com
 ```
 
 ### 3. 開発サーバーの起動

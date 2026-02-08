@@ -157,6 +157,7 @@ export interface DayPlan {
     breakfast: MealSlot;
     lunch: MealSlot;
     dinner: MealSlot;
+    snack?: MealSlot; // 目標カロリー調整用の間食
   };
   totalNutrition: {
     calories: number;
