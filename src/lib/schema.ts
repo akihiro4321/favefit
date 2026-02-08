@@ -60,18 +60,6 @@ export interface UserProfile {
       lunch: { mode: "auto" | "fixed" | "custom"; text: string };
       dinner: { mode: "auto" | "fixed" | "custom"; text: string };
     };
-    // 汎用的な食事固定設定（Auditor解決後のデータ格納用）
-    fixedMeals?: {
-      breakfast?: MealSlot;
-      lunch?: MealSlot;
-      dinner?: MealSlot;
-    };
-    // 食事スロットごとの個別制約（例：「夕食はサラダとフルーツのみで軽く」など）
-    mealConstraints?: {
-      breakfast?: string;
-      lunch?: string;
-      dinner?: string;
-    };
     fridgeIngredients?: string[];
     mealPrepConfig?: {
       dayOfWeek: number; // 0-6 (Sunday to Saturday)

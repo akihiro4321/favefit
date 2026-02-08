@@ -130,8 +130,11 @@ interface BatchMealFixPromptArgs {
   invalidMeals: InvalidMealInfo[];
   dislikedIngredients: string[];
   existingTitles: string[];
-  fixedMeals?: Record<string, { title: string }>;
-  mealConstraints?: Record<string, string>;
+  mealSettings?: {
+    breakfast: { mode: string; text: string };
+    lunch: { mode: string; text: string };
+    dinner: { mode: string; text: string };
+  };
 }
 
 /**
@@ -165,12 +168,19 @@ export const getBatchMealFixPrompt = ({
   invalidMeals,
   dislikedIngredients,
   existingTitles,
-  fixedMeals,
-  mealConstraints,
+  mealSettings,
 }: BatchMealFixPromptArgs): string => {
   const mealsDescription = invalidMeals.map((meal, index) => {
-    const fixedInfo = fixedMeals?.[meal.mealType] ? `\n   - 【絶対遵守】このスロットは固定メニュー「${fixedMeals[meal.mealType].title}」を指定してください。` : "";
-    const constraintInfo = mealConstraints?.[meal.mealType] ? `\n   - 【要望】${mealConstraints[meal.mealType]}` : "";
+    const setting = mealSettings?.[meal.mealType as keyof typeof mealSettings];
+    let extraInfo = "";
+    
+    if (setting) {
+      if (setting.mode === "fixed") {
+        extraInfo = `\n   - 【絶対遵守】このスロットは固定メニュー「${setting.text}」を指定してください。`;
+      } else if (setting.mode === "custom") {
+        extraInfo = `\n   - 【要望】${setting.text}`;
+      }
+    }
     
     return `
 ${index + 1}. ${meal.date} の ${meal.mealTypeJa}
@@ -178,7 +188,7 @@ ${index + 1}. ${meal.date} の ${meal.mealTypeJa}
    - 目標カロリー: ${meal.target.calories}kcal
    - 目標タンパク質: ${meal.target.protein}g
    - 目標脂質: ${meal.target.fat}g
-   - 目標炭水化物: ${meal.target.carbs}g${fixedInfo}${constraintInfo}`;
+   - 目標炭水化物: ${meal.target.carbs}g${extraInfo}`;
   }).join("\n");
 
   return `以下の ${invalidMeals.length} 件の食事について、それぞれ新しいレシピを生成してください。

@@ -110,26 +110,6 @@ export const PlanGeneratorInputSchema = z.object({
     })
     .optional(),
 
-  // 汎用的な食事固定設定
-  fixedMeals: z
-    .object({
-      breakfast: MealSkeletonSchema.optional(),
-      lunch: MealSkeletonSchema.optional(),
-      dinner: MealSkeletonSchema.optional(),
-    })
-    .optional()
-    .describe("特定の時間枠で毎日同じものを食べる場合のレシピ"),
-
-  // 食事スロットごとの個別制約
-  mealConstraints: z
-    .object({
-      breakfast: z.string().optional(),
-      lunch: z.string().optional(),
-      dinner: z.string().optional(),
-    })
-    .optional()
-    .describe("食事ごとの特別な要望（例：「夕食は軽めのサラダのみ」など）"),
-
   mealPrep: z
     .object({
       prepDay: z.string().describe("作り置きを行う日 (YYYY-MM-DD)"),
@@ -542,8 +522,7 @@ export async function runPlanGenerator(
       invalidMeals: invalidMealInfos,
       dislikedIngredients: input.preferences.dislikedIngredients,
       existingTitles,
-      fixedMeals: input.fixedMeals,
-      mealConstraints: input.mealConstraints,
+      mealSettings: input.mealSettings,
     });
 
     try {

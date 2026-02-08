@@ -173,8 +173,7 @@ async function generatePlanBackground(
       cheapIngredients,
       cheatDayFrequency: userDoc.profile.lifestyle.cheatDayFrequency || "weekly",
       startDate,
-      fixedMeals: userDoc.profile.lifestyle.fixedMeals,
-      mealConstraints: userDoc.profile.lifestyle.mealConstraints,
+      mealSettings: userDoc.profile.lifestyle.mealSettings,
       mealPrep: userDoc.profile.lifestyle.mealPrepConfig
         ? {
             prepDay: new Date().toISOString().split("T")[0], // 仮

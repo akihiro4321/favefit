@@ -232,22 +232,10 @@ const buildProfileOverrides = (profile?: Partial<UserDocument> | null): Partial<
     flavorProfile: getFlavorProfile(profile.learnedPreferences),
     cookingSkillLevel: base.lifestyle?.cookingSkillLevel || DEFAULT_FORM_DATA.cookingSkillLevel,
     availableTime: base.lifestyle?.availableTime || DEFAULT_FORM_DATA.availableTime,
-    mealSettings: {
-      breakfast: base.lifestyle?.fixedMeals?.breakfast
-        ? { mode: "fixed", text: base.lifestyle.fixedMeals.breakfast.title }
-        : base.lifestyle?.mealConstraints?.breakfast
-        ? { mode: "custom", text: base.lifestyle.mealConstraints.breakfast }
-        : { mode: "auto", text: "" },
-      lunch: base.lifestyle?.fixedMeals?.lunch
-        ? { mode: "fixed", text: base.lifestyle.fixedMeals.lunch.title }
-        : base.lifestyle?.mealConstraints?.lunch
-        ? { mode: "custom", text: base.lifestyle.mealConstraints.lunch }
-        : { mode: "auto", text: "" },
-      dinner: base.lifestyle?.fixedMeals?.dinner
-        ? { mode: "fixed", text: base.lifestyle.fixedMeals.dinner.title }
-        : base.lifestyle?.mealConstraints?.dinner
-        ? { mode: "custom", text: base.lifestyle.mealConstraints.dinner }
-        : { mode: "auto", text: "" },
+    mealSettings: base.lifestyle?.mealSettings || {
+      breakfast: { mode: "auto", text: "" },
+      lunch: { mode: "auto", text: "" },
+      dinner: { mode: "auto", text: "" },
     },
   };
 };
@@ -404,16 +392,6 @@ export default function OnboardingPage() {
             cookingSkillLevel: formData.cookingSkillLevel,
             availableTime: formData.availableTime,
             mealSettings: formData.mealSettings,
-            mealConstraints: {
-              ...(formData.mealSettings.breakfast.mode === "custom" ? { breakfast: formData.mealSettings.breakfast.text } : {}),
-              ...(formData.mealSettings.lunch.mode === "custom" ? { lunch: formData.mealSettings.lunch.text } : {}),
-              ...(formData.mealSettings.dinner.mode === "custom" ? { dinner: formData.mealSettings.dinner.text } : {}),
-            },
-            fixedMeals: {
-              ...(formData.mealSettings.breakfast.mode === "fixed" ? { breakfast: { title: formData.mealSettings.breakfast.text, status: "planned", nutrition: { calories: 0, protein: 0, fat: 0, carbs: 0 }, tags: [] } } : {}),
-              ...(formData.mealSettings.lunch.mode === "fixed" ? { lunch: { title: formData.mealSettings.lunch.text, status: "planned", nutrition: { calories: 0, protein: 0, fat: 0, carbs: 0 }, tags: [] } } : {}),
-              ...(formData.mealSettings.dinner.mode === "fixed" ? { dinner: { title: formData.mealSettings.dinner.text, status: "planned", nutrition: { calories: 0, protein: 0, fat: 0, carbs: 0 }, tags: [] } } : {}),
-            },
           },
         },
       }),
