@@ -392,32 +392,39 @@ export default function OnboardingPage() {
             cookingSkillLevel: formData.cookingSkillLevel,
             availableTime: formData.availableTime,
             mealSettings: formData.mealSettings,
+            currentDiet: formData.currentDiet,
           },
         },
       }),
     });
 
+    // 学習済み嗜好（初期値）を保存
     if (formData.preferredCuisines.length > 0 || formData.flavorProfile) {
-      const initialCuisines: Record<string, number> = {};
+      const cuisineUpdates: Record<string, number> = {};
       formData.preferredCuisines.forEach((cuisine) => {
-        initialCuisines[cuisine.toLowerCase()] = 10;
+        cuisineUpdates[cuisine.toLowerCase()] = 10;
       });
 
-      const initialFlavorProfile: Record<string, number> = {};
+      const flavorUpdates: Record<string, number> = {};
       if (formData.flavorProfile === "light") {
-        initialFlavorProfile["light"] = 10;
-        initialFlavorProfile["sour"] = 5;
+        flavorUpdates["light"] = 10;
+        flavorUpdates["sour"] = 5;
       } else if (formData.flavorProfile === "rich") {
-        initialFlavorProfile["rich"] = 10;
-        initialFlavorProfile["heavy"] = 5;
+        flavorUpdates["rich"] = 10;
+        flavorUpdates["heavy"] = 5;
       } else {
-        initialFlavorProfile["medium"] = 10;
+        flavorUpdates["medium"] = 10;
       }
 
-      // learnedPreferencesを更新するためのAPIエンドポイントが必要
-      // 現状はprofileData内で扱えないため、一旦コメントアウト
-      // TODO: update-learned-preferencesエンドポイントを追加
-      console.log("TODO: Update learned preferences", { initialCuisines, initialFlavorProfile });
+      await fetch('/api/user/update-learned-preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user!.uid,
+          cuisineUpdates,
+          flavorUpdates,
+        }),
+      });
     }
 
     setCurrentStep(ONBOARDING_STEP.PLAN_CREATION);

@@ -1,8 +1,8 @@
 "use client";
 
 import { useAuth } from "@/components/auth-provider";
-import { useRouter, useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,23 +13,25 @@ import {
   RefreshCw,
   CheckCircle2,
   Flame,
+  Star,
 } from "lucide-react";
 import { DayPlan, MealSlot } from "@/lib/schema";
 import { FeedbackForm } from "@/components/feedback-form";
-import { Star } from "lucide-react";
 
-export default function RecipePage() {
+function RecipeContent() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const recipeId = params.id as string;
+  const urlPlanId = searchParams.get("planId");
 
   const [recipe, setRecipe] = useState<MealSlot | null>(null);
   const [fetching, setFetching] = useState(true);
   const [completing, setCompleting] = useState(false);
   const [favoriting, setFavoriting] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
-  const [planInfo, setPlanInfo] = useState<{ planId: string; date: string; mealType: string } | null>(null);
+  const [planInfo, setPlanInfo] = useState<{ planId: string; date: string; mealType: string; status: string } | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -41,46 +43,49 @@ export default function RecipePage() {
     const fetchRecipe = async () => {
       if (!user) return;
       try {
-        const planRes = await fetch('/api/plan/get-active', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: user.uid }),
-        });
-        const planData = await planRes.json();
-        const plan = planData.data?.plan;
+        // planIdが指定されていればそれを使用、なければ get-active/get-pending の両方を確認
+        const fetchPlan = async (apiPath: string) => {
+          const res = await fetch(apiPath, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.uid }),
+          });
+          const data = await res.json();
+          return data.data?.plan;
+        };
 
-        if (plan) {
+        let targetPlan = null;
+        if (urlPlanId) {
+          // 指定された planId のプランを探す
+          const [activePlan, pendingPlan] = await Promise.all([
+            fetchPlan('/api/plan/get-active'),
+            fetchPlan('/api/plan/get-pending')
+          ]);
+          targetPlan = (activePlan?.id === urlPlanId) ? activePlan : (pendingPlan?.id === urlPlanId ? pendingPlan : null);
+        } else {
+          // 指定がない場合は active -> pending の順に探す
+          targetPlan = await fetchPlan('/api/plan/get-active');
+          if (!targetPlan) {
+            targetPlan = await fetchPlan('/api/plan/get-pending');
+          }
+        }
+
+        if (targetPlan) {
           // プランから該当レシピを検索
-          for (const [date, dayPlan] of Object.entries(plan.days as Record<string, DayPlan>)) {
+          for (const [date, dayPlan] of Object.entries(targetPlan.days as Record<string, DayPlan>)) {
             for (const [slot, meal] of Object.entries(dayPlan.meals)) {
               if ((meal as MealSlot).recipeId === recipeId) {
                 const currentRecipe = meal as MealSlot;
                 
-                // プラン情報を保存（評価フォーム用）
-                setPlanInfo({ planId: plan.id, date, mealType: slot });
+                // プラン情報を保存
+                setPlanInfo({ 
+                  planId: targetPlan.id, 
+                  date, 
+                  mealType: slot,
+                  status: targetPlan.status 
+                });
                 
-                // 詳細（材料・手順）が不足している場合は API を叩いて生成・保存する
-                if (!currentRecipe.ingredients || currentRecipe.ingredients.length === 0) {
-                  setFetching(true); // 生成中表示のために true に戻す
-                  const res = await fetch("/api/recipe/get-detail", {
-                    method: "POST",
-                    body: JSON.stringify({
-                      userId: user.uid,
-                      planId: plan.id,
-                      date,
-                      mealType: slot,
-                    }),
-                  });
-                  if (!res.ok) throw new Error("レシピ詳細の取得に失敗しました");
-                  const data = await res.json();
-                  if (data.success) {
-                    setRecipe(data.data.recipe);
-                  } else {
-                    setRecipe(currentRecipe); // 生成失敗時は名目のみ表示
-                  }
-                } else {
-                  setRecipe(currentRecipe);
-                }
+                setRecipe(currentRecipe);
                 return;
               }
             }
@@ -95,7 +100,7 @@ export default function RecipePage() {
     if (user && recipeId) {
       fetchRecipe();
     }
-  }, [user, recipeId]);
+  }, [user, recipeId, urlPlanId]);
 
   const handleComplete = async () => {
     if (!user || !recipe) return;
@@ -155,6 +160,7 @@ export default function RecipePage() {
   }
 
   const isCompleted = recipe.status === "completed";
+  const isPendingPlan = planInfo?.status === "pending";
 
   return (
     <div className="container max-w-2xl mx-auto py-8 px-4 space-y-6 pb-24">
@@ -275,7 +281,7 @@ export default function RecipePage() {
       )}
 
       {/* アクションボタン */}
-      {!showFeedback && (
+      {!showFeedback && !isPendingPlan && (
         <div className="flex gap-4 pt-4 sticky bottom-20 z-10 bg-background/80 backdrop-blur-sm p-4 rounded-xl border shadow-lg">
           {!isCompleted ? (
             <>
@@ -322,6 +328,27 @@ export default function RecipePage() {
           )}
         </div>
       )}
+      
+      {isPendingPlan && (
+        <div className="bg-muted/30 p-4 rounded-xl text-center border border-dashed">
+          <p className="text-sm text-muted-foreground">
+            ※プラン承認後に「作った！」記録が可能になります
+          </p>
+        </div>
+      )}
     </div>
+  );
+}
+
+export default function RecipePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">読み込み中...</p>
+      </div>
+    }>
+      <RecipeContent />
+    </Suspense>
   );
 }

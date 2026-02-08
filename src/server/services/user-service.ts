@@ -10,7 +10,7 @@ import {
   PreferenceLearnerInput,
 } from "@/server/ai";
 import {
-  updateLearnedPreferences,
+  updateLearnedPreferences as updateLearnedPreferencesRepo,
   updateUserNutrition,
   updateUserNutritionPreferences,
   getOrCreateUser,
@@ -24,6 +24,7 @@ import type {
   CalculateNutritionRequest,
   LearnPreferenceRequest,
   UpdateNutritionPreferencesRequest,
+  UpdateLearnedPreferencesRequest,
 } from "@/lib/schemas/user";
 import { RecipeHistoryItem, UserDocument, UserProfile } from "@/lib/schema";
 
@@ -150,6 +151,21 @@ export async function setPlanCreating(
 }
 
 /**
+ * ユーザーの嗜好プロファイルを更新（直接的な変更）
+ */
+export async function updateLearnedPreferences(
+  request: UpdateLearnedPreferencesRequest
+): Promise<void> {
+  const { userId, cuisineUpdates, flavorUpdates, newDisliked } = request;
+  await updateLearnedPreferencesRepo(
+    userId,
+    cuisineUpdates,
+    flavorUpdates,
+    newDisliked
+  );
+}
+
+/**
  * ユーザーの好みを学習
  */
 export async function learnPreference(
@@ -188,11 +204,11 @@ export async function learnPreference(
     flavorUpdates[update.flavor] = update.score;
   });
 
-  await updateLearnedPreferences(
+  await updateLearnedPreferences({
     userId,
     cuisineUpdates,
     flavorUpdates
-  );
+  });
 
   return { analysis };
 }

@@ -95,11 +95,17 @@ export function PlanSummary({ days, targetMacros }: PlanSummaryProps) {
   // チートデイを除外した通常日のみを抽出
   const normalDays = Object.values(days).filter((day) => !day.isCheatDay);
   
-  const allMeals = normalDays.flatMap((day) => [
-    day.meals.breakfast,
-    day.meals.lunch,
-    day.meals.dinner,
-  ]);
+  const allMeals = normalDays.flatMap((day) => {
+    const meals = [
+      day.meals.breakfast,
+      day.meals.lunch,
+      day.meals.dinner,
+    ];
+    if (day.meals.snack) {
+      meals.push(day.meals.snack);
+    }
+    return meals;
+  });
 
   const avgCalories =
     allMeals.length > 0

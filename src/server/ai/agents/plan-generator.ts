@@ -91,6 +91,7 @@ export async function runPlanGenerator(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const convertToSlot = (meal: any, skeletonMeal: any): MealSlot => ({
         ...meal,
+        recipeId: `recipe-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
         status: "planned",
         tags: skeletonMeal.mainIngredients,
       });

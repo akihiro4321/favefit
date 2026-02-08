@@ -13,13 +13,15 @@ import {
   getUserProfile,
   updateUserProfile,
   completeOnboarding,
-  setPlanCreating
+  setPlanCreating,
+  updateLearnedPreferences
 } from "@/server/services/user-service";
 import { HttpError, successResponse } from "@/server/api-utils";
 import {
   CalculateNutritionRequestSchema,
   UpdateNutritionPreferencesSchema,
   LearnPreferenceRequestSchema,
+  UpdateLearnedPreferencesRequestSchema,
 } from "@/lib/schemas/user";
 import { UserProfile } from "@/lib/schema";
 
@@ -86,6 +88,11 @@ export async function POST(
         const validated = LearnPreferenceRequestSchema.parse(body);
         const result = await learnPreference(validated);
         return successResponse(result);
+      }
+      case "update-learned-preferences": {
+        const validated = UpdateLearnedPreferencesRequestSchema.parse(body);
+        await updateLearnedPreferences(validated);
+        return successResponse({ ok: true });
       }
       default:
         return HttpError.badRequest(`Unknown action: ${action}`);

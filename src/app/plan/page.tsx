@@ -377,6 +377,7 @@ export default function PlanPage() {
               isToday={isToday}
               isPast={isPast}
               isPending={isPending}
+              planId={planToDisplay.id}
             />
           );
         })}
@@ -392,6 +393,7 @@ interface DayCardProps {
   isToday: boolean;
   isPast: boolean;
   isPending?: boolean;
+  planId: string;
 }
 
 function DayCard({
@@ -401,6 +403,7 @@ function DayCard({
   isToday,
   isPast,
   isPending = false,
+  planId,
 }: DayCardProps) {
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
@@ -440,9 +443,16 @@ function DayCard({
       </div>
       <CardContent className="p-0">
         <div className="divide-y divide-[#f1f3f5]">
-          {(["breakfast", "lunch", "dinner"] as const).map((type) => {
+          {(["breakfast", "lunch", "dinner", "snack"] as const).map((type) => {
             const meal = dayPlan.meals[type];
-            const labels = { breakfast: "朝食", lunch: "昼食", dinner: "夕食" };
+            if (!meal) return null;
+
+            const labels = { 
+              breakfast: "朝食", 
+              lunch: "昼食", 
+              dinner: "夕食",
+              snack: "間食・調整食" 
+            };
 
             const content = (
               <div key={type} className="px-5 py-4 group cursor-pointer hover:bg-black/[0.02] transition-colors">
@@ -454,7 +464,7 @@ function DayCard({
                     <span className="font-bold text-[0.95rem] leading-tight text-[#2d3436]">
                       {meal.title}
                     </span>
-                    {!isPending && <ChevronRight className="w-4 h-4 text-[#636e72]/40" />}
+                    <ChevronRight className="w-4 h-4 text-[#636e72]/40" />
                   </div>
                   <div className={`mt-2 flex justify-between items-center text-[0.75rem] ${isCheat ? "text-[#673ab7]/70" : "text-[#636e72]"}`}>
                     <span className="font-medium">{Number(meal.nutrition?.calories || 0).toFixed(0)} kcal</span>
@@ -466,10 +476,8 @@ function DayCard({
               </div>
             );
 
-            return isPending ? (
-              content
-            ) : (
-              <Link key={type} href={`/recipe/${meal.recipeId}`} className="block">
+            return (
+              <Link key={type} href={`/recipe/${meal.recipeId || 'unknown'}?planId=${planId}`} className="block">
                 {content}
               </Link>
             );

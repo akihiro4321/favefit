@@ -45,6 +45,14 @@ export const LearnPreferenceRequestSchema = z.object({
   }),
 });
 
+export const UpdateLearnedPreferencesRequestSchema = z.object({
+  userId: z.string().min(1),
+  cuisineUpdates: z.record(z.number()).optional(),
+  flavorUpdates: z.record(z.number()).optional(),
+  newDisliked: z.array(z.string()).optional(),
+});
+
 export type CalculateNutritionRequest = z.infer<typeof CalculateNutritionRequestSchema>;
 export type UpdateNutritionPreferencesRequest = z.infer<typeof UpdateNutritionPreferencesSchema>;
 export type LearnPreferenceRequest = z.infer<typeof LearnPreferenceRequestSchema>;
+export type UpdateLearnedPreferencesRequest = z.infer<typeof UpdateLearnedPreferencesRequestSchema>;
