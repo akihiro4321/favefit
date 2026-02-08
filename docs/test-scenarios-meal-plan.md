@@ -71,7 +71,7 @@
     },
     "favoriteRecipes": [],
     "cheapIngredients": ["牛赤身肉", "ブロッコリー", "プロテインパウダー"],
-    "cheatDayFrequency": "biweekly",
+    "cheatDayFrequency": "weekly",
     "startDate": "2026-02-07",
     "currentDiet": {
       "breakfast": "プロテインとパン",

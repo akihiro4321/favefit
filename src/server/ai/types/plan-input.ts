@@ -38,7 +38,7 @@ export const PlanGeneratorInputSchema = z.object({
   cheapIngredients: z
     .array(z.string())
     .describe("現在安価な食材（低コストプラン用）"),
-  cheatDayFrequency: z.enum(["weekly", "biweekly"]).describe("チートデイ頻度"),
+  cheatDayFrequency: z.enum(["weekly"]).describe("チートデイ頻度"),
   startDate: z.string().describe("プラン開始日 (YYYY-MM-DD)"),
 
   // 食事スロットごとの設定モードと入力テキスト

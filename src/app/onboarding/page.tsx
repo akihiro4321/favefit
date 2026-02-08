@@ -73,7 +73,7 @@ type OnboardingFormData = {
   currentWeight: number; // 現在の体重 (kg)
   targetWeight: number; // 目標体重 (kg)
   deadline: string; // 目標達成期限 (YYYY-MM-DD形式)
-  cheatDayFrequency: "weekly" | "biweekly"; // チートデイの頻度
+  cheatDayFrequency: "weekly"; // チートデイの頻度
 
   // Step 2: 身体情報（栄養計算に使用）
   age: number;
@@ -228,8 +228,7 @@ const buildProfileOverrides = (
       base.physical?.currentWeight || DEFAULT_FORM_DATA.currentWeight,
     targetWeight: base.physical?.targetWeight || DEFAULT_FORM_DATA.targetWeight,
     deadline: getDeadlineInput(base.physical?.deadline ?? null),
-    cheatDayFrequency:
-      base.lifestyle?.cheatDayFrequency || DEFAULT_FORM_DATA.cheatDayFrequency,
+    cheatDayFrequency: "weekly",
     age: base.physical?.age || DEFAULT_FORM_DATA.age,
     gender: base.physical?.gender || DEFAULT_FORM_DATA.gender,
     height_cm: base.physical?.height_cm || DEFAULT_FORM_DATA.height_cm,
@@ -683,36 +682,16 @@ export default function OnboardingPage() {
                 <div className="flex gap-2">
                   <Button
                     type="button"
-                    variant={
-                      formData.cheatDayFrequency === "weekly"
-                        ? "default"
-                        : "outline"
-                    }
+                    variant="default"
                     className="flex-1"
-                    onClick={() =>
-                      setFormData({ ...formData, cheatDayFrequency: "weekly" })
-                    }
+                    disabled
                   >
-                    週1回
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={
-                      formData.cheatDayFrequency === "biweekly"
-                        ? "default"
-                        : "outline"
-                    }
-                    className="flex-1"
-                    onClick={() =>
-                      setFormData({
-                        ...formData,
-                        cheatDayFrequency: "biweekly",
-                      })
-                    }
-                  >
-                    2週に1回
+                    週1回（固定）
                   </Button>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  現在は週1回のチートデイ設定のみ対応しています
+                </p>
               </div>
             </CardContent>
           </Card>

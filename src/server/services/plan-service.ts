@@ -188,8 +188,7 @@ async function generatePlanBackground(
       },
       favoriteRecipes,
       cheapIngredients,
-      cheatDayFrequency:
-        userDoc.profile.lifestyle.cheatDayFrequency || "weekly",
+      cheatDayFrequency: "weekly",
       startDate,
       mealSettings: userDoc.profile.lifestyle.mealSettings,
       mealPrep: userDoc.profile.lifestyle.mealPrepConfig

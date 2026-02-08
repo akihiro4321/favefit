@@ -58,7 +58,7 @@ export interface UserProfile {
       | "very_active";
     cookingSkillLevel?: "beginner" | "intermediate" | "advanced";
     availableTime?: "short" | "medium" | "long";
-    cheatDayFrequency: "weekly" | "biweekly";
+    cheatDayFrequency: "weekly";
     maxCookingTimePerMeal?: {
       breakfast?: number;
       lunch?: number;
