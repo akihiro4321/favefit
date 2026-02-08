@@ -12,54 +12,47 @@
 - **スタイリング:** Tailwind CSS, Radix UI (`lucide-react`, `class-variance-authority` を使用)
 - **データベース:** Firebase Firestore
 - **認証:** Firebase Auth
-- **AI 統合:** Google Generative AI SDK (`@google/genai`)[https://googleapis.github.io/js-genai/release_docs/index.html]
+- **AI 統合:** Google Generative AI SDK (`@google/genai`)
 - **テスト:** Vitest, React Testing Library
 
 ## アーキテクチャとディレクトリ構造
-プロジェクトは標準的な Next.js App Router 構造に従い、クライアントUIとサーバーサイドロジックを明確に分離しています。
+プロジェクトはサーバーサイドビジネスロジックとAIロジックを明確に分離した多層構造を採用しています。
 
 ```text
 src/
-├── app/          # Next.js App Router ページおよび API ルート
-├── components/   # React UI コンポーネント (shadcn/ui スタイルのパターン)
-│   └── ui/       # プリミティブ UI コンポーネント (Button, Card など)
-├── lib/          # クライアントサイド共通ユーティリティ、スキーマ、Firebase クライアント
-├── server/       # サーバーサイドビジネスロジック
-│   ├── ai/       # AI エージェント、プロンプト、ワークフロー
-│   ├── db/       # Firestore リポジトリおよび型定義済みコレクション
-│   └── services/ # アプリケーションサービス (食事プラン、ユーザーなど)
-└── types/        # グローバル TypeScript 型定義
+├── app/          # Next.js App Router (Pages, API Routes)
+├── components/   # React UI コンポーネント (shadcn/ui スタイル)
+├── lib/          # 共通ユーティリティ、計算ロジック、Firestoreスキーマ
+├── server/       # サーバーサイドロジック
+│   ├── ai/       # AIモジュール
+│   │   ├── agents/    # 自律的な推論・ループ・計画を行うエージェント (V2推奨)
+│   │   ├── functions/ # 単発のタスク（レシピ生成、分析）を行う関数
+│   │   ├── prompts/   # プロンプト定義 (agents/用とfunctions/用に分離)
+│   │   └── workflows/ # エージェントや関数を組み合わせた業務プロセス
+│   ├── db/       # Firestoreリポジトリ層
+│   └── services/ # アプリケーションサービス層（ビジネスロジックの本体）
+└── types/        # グローバル型定義
 ```
 
-## データベース (Firestore)
-データはユーザー中心の設計で Firestore に保存されます。`src/server/db/firestore/collections.ts` のコンバーターを介して型安全にアクセスされます。
+## AI アーキテクチャ
+AI機能は以下の3つのレイヤーで構成されています。
 
-**主要なコレクション:**
-- **Users** (`/users/{userId}`): プロフィール、栄養目標、嗜好。
-- **Plans** (`/plans/{planId}`): 各スロットの食事情報を含む週間プラン。
-- **Recipe History** (`/recipeHistory/{userId}/recipes/{recipeId}`): 提案・調理されたレシピの履歴。
-- **Shopping Lists** (`/shoppingLists/{listId}`): プランに紐づく集約された食材リスト。
-- **Market Prices** (`/marketPrices/latest`): 食材の市場価格キャッシュデータ。
+1.  **Workflows (オーケストレーション)**: アプリのService層から呼ばれ、複数のAI（Agent/Function）を組み合わせて目的を達成します。Service層との境界線です。
+2.  **Agents (思考層)**: 自己修正ループ、計画の立案（Anchor & Fill等）、複雑な推論を担当します。
+3.  **Functions (タスク層)**: 「入力を特定のスキーマに従って変換する」単発のLLM呼び出しを担当します。
 
-## 開発ワークフロー
+### 食事プラン生成パイプライン (V2 Flow)
+現在の標準は、以下の2段階生成フローです。
+- **Phase 1 (Skeleton)**: 1週間分の一括メニュー案と、数日単位の「食材プール（使い回し計画）」を策定します。
+- **Phase 2 (Detail)**: 策定された食材プールに基づき、チャンク単位（数日分）で詳細な分量と手順を並列生成します。
 
-### 前提条件
-- Node.js (最新の LTS 推奨)
-- Firebase プロジェクトの認証情報
+## 開発・検証ツール
+- **デバッグページ (`/debug/meal-plan`)**: 任意のユーザー設定JSONを流し込み、AIワークフロー（V1/V2）を直接実行・比較できる開発者用ツールが用意されています。
 
-### 主要コマンド
-- **開発サーバー起動:** `npm run dev`
-- **本番ビルド:** `npm run build`
-- **テスト実行:** `npm run test` (Vitest)
-- **リンター実行:** `npm run lint`
-- **型チェック:** `npm run type-check`
-
-### コーディング規約
+## コーディング規約
 コーディング規約は [`docs/coding-style.md`](../docs/coding-style.md) にまとめてあるので、コードの生成・変更時は必ず参照すること。
 
-## AI ワークフロー
-アプリケーションは以下のマルチエージェントシステムを使用しています：
-1.  **プランジェネレーター (Plan Generator):** 栄養素の制約に基づき、ハイレベルな週間メニューを作成。
-2.  **レシピクリエイター (Recipe Creator):** 選択されたメニューの詳細なレシピを生成。
-3.  **メニューアジャスター (Menu Adjuster):** ユーザーのフィードバック（例：「火曜の夕食を入れ替えて」）に基づきプランを修正。
-4.  **買い物リストジェネレーター (Shopping List Generator):** 確定したプランから食材を抽出・集約。
+### AI開発の重要ルール
+- **SDK**: `ai` (Vercel AI SDK) ではなく `@google/genai` を直接使用すること。
+- **スキーマ**: `zod-to-json-schema` を使用する際、Geminiの制限により `$refStrategy: "none"` を指定して参照をインライン展開すること。
+- **分離**: モデル呼び出しロジック（ai/層）の中に Service層（DB操作等）を混入させないこと。必要なデータは引数として渡すこと。
