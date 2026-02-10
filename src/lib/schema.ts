@@ -207,6 +207,7 @@ export interface ShoppingItem {
   amount: string;
   category: string;
   checked: boolean;
+  note?: string;
 }
 
 export interface ShoppingListDocument {

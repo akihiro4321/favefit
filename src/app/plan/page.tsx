@@ -144,11 +144,16 @@ export default function PlanPage() {
     }
   }, [isPlanCreating, user, refreshProfile]);
 
-  if (loading || fetching) {
+  if (loading || (fetching && !activePlan && !pendingPlan)) {
+    if (isPlanCreating) {
+      return <PlanCreatingScreen />;
+    }
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <p className="text-muted-foreground animate-pulse">読み込み中...</p>
+        <p className="text-muted-foreground animate-pulse">
+          AIがプランを作成中...
+        </p>
       </div>
     );
   }

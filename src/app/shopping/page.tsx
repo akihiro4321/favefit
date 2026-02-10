@@ -306,16 +306,29 @@ export default function ShoppingPage() {
                             }
                             className="w-5 h-5 border-2 border-primary/50 data-[state=checked]:border-primary"
                           />
-                          <label
-                            htmlFor={`item-${category}-${idx}`}
-                            className={`flex-1 text-sm cursor-pointer ${
-                              item.checked
-                                ? "line-through text-muted-foreground"
-                                : "text-foreground group-hover:text-primary transition-colors"
-                            }`}
-                          >
-                            {item.ingredient}
-                          </label>
+                          <div className="flex-1 min-w-0">
+                            <label
+                              htmlFor={`item-${category}-${idx}`}
+                              className={`text-sm cursor-pointer block ${
+                                item.checked
+                                  ? "line-through text-muted-foreground"
+                                  : "text-foreground group-hover:text-primary transition-colors font-medium"
+                              }`}
+                            >
+                              {item.ingredient}
+                            </label>
+                            {item.note && (
+                              <p
+                                className={`text-[10px] mt-0.5 ${
+                                  item.checked
+                                    ? "text-muted-foreground/50"
+                                    : "text-muted-foreground"
+                                }`}
+                              >
+                                {item.note}
+                              </p>
+                            )}
+                          </div>
                           <span className="text-xs text-muted-foreground bg-secondary/30 px-2 py-1 rounded">
                             {item.amount}
                           </span>

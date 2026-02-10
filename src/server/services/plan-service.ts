@@ -346,6 +346,7 @@ async function generateShoppingListFromRecipes(
         amount: item.amount,
         category: category.name,
         checked: false,
+        note: item.note,
       });
     });
   });
