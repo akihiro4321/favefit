@@ -50,7 +50,7 @@ AI機能は以下の3つのレイヤーで構成されています。
 - **デバッグページ (`/debug/meal-plan`)**: 任意のユーザー設定JSONを流し込み、AIワークフロー（V1/V2）を直接実行・比較できる開発者用ツールが用意されています。
 
 ## コーディング規約
-コーディング規約は [`docs/coding-style.md`](../docs/coding-style.md) にまとめてあるので、コードの生成・変更時は必ず参照すること。
+コーディング規約は [@./rules/coding-style.md](./rules/coding-style.md) にまとめてあるので、コードの生成・変更時は必ず参照すること。
 
 ### AI開発の重要ルール
 - **SDK**: `ai` (Vercel AI SDK) ではなく `@google/genai` を直接使用すること。
