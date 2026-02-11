@@ -16,6 +16,17 @@ const firebaseConfig = {
 };
 
 // サーバーサイドでの重複初期化を防ぐ
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+let app;
+if (!getApps().length) {
+  // 環境変数がある場合はそれを使用し、ない場合はGoogle Cloudのデフォルト環境を使用する
+  if (firebaseConfig.projectId) {
+    app = initializeApp(firebaseConfig);
+  } else {
+    // App Hosting環境では引数なしで現在のプロジェクトとして初期化可能
+    app = initializeApp();
+  }
+} else {
+  app = getApp();
+}
 
 export const db = getFirestore(app);
