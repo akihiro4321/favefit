@@ -13,6 +13,7 @@ const webappConfig = process.env.FIREBASE_WEBAPP_CONFIG
   : null;
 
 const nextConfig: NextConfig = {
+  turbopack: {},
   images: {
     remotePatterns: [
       {
