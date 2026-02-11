@@ -1,20 +1,16 @@
 kind: "AppHostingBackend"
-apiVersion: "v1alpha"
+apiVersion: "v1beta1"
 
 # ビルド設定
 buildSettings:
   cpu: 1
   memoryMiB: 512
-  minInstances: 0
-  maxInstances: 10
 
 # 実行時の設定
 runSettings:
   cpu: 1
   memoryMiB: 512
-  minInstances: 0
-  maxInstances: 10
-  # Secret Managerから環境変数を注入
+  # シークレットの設定
   secrets:
     - variable: GOOGLE_GENERATIVE_AI_API_KEY
       secret: google_generative_ai_api_key
