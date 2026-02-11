@@ -1,19 +1,10 @@
-kind: "AppHostingBackend"
-apiVersion: "v1beta1"
-
-# ビルド設定
-buildSettings:
-  cpu: 1
-  memoryMiB: 512
-
-# 実行時の設定
 runConfig:
   cpu: 1
   memoryMiB: 512
-  # シークレットの設定
-  secrets:
-    - variable: GOOGLE_GENERATIVE_AI_API_KEY
-      secret: google_generative_ai_api_key
-      availability:
-        - BUILD
-        - RUNTIME
+
+env:
+  - variable: GOOGLE_GENERATIVE_AI_API_KEY
+    secret: google_generative_ai_api_key
+    availability:
+      - BUILD
+      - RUNTIME

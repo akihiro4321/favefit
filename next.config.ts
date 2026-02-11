@@ -1,5 +1,21 @@
 import type { NextConfig } from "next";
 
+// App Hostingが提供するFIREBASE_WEBAPP_CONFIGからNEXT_PUBLIC_*変数を生成
+// Next.jsはNEXT_PUBLIC_プレフィックスの変数のみクライアントバンドルにインライン化するため、
+// FIREBASE_WEBAPP_CONFIGを直接参照してもクライアント側には渡らない
+const webappConfig = process.env.FIREBASE_WEBAPP_CONFIG
+  ? JSON.parse(process.env.FIREBASE_WEBAPP_CONFIG)
+  : null;
+
+if (webappConfig) {
+  process.env.NEXT_PUBLIC_FIREBASE_API_KEY ??= webappConfig.apiKey;
+  process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ??= webappConfig.authDomain;
+  process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ??= webappConfig.projectId;
+  process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ??= webappConfig.storageBucket;
+  process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ??= webappConfig.messagingSenderId;
+  process.env.NEXT_PUBLIC_FIREBASE_APP_ID ??= webappConfig.appId;
+}
+
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
@@ -10,18 +26,5 @@ const nextConfig: NextConfig = {
     ],
   },
 };
-
-// ビルド環境変数の確認ログ
-console.log("--- Build Time Environment Variables Check ---");
-const varsToFetch = [
-  "NEXT_PUBLIC_FIREBASE_API_KEY",
-  "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
-  "GOOGLE_GENERATIVE_AI_API_KEY"
-];
-varsToFetch.forEach(v => {
-  const val = process.env[v];
-  console.log(`${v}: ${val ? `Defined (prefix: ${val.substring(0, 5)}...)` : "UNDEFINED"}`);
-});
-console.log("----------------------------------------------");
 
 export default nextConfig;
