@@ -14,7 +14,10 @@ runSettings:
   memoryMiB: 512
   minInstances: 0
   maxInstances: 10
-  # Secret Managerから環境変数を注入（デプロイ後にコンソール等でSecretの作成が必要）
+  # Secret Managerから環境変数を注入
   secrets:
     - variable: GOOGLE_GENERATIVE_AI_API_KEY
       secret: google_generative_ai_api_key
+      availability:
+        - BUILD
+        - RUNTIME
