@@ -7,6 +7,7 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
 // App Hostingが提供する自動設定をパース
+// ビルド時に値が存在すれば、それがJS bundleに埋め込まれます
 const systemConfig = process.env.FIREBASE_WEBAPP_CONFIG 
   ? JSON.parse(process.env.FIREBASE_WEBAPP_CONFIG) 
   : {};
@@ -21,17 +22,12 @@ const firebaseConfig = {
 };
 
 // 環境変数の確認
-const requiredEnvVars = [
-  "NEXT_PUBLIC_FIREBASE_API_KEY",
-  "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
-];
-const missingVars = requiredEnvVars.filter(
-  (varName) => !process.env[varName]
-);
-if (missingVars.length > 0) {
-  console.error(
-    `[Firebase Client] Critical missing environment variables: ${missingVars.join(", ")}. Check App Hosting Secret settings.`
-  );
+if (typeof window !== "undefined") {
+  if (!firebaseConfig.apiKey) {
+    console.error(
+      "[Firebase Client] Critical: Firebase API Key is missing. Check App Hosting build logs for FIREBASE_WEBAPP_CONFIG."
+    );
+  }
 }
 
 // クライアントサイドでの重複初期化を防ぐ

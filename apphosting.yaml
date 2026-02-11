@@ -7,7 +7,7 @@ buildSettings:
   memoryMiB: 512
 
 # 実行時の設定
-runSettings:
+runConfig:
   cpu: 1
   memoryMiB: 512
   # シークレットの設定
