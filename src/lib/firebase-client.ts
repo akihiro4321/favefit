@@ -15,24 +15,18 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// 環境変数の確認（開発環境のみ）
-if (process.env.NODE_ENV === "development") {
-  const requiredEnvVars = [
-    "NEXT_PUBLIC_FIREBASE_API_KEY",
-    "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
-    "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
-    "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET",
-    "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID",
-    "NEXT_PUBLIC_FIREBASE_APP_ID",
-  ];
-  const missingVars = requiredEnvVars.filter(
-    (varName) => !process.env[varName]
+// 環境変数の確認
+const requiredEnvVars = [
+  "NEXT_PUBLIC_FIREBASE_API_KEY",
+  "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
+];
+const missingVars = requiredEnvVars.filter(
+  (varName) => !process.env[varName]
+);
+if (missingVars.length > 0) {
+  console.error(
+    `[Firebase Client] Critical missing environment variables: ${missingVars.join(", ")}. Check App Hosting Secret settings.`
   );
-  if (missingVars.length > 0) {
-    console.warn(
-      `[Firebase Client] Missing environment variables: ${missingVars.join(", ")}`
-    );
-  }
 }
 
 // クライアントサイドでの重複初期化を防ぐ
