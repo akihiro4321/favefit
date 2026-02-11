@@ -1,4 +1,10 @@
 import type { NextConfig } from "next";
+import withPWAInit from "@ducanh2912/next-pwa";
+
+const withPWA = withPWAInit({
+  dest: "public",
+  disable: process.env.NODE_ENV === "development",
+});
 
 // App Hostingが提供するFIREBASE_WEBAPP_CONFIGからクライアント用の値を抽出
 // アダプターがnext.config.tsを上書きするため、configオブジェクト内のenvオプションで渡す
@@ -31,4 +37,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withPWA(nextConfig);
