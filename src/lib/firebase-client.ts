@@ -36,7 +36,13 @@ if (process.env.NODE_ENV === "development") {
 }
 
 // クライアントサイドでの重複初期化を防ぐ
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+// ビルド時（プリレンダリング）にAPIキーがない場合は初期化をスキップする
+const app =
+  !getApps().length && firebaseConfig.apiKey
+    ? initializeApp(firebaseConfig)
+    : getApps().length > 0
+      ? getApp()
+      : null;
 
-export const auth = getAuth(app);
+export const auth = app ? getAuth(app) : ({} as ReturnType<typeof getAuth>);
 export const googleProvider = new GoogleAuthProvider();
