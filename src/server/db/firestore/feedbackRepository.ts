@@ -34,7 +34,9 @@ export const getFeedbacksByUser = async (
   try {
     const feedbacksRef = adminCollections.userFeedbacks(userId);
     const snapshot = await feedbacksRef.orderBy("createdAt", "desc").get();
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Feedback);
+    return snapshot.docs.map(
+      (doc) => ({ id: doc.id, ...doc.data() }) as Feedback
+    );
   } catch (error) {
     console.error("Error fetching feedbacks:", error);
     return [];

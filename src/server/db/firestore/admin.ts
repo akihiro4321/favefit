@@ -12,7 +12,10 @@ if (!admin.apps.length) {
     // 開発環境でも GOOGLE_APPLICATION_CREDENTIALS があれば動作する
     admin.initializeApp();
   } catch (error) {
-    console.warn("Firebase Admin standard initialization failed, trying with project ID:", error);
+    console.warn(
+      "Firebase Admin standard initialization failed, trying with project ID:",
+      error
+    );
     // 予備の初期化（環境変数が不十分な場合）
     admin.initializeApp({
       projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,

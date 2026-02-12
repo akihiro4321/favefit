@@ -32,6 +32,19 @@
           }
         ]
       }
+    ],
+    "BeforeTool": [
+      {
+        "matcher": "write_file|replace",
+        "hooks": [
+          {
+            "name": "secret-scanner",
+            "type": "command",
+            "command": "$GEMINI_PROJECT_DIR/.gemini/hooks/block-secrets.sh",
+            "description": "Prevent committing secrets"
+          }
+        ]
+      }
     ]
   },
   "tools": {

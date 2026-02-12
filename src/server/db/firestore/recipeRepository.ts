@@ -56,7 +56,9 @@ export const getSavedRecipes = async (
     })) as SavedRecipe[];
 
     const lastVisible =
-      (querySnapshot.docs[querySnapshot.docs.length - 1] as admin.firestore.QueryDocumentSnapshot) || null;
+      (querySnapshot.docs[
+        querySnapshot.docs.length - 1
+      ] as admin.firestore.QueryDocumentSnapshot) || null;
     const hasMore = querySnapshot.docs.length === pageSize;
 
     return {

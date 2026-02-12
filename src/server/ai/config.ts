@@ -8,7 +8,8 @@ import { GoogleGenAI } from "@google/genai";
 /**
  * Google Generative AI クライアントの初期化
  */
-const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || "dummy-key-for-build";
+const apiKey =
+  process.env.GOOGLE_GENERATIVE_AI_API_KEY || "dummy-key-for-build";
 export const genAI = new GoogleGenAI({
   apiKey: apiKey,
 });

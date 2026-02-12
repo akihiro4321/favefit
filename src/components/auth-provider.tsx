@@ -96,7 +96,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     // auth オブジェクトが正しく初期化されているか確認
     if (typeof auth.onAuthStateChanged !== "function") {
-      console.error("Firebase Auth is not properly initialized. Check environment variables.");
+      console.error(
+        "Firebase Auth is not properly initialized. Check environment variables."
+      );
       setLoading(false);
       return;
     }
