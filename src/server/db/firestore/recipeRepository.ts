@@ -2,34 +2,26 @@
  * FaveFit v2 - 保存済みレシピリポジトリ
  */
 
-import {
-  addDoc,
-  updateDoc,
-  query,
-  orderBy,
-  getDocs,
-  getDoc,
-  serverTimestamp,
-  limit,
-  startAfter,
-  DocumentSnapshot,
-} from "firebase/firestore";
-import { collections, docRefs, SavedRecipe } from "./collections";
+import * as admin from "firebase-admin";
+import { adminCollections, adminDocRefs } from "./adminCollections";
+import { SavedRecipe, Feedback } from "./collections";
 import { Recipe } from "@/server/ai/functions/recipe-generator";
 
 export type { SavedRecipe };
+
+const serverTimestamp = admin.firestore.FieldValue.serverTimestamp;
 
 export const saveRecipe = async (
   userId: string,
   recipeData: Recipe
 ): Promise<string> => {
   try {
-    const recipesRef = collections.userRecipes(userId);
-    const docRef = await addDoc(recipesRef, {
+    const recipesRef = adminCollections.userRecipes(userId);
+    const docRef = await recipesRef.add({
       ...recipeData,
       userId,
       createdAt: serverTimestamp(),
-    } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+    });
     return docRef.id;
   } catch (error) {
     console.error("Error saving recipe:", error);
@@ -39,37 +31,32 @@ export const saveRecipe = async (
 
 export interface PaginatedRecipes {
   recipes: SavedRecipe[];
-  lastVisible: DocumentSnapshot | null;
+  lastVisible: admin.firestore.QueryDocumentSnapshot | null;
   hasMore: boolean;
 }
 
 export const getSavedRecipes = async (
   userId: string,
   pageSize: number = 20,
-  lastVisibleDoc?: DocumentSnapshot
+  lastVisibleDoc?: admin.firestore.QueryDocumentSnapshot
 ): Promise<PaginatedRecipes> => {
   try {
-    const recipesRef = collections.userRecipes(userId);
-    let q = query(recipesRef, orderBy("createdAt", "desc"), limit(pageSize));
+    const recipesRef = adminCollections.userRecipes(userId);
+    let q = recipesRef.orderBy("createdAt", "desc").limit(pageSize);
 
     if (lastVisibleDoc) {
-      q = query(
-        recipesRef,
-        orderBy("createdAt", "desc"),
-        startAfter(lastVisibleDoc),
-        limit(pageSize)
-      );
+      q = q.startAfter(lastVisibleDoc);
     }
 
-    const querySnapshot = await getDocs(q);
+    const querySnapshot = await q.get();
 
     const recipes = querySnapshot.docs.map((doc) => ({
-      ...doc.data(),
+      ...(doc.data() as any),
       id: doc.id,
-    }));
+    })) as SavedRecipe[];
 
     const lastVisible =
-      querySnapshot.docs[querySnapshot.docs.length - 1] || null;
+      (querySnapshot.docs[querySnapshot.docs.length - 1] as admin.firestore.QueryDocumentSnapshot) || null;
     const hasMore = querySnapshot.docs.length === pageSize;
 
     return {
@@ -92,14 +79,14 @@ export const getRecipe = async (
   recipeId: string
 ): Promise<SavedRecipe | null> => {
   try {
-    const recipeRef = docRefs.userRecipe(userId, recipeId);
-    const docSnap = await getDoc(recipeRef);
+    const recipeRef = adminDocRefs.userRecipe(userId, recipeId);
+    const docSnap = await recipeRef.get();
 
-    if (docSnap.exists()) {
+    if (docSnap.exists) {
       return {
-        ...docSnap.data(),
+        ...(docSnap.data() as any),
         id: docSnap.id,
-      };
+      } as SavedRecipe;
     }
     return null;
   } catch (error) {
@@ -114,8 +101,8 @@ export const updateRecipeFeedbackId = async (
   feedbackId: string
 ): Promise<void> => {
   try {
-    const recipeRef = docRefs.userRecipe(userId, recipeId);
-    await updateDoc(recipeRef, {
+    const recipeRef = adminDocRefs.userRecipe(userId, recipeId);
+    await recipeRef.update({
       feedbackId,
     });
   } catch (error) {

@@ -3,20 +3,11 @@
  * 過去に提案されたレシピの管理
  */
 
-import {
-  getDoc,
-  setDoc,
-  updateDoc,
-  query,
-  orderBy,
-  getDocs,
-  serverTimestamp,
-  where,
-  limit,
-  Timestamp,
-} from "firebase/firestore";
-import { collections, docRefs } from "./collections";
+import * as admin from "firebase-admin";
+import { adminCollections, adminDocRefs } from "./adminCollections";
 import { RecipeHistoryItem, FavoriteRecipe } from "@/lib/schema";
+
+const serverTimestamp = admin.firestore.FieldValue.serverTimestamp;
 
 // ========================================
 // レシピ履歴操作
@@ -30,16 +21,16 @@ export const addToHistory = async (
   recipe: Omit<RecipeHistoryItem, "proposedAt" | "cookedAt" | "isFavorite">
 ): Promise<void> => {
   try {
-    const historyRef = docRefs.recipeHistoryItem(userId, recipe.id);
+    const historyRef = adminDocRefs.recipeHistoryItem(userId, recipe.id);
 
     const historyItem: RecipeHistoryItem = {
       ...recipe,
-      proposedAt: serverTimestamp() as unknown as Timestamp,
+      proposedAt: serverTimestamp() as any,
       cookedAt: null,
       isFavorite: false,
     };
 
-    await setDoc(historyRef, historyItem);
+    await historyRef.set(historyItem);
   } catch (error) {
     console.error("Error adding to history:", error);
     throw error;
@@ -54,15 +45,13 @@ export const getRecipeHistory = async (
   limitCount: number = 50
 ): Promise<RecipeHistoryItem[]> => {
   try {
-    const historyRef = collections.recipeHistory(userId);
-    const q = query(
-      historyRef,
-      orderBy("proposedAt", "desc"),
-      limit(limitCount)
-    );
+    const historyRef = adminCollections.recipeHistory(userId);
+    const querySnapshot = await historyRef
+      .orderBy("proposedAt", "desc")
+      .limit(limitCount)
+      .get();
 
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map((doc) => doc.data());
+    return querySnapshot.docs.map((doc) => doc.data() as RecipeHistoryItem);
   } catch (error) {
     console.error("Error getting recipe history:", error);
     return [];
@@ -77,10 +66,10 @@ export const getHistoryItem = async (
   recipeId: string
 ): Promise<RecipeHistoryItem | null> => {
   try {
-    const historyRef = docRefs.recipeHistoryItem(userId, recipeId);
-    const snap = await getDoc(historyRef);
-    if (!snap.exists()) return null;
-    return snap.data();
+    const historyRef = adminDocRefs.recipeHistoryItem(userId, recipeId);
+    const snap = await historyRef.get();
+    if (!snap.exists) return null;
+    return snap.data() as RecipeHistoryItem;
   } catch (error) {
     console.error("Error getting history item:", error);
     return null;
@@ -95,8 +84,8 @@ export const markAsCooked = async (
   recipeId: string
 ): Promise<void> => {
   try {
-    const recipeRef = docRefs.recipeHistoryItem(userId, recipeId);
-    await updateDoc(recipeRef, {
+    const recipeRef = adminDocRefs.recipeHistoryItem(userId, recipeId);
+    await recipeRef.update({
       cookedAt: serverTimestamp(),
     });
   } catch (error) {
@@ -114,28 +103,28 @@ export const addToFavorites = async (
 ): Promise<void> => {
   try {
     // 履歴のisFavoriteを更新
-    const historyRef = docRefs.recipeHistoryItem(userId, recipeId);
-    const historySnap = await getDoc(historyRef);
+    const historyRef = adminDocRefs.recipeHistoryItem(userId, recipeId);
+    const historySnap = await historyRef.get();
 
-    if (!historySnap.exists()) {
+    if (!historySnap.exists) {
       throw new Error("Recipe not found in history");
     }
 
-    const recipeData = historySnap.data();
+    const recipeData = historySnap.data() as RecipeHistoryItem;
 
-    await updateDoc(historyRef, { isFavorite: true });
+    await historyRef.update({ isFavorite: true });
 
     // favoriteRecipesにも追加
-    const favoriteRef = docRefs.favoriteRecipe(userId, recipeId);
+    const favoriteRef = adminDocRefs.favoriteRecipe(userId, recipeId);
     const favorite: FavoriteRecipe = {
       id: recipeId,
       title: recipeData.title,
       tags: recipeData.tags,
-      addedAt: serverTimestamp() as unknown as Timestamp,
+      addedAt: serverTimestamp() as any,
       cookedCount: recipeData.cookedAt ? 1 : 0,
     };
 
-    await setDoc(favoriteRef, favorite);
+    await favoriteRef.set(favorite);
   } catch (error) {
     console.error("Error adding to favorites:", error);
     throw error;
@@ -149,11 +138,10 @@ export const getFavorites = async (
   userId: string
 ): Promise<FavoriteRecipe[]> => {
   try {
-    const favRef = collections.favoriteRecipes(userId);
-    const q = query(favRef, orderBy("addedAt", "desc"));
-    const querySnapshot = await getDocs(q);
+    const favRef = adminCollections.favoriteRecipes(userId);
+    const querySnapshot = await favRef.orderBy("addedAt", "desc").get();
 
-    return querySnapshot.docs.map((doc) => doc.data());
+    return querySnapshot.docs.map((doc) => doc.data() as FavoriteRecipe);
   } catch (error) {
     console.error("Error getting favorites:", error);
     return [];
@@ -167,15 +155,13 @@ export const getCookedRecipes = async (
   userId: string
 ): Promise<RecipeHistoryItem[]> => {
   try {
-    const historyRef = collections.recipeHistory(userId);
-    const q = query(
-      historyRef,
-      where("cookedAt", "!=", null),
-      orderBy("cookedAt", "desc")
-    );
+    const historyRef = adminCollections.recipeHistory(userId);
+    const querySnapshot = await historyRef
+      .where("cookedAt", "!=", null)
+      .orderBy("cookedAt", "desc")
+      .get();
 
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map((doc) => doc.data());
+    return querySnapshot.docs.map((doc) => doc.data() as RecipeHistoryItem);
   } catch (error) {
     console.error("Error getting cooked recipes:", error);
     return [];

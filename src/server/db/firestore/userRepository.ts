@@ -3,14 +3,8 @@
  * 設計書 v2 に基づくユーザー関連操作
  */
 
-import {
-  getDoc,
-  setDoc,
-  updateDoc,
-  serverTimestamp,
-  Timestamp,
-} from "firebase/firestore";
-import { docRefs } from "./collections";
+import * as admin from "firebase-admin";
+import { adminDocRefs } from "./adminCollections";
 import {
   UserDocument,
   UserProfile,
@@ -20,6 +14,8 @@ import {
 
 // 型を再エクスポート
 export type { UserDocument, UserProfile, UserNutrition, LearnedPreferences };
+
+const serverTimestamp = admin.firestore.FieldValue.serverTimestamp;
 
 // ========================================
 // ユーザープロファイル操作
@@ -33,11 +29,11 @@ export const getOrCreateUser = async (
   isGuest: boolean = false
 ): Promise<UserDocument | null> => {
   try {
-    const userRef = docRefs.user(uid);
-    const userSnap = await getDoc(userRef);
+    const userRef = adminDocRefs.user(uid);
+    const userSnap = await userRef.get();
 
-    if (userSnap.exists()) {
-      return userSnap.data();
+    if (userSnap.exists) {
+      return userSnap.data() as UserDocument;
     }
 
     // 初期ドキュメントの作成 (構造化されたスキーマに対応)
@@ -50,7 +46,7 @@ export const getOrCreateUser = async (
       physical: {
         currentWeight: 0,
         targetWeight: 0,
-        deadline: serverTimestamp() as unknown as Timestamp,
+        deadline: serverTimestamp() as any,
       },
       lifestyle: {
         cheatDayFrequency: "weekly",
@@ -76,7 +72,7 @@ export const getOrCreateUser = async (
       updatedAt: serverTimestamp(),
     };
 
-    await setDoc(userRef, newUser);
+    await userRef.set(newUser);
     return newUser;
   } catch (error) {
     console.error("Error getting/creating user:", error);
@@ -93,7 +89,7 @@ export const updateUserProfile = async (
   profileData: Partial<UserProfile>
 ): Promise<void> => {
   try {
-    const userRef = docRefs.user(uid);
+    const userRef = adminDocRefs.user(uid);
     const updates: Record<string, unknown> = {
       updatedAt: serverTimestamp(),
     };
@@ -115,8 +111,7 @@ export const updateUserProfile = async (
       });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await updateDoc(userRef, updates as any);
+    await userRef.update(updates);
   } catch (error) {
     console.error("Error updating user profile:", error);
     throw error;
@@ -131,8 +126,8 @@ export const updateUserNutrition = async (
   nutritionData: UserNutrition
 ): Promise<void> => {
   try {
-    const userRef = docRefs.user(uid);
-    await updateDoc(userRef, {
+    const userRef = adminDocRefs.user(uid);
+    await userRef.update({
       nutrition: nutritionData,
       updatedAt: serverTimestamp(),
     });
@@ -150,8 +145,8 @@ export const updateUserNutritionPreferences = async (
   preferences: NonNullable<UserNutrition["preferences"]>
 ): Promise<void> => {
   try {
-    const userRef = docRefs.user(uid);
-    await updateDoc(userRef, {
+    const userRef = adminDocRefs.user(uid);
+    await userRef.update({
       "nutrition.preferences": preferences,
       updatedAt: serverTimestamp(),
     });
@@ -166,8 +161,8 @@ export const updateUserNutritionPreferences = async (
  */
 export const completeOnboarding = async (uid: string): Promise<void> => {
   try {
-    const userRef = docRefs.user(uid);
-    await updateDoc(userRef, {
+    const userRef = adminDocRefs.user(uid);
+    await userRef.update({
       onboardingCompleted: true,
       updatedAt: serverTimestamp(),
     });
@@ -182,8 +177,8 @@ export const completeOnboarding = async (uid: string): Promise<void> => {
  */
 export const setPlanCreating = async (uid: string): Promise<void> => {
   try {
-    const userRef = docRefs.user(uid);
-    await updateDoc(userRef, {
+    const userRef = adminDocRefs.user(uid);
+    await userRef.update({
       planCreationStatus: "creating",
       planCreationStartedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -199,8 +194,8 @@ export const setPlanCreating = async (uid: string): Promise<void> => {
  */
 export const setPlanCreated = async (uid: string): Promise<void> => {
   try {
-    const userRef = docRefs.user(uid);
-    await updateDoc(userRef, {
+    const userRef = adminDocRefs.user(uid);
+    await userRef.update({
       planCreationStatus: null,
       updatedAt: serverTimestamp(),
     });
@@ -224,14 +219,14 @@ export const updateLearnedPreferences = async (
   newDisliked?: string[]
 ): Promise<void> => {
   try {
-    const userRef = docRefs.user(uid);
-    const userSnap = await getDoc(userRef);
+    const userRef = adminDocRefs.user(uid);
+    const userSnap = await userRef.get();
 
-    if (!userSnap.exists()) {
+    if (!userSnap.exists) {
       throw new Error("User not found");
     }
 
-    const currentPrefs = userSnap.data().learnedPreferences;
+    const currentPrefs = (userSnap.data() as UserDocument).learnedPreferences;
 
     // cuisines スコアを加算
     const updatedCuisines = { ...currentPrefs.cuisines };
@@ -254,7 +249,7 @@ export const updateLearnedPreferences = async (
       ? [...new Set([...currentPrefs.dislikedIngredients, ...newDisliked])]
       : currentPrefs.dislikedIngredients;
 
-    await updateDoc(userRef, {
+    await userRef.update({
       learnedPreferences: {
         cuisines: updatedCuisines,
         flavorProfile: updatedFlavors,
@@ -275,14 +270,14 @@ export const getLearnedPreferences = async (
   uid: string
 ): Promise<LearnedPreferences | null> => {
   try {
-    const userRef = docRefs.user(uid);
-    const userSnap = await getDoc(userRef);
+    const userRef = adminDocRefs.user(uid);
+    const userSnap = await userRef.get();
 
-    if (!userSnap.exists()) {
+    if (!userSnap.exists) {
       return null;
     }
 
-    return userSnap.data().learnedPreferences;
+    return (userSnap.data() as UserDocument).learnedPreferences;
   } catch (error) {
     console.error("Error getting learned preferences:", error);
     return null;
@@ -296,13 +291,32 @@ export const clearUserRejectionFeedback = async (
   uid: string
 ): Promise<void> => {
   try {
-    const userRef = docRefs.user(uid);
-    await updateDoc(userRef, {
+    const userRef = adminDocRefs.user(uid);
+    await userRef.update({
       planRejectionFeedback: "",
       updatedAt: serverTimestamp(),
     });
   } catch (error) {
     console.error("Error clearing user rejection feedback:", error);
+    throw error;
+  }
+};
+
+/**
+ * プラン拒否時のフィードバックを更新
+ */
+export const updateUserRejectionFeedback = async (
+  uid: string,
+  feedback: string
+): Promise<void> => {
+  try {
+    const userRef = adminDocRefs.user(uid);
+    await userRef.update({
+      planRejectionFeedback: feedback,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    console.error("Error updating user rejection feedback:", error);
     throw error;
   }
 };

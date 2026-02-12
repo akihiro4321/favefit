@@ -13,6 +13,7 @@ import {
   setPlanCreating,
   setPlanCreated,
   clearUserRejectionFeedback,
+  updateUserRejectionFeedback,
 } from "@/server/db/firestore/userRepository";
 import {
   createPlan,
@@ -437,14 +438,7 @@ export async function rejectPlan(
 
   // フィードバックがある場合はユーザードキュメントに保存
   if (feedback && feedback.trim()) {
-    const { db } = await import("@/server/db/firestore/client");
-    const { doc, updateDoc, serverTimestamp } =
-      await import("firebase/firestore");
-    const userRef = doc(db, "users", userId);
-    await updateDoc(userRef, {
-      planRejectionFeedback: feedback.trim(),
-      updatedAt: serverTimestamp(),
-    });
+    await updateUserRejectionFeedback(userId, feedback.trim());
   }
 
   return {

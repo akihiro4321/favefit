@@ -4,8 +4,7 @@
  */
 
 import { z } from "zod";
-import { db } from "@/server/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { adminDocRefs } from "@/server/db/firestore/adminCollections";
 import { MarketPriceDocument } from "@/lib/schema";
 
 // 入力スキーマ
@@ -36,8 +35,8 @@ export const getMarketPrice = async (
   const { ingredients } = input;
 
   try {
-    const priceRef = doc(db, "marketPrices", "latest");
-    const priceSnap = await getDoc(priceRef);
+    const priceRef = adminDocRefs.marketPrices();
+    const priceSnap = await priceRef.get();
 
     const result: MarketPriceResult = {
       prices: {},
@@ -46,7 +45,7 @@ export const getMarketPrice = async (
       expensiveIngredients: [],
     };
 
-    if (!priceSnap.exists()) {
+    if (!priceSnap.exists) {
       // データがない場合はデフォルト値を返す
       ingredients.forEach((ing) => {
         result.prices[ing] = { priceScore: 5, isAvailable: false };
@@ -107,10 +106,10 @@ export const getCheapIngredients = async (
   limit: number = 20
 ): Promise<string[]> => {
   try {
-    const priceRef = doc(db, "marketPrices", "latest");
-    const priceSnap = await getDoc(priceRef);
+    const priceRef = adminDocRefs.marketPrices();
+    const priceSnap = await priceRef.get();
 
-    if (!priceSnap.exists()) {
+    if (!priceSnap.exists) {
       return [];
     }
 

@@ -3,9 +3,11 @@
  * プランに連動した買い物リスト管理
  */
 
-import { getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
-import { docRefs } from "./collections";
+import * as admin from "firebase-admin";
+import { adminDocRefs } from "./adminCollections";
 import { ShoppingListDocument, ShoppingItem } from "@/lib/schema";
+
+const serverTimestamp = admin.firestore.FieldValue.serverTimestamp;
 
 // ========================================
 // 買い物リスト操作
@@ -19,7 +21,7 @@ export const createShoppingList = async (
   items: ShoppingItem[]
 ): Promise<void> => {
   try {
-    const listRef = docRefs.shoppingList(planId);
+    const listRef = adminDocRefs.shoppingList(planId);
 
     const shoppingList: ShoppingListDocument = {
       planId,
@@ -28,7 +30,7 @@ export const createShoppingList = async (
       updatedAt: serverTimestamp(),
     };
 
-    await setDoc(listRef, shoppingList);
+    await listRef.set(shoppingList);
   } catch (error) {
     console.error("Error creating shopping list:", error);
     throw error;
@@ -42,14 +44,14 @@ export const getShoppingList = async (
   planId: string
 ): Promise<ShoppingListDocument | null> => {
   try {
-    const listRef = docRefs.shoppingList(planId);
-    const listSnap = await getDoc(listRef);
+    const listRef = adminDocRefs.shoppingList(planId);
+    const listSnap = await listRef.get();
 
-    if (!listSnap.exists()) {
+    if (!listSnap.exists) {
       return null;
     }
 
-    return listSnap.data();
+    return listSnap.data() as ShoppingListDocument;
   } catch (error) {
     console.error("Error getting shopping list:", error);
     return null;
@@ -65,21 +67,21 @@ export const toggleItemCheck = async (
   checked: boolean
 ): Promise<void> => {
   try {
-    const listRef = docRefs.shoppingList(planId);
-    const listSnap = await getDoc(listRef);
+    const listRef = adminDocRefs.shoppingList(planId);
+    const listSnap = await listRef.get();
 
-    if (!listSnap.exists()) {
+    if (!listSnap.exists) {
       throw new Error("Shopping list not found");
     }
 
-    const currentList = listSnap.data();
+    const currentList = listSnap.data() as ShoppingListDocument;
     const updatedItems = [...currentList.items];
     updatedItems[itemIndex] = {
       ...updatedItems[itemIndex],
       checked,
     };
 
-    await updateDoc(listRef, {
+    await listRef.update({
       items: updatedItems,
       updatedAt: serverTimestamp(),
     });
@@ -94,20 +96,20 @@ export const toggleItemCheck = async (
  */
 export const checkAllItems = async (planId: string): Promise<void> => {
   try {
-    const listRef = docRefs.shoppingList(planId);
-    const listSnap = await getDoc(listRef);
+    const listRef = adminDocRefs.shoppingList(planId);
+    const listSnap = await listRef.get();
 
-    if (!listSnap.exists()) {
+    if (!listSnap.exists) {
       throw new Error("Shopping list not found");
     }
 
-    const currentList = listSnap.data();
+    const currentList = listSnap.data() as ShoppingListDocument;
     const updatedItems = currentList.items.map((item) => ({
       ...item,
       checked: true,
     }));
 
-    await updateDoc(listRef, {
+    await listRef.update({
       items: updatedItems,
       updatedAt: serverTimestamp(),
     });

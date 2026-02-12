@@ -3,19 +3,8 @@
  * 7日間プランの作成・取得・更新
  */
 
-import {
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
-  query,
-  where,
-  getDocs,
-  serverTimestamp,
-  orderBy,
-  limit,
-} from "firebase/firestore";
-import { collections, docRefs } from "./collections";
+import * as admin from "firebase-admin";
+import { adminCollections, adminDocRefs } from "./adminCollections";
 import {
   PlanDocument,
   DayPlan,
@@ -23,6 +12,8 @@ import {
   MealStatus,
   PlanStatus,
 } from "@/lib/schema";
+
+const serverTimestamp = admin.firestore.FieldValue.serverTimestamp;
 
 // ========================================
 // プラン操作
@@ -41,8 +32,8 @@ export const createPlan = async (
     console.log(
       `[createPlan] Starting plan creation for user ${userId}, status: ${status}, days count: ${Object.keys(days).length}`
     );
-    const plansRef = collections.plans;
-    const planDoc = docRefs.plan(doc(plansRef).id); // 既存の doc(plansRef) で ID 生成するロジックを docRefs に合わせる
+    const plansRef = adminCollections.plans;
+    const planDoc = plansRef.doc(); // 自動生成されたIDを持つドキュメント参照
     const planId = planDoc.id;
     console.log(`[createPlan] Generated plan document ID: ${planId}`);
 
@@ -58,15 +49,15 @@ export const createPlan = async (
     console.log(
       `[createPlan] Attempting to write plan document to Firestore: plans/${planId}`
     );
-    await setDoc(planDoc, newPlan);
+    await planDoc.set(newPlan);
     console.log(
       `[createPlan] Successfully created plan ${planId} in Firestore for user ${userId}`
     );
 
     // 書き込みが成功したことを確認するために、読み取りを試みる（オプション）
     try {
-      const verificationDoc = await getDoc(planDoc);
-      if (verificationDoc.exists()) {
+      const verificationDoc = await planDoc.get();
+      if (verificationDoc.exists) {
         console.log(`[createPlan] Verified plan ${planId} exists in Firestore`);
       } else {
         console.warn(
@@ -86,20 +77,6 @@ export const createPlan = async (
       `[createPlan] Error creating plan for user ${userId}:`,
       error
     );
-    if (error instanceof Error) {
-      console.error(`[createPlan] Error details:`, {
-        message: error.message,
-        stack: error.stack,
-        name: error.name,
-      });
-      // Firebaseエラーの詳細情報を確認
-      if ("code" in error) {
-        console.error(
-          `[createPlan] Firebase error code:`,
-          (error as { code?: string }).code
-        );
-      }
-    }
     throw error;
   }
 };
@@ -111,14 +88,14 @@ export const getPlan = async (
   planId: string
 ): Promise<(PlanDocument & { id: string }) | null> => {
   try {
-    const planRef = docRefs.plan(planId);
-    const planSnap = await getDoc(planRef);
+    const planRef = adminDocRefs.plan(planId);
+    const planSnap = await planRef.get();
 
-    if (!planSnap.exists()) {
+    if (!planSnap.exists) {
       return null;
     }
 
-    return { ...planSnap.data(), id: planId };
+    return { ...(planSnap.data() as PlanDocument), id: planId };
   } catch (error) {
     console.error("Error getting plan:", error);
     return null;
@@ -132,23 +109,20 @@ export const getActivePlan = async (
   userId: string
 ): Promise<(PlanDocument & { id: string }) | null> => {
   try {
-    const plansRef = collections.plans;
-    const q = query(
-      plansRef,
-      where("userId", "==", userId),
-      where("status", "==", "active"),
-      orderBy("createdAt", "desc"),
-      limit(1)
-    );
-
-    const querySnapshot = await getDocs(q);
+    const plansRef = adminCollections.plans;
+    const querySnapshot = await plansRef
+      .where("userId", "==", userId)
+      .where("status", "==", "active")
+      .orderBy("createdAt", "desc")
+      .limit(1)
+      .get();
 
     if (querySnapshot.empty) {
       return null;
     }
 
     const docSnap = querySnapshot.docs[0];
-    return { ...docSnap.data(), id: docSnap.id };
+    return { ...(docSnap.data() as PlanDocument), id: docSnap.id };
   } catch (error) {
     console.error("Error getting active plan:", error);
     return null;
@@ -162,23 +136,20 @@ export const getPendingPlan = async (
   userId: string
 ): Promise<(PlanDocument & { id: string }) | null> => {
   try {
-    const plansRef = collections.plans;
-    const q = query(
-      plansRef,
-      where("userId", "==", userId),
-      where("status", "==", "pending"),
-      orderBy("createdAt", "desc"),
-      limit(1)
-    );
-
-    const querySnapshot = await getDocs(q);
+    const plansRef = adminCollections.plans;
+    const querySnapshot = await plansRef
+      .where("userId", "==", userId)
+      .where("status", "==", "pending")
+      .orderBy("createdAt", "desc")
+      .limit(1)
+      .get();
 
     if (querySnapshot.empty) {
       return null;
     }
 
     const docSnap = querySnapshot.docs[0];
-    return { ...docSnap.data(), id: docSnap.id };
+    return { ...(docSnap.data() as PlanDocument), id: docSnap.id };
   } catch (error) {
     console.error("Error getting pending plan:", error);
     return null;
@@ -195,12 +166,11 @@ export const updateMealStatus = async (
   status: MealStatus
 ): Promise<void> => {
   try {
-    const planRef = docRefs.plan(planId);
-    await updateDoc(planRef, {
+    const planRef = adminDocRefs.plan(planId);
+    await planRef.update({
       [`days.${date}.meals.${mealType}.status`]: status,
       updatedAt: serverTimestamp(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
+    });
   } catch (error) {
     console.error("Error updating meal status:", error);
     throw error;
@@ -217,7 +187,7 @@ export const updateMealSlot = async (
   updates: Partial<MealSlot>
 ): Promise<void> => {
   try {
-    const planRef = docRefs.plan(planId);
+    const planRef = adminDocRefs.plan(planId);
 
     // ネストされたオブジェクトの個別フィールドを更新
     const firebaseUpdates: Record<string, unknown> = {
@@ -228,8 +198,7 @@ export const updateMealSlot = async (
       firebaseUpdates[`days.${date}.meals.${mealType}.${key}`] = value;
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await updateDoc(planRef, firebaseUpdates as any);
+    await planRef.update(firebaseUpdates);
   } catch (error) {
     console.error("Error updating meal slot:", error);
     throw error;
@@ -246,15 +215,14 @@ export const swapMeal = async (
   newMeal: MealSlot
 ): Promise<void> => {
   try {
-    const planRef = docRefs.plan(planId);
-    await updateDoc(planRef, {
+    const planRef = adminDocRefs.plan(planId);
+    await planRef.update({
       [`days.${date}.meals.${mealType}`]: {
         ...newMeal,
         status: "swapped",
       },
       updatedAt: serverTimestamp(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
+    });
   } catch (error) {
     console.error("Error swapping meal:", error);
     throw error;
@@ -269,8 +237,8 @@ export const updatePlanStatus = async (
   status: PlanStatus
 ): Promise<void> => {
   try {
-    const planRef = docRefs.plan(planId);
-    await updateDoc(planRef, {
+    const planRef = adminDocRefs.plan(planId);
+    await planRef.update({
       status,
       updatedAt: serverTimestamp(),
     });
@@ -288,7 +256,7 @@ export const updatePlanDays = async (
   daysToUpdate: Record<string, DayPlan>
 ): Promise<void> => {
   try {
-    const planRef = docRefs.plan(planId);
+    const planRef = adminDocRefs.plan(planId);
     const updates: Record<string, unknown> = {
       updatedAt: serverTimestamp(),
     };
@@ -297,8 +265,7 @@ export const updatePlanDays = async (
       updates[`days.${date}`] = dayPlan;
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await updateDoc(planRef, updates as any);
+    await planRef.update(updates);
   } catch (error) {
     console.error("Error updating plan days:", error);
     throw error;

@@ -16,7 +16,7 @@
   "hooks": {
     "AfterAgent": [
       {
-        "matcher": "write_file|replace|edit_file",
+        "matcher": "write_file|replace",
         "hooks": [
           {
             "type": "command",

@@ -2,28 +2,25 @@
  * FaveFit v2 - フィードバックリポジトリ
  */
 
-import {
-  addDoc,
-  serverTimestamp,
-  query,
-  getDocs,
-  orderBy,
-} from "firebase/firestore";
-import { collections, Feedback, FeedbackRatings } from "./collections";
+import * as admin from "firebase-admin";
+import { adminCollections } from "./adminCollections";
+import { Feedback, FeedbackRatings } from "./collections";
 
 export type { Feedback, FeedbackRatings };
+
+const serverTimestamp = admin.firestore.FieldValue.serverTimestamp;
 
 export const saveFeedback = async (
   userId: string,
   feedbackData: Omit<Feedback, "id" | "createdAt" | "userId">
 ): Promise<string> => {
   try {
-    const feedbacksRef = collections.userFeedbacks(userId);
-    const docRef = await addDoc(feedbacksRef, {
+    const feedbacksRef = adminCollections.userFeedbacks(userId);
+    const docRef = await feedbacksRef.add({
       ...feedbackData,
       userId,
       createdAt: serverTimestamp(),
-    } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+    });
     return docRef.id;
   } catch (error) {
     console.error("Error saving feedback:", error);
@@ -35,10 +32,9 @@ export const getFeedbacksByUser = async (
   userId: string
 ): Promise<Feedback[]> => {
   try {
-    const feedbacksRef = collections.userFeedbacks(userId);
-    const q = query(feedbacksRef, orderBy("createdAt", "desc"));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const feedbacksRef = adminCollections.userFeedbacks(userId);
+    const snapshot = await feedbacksRef.orderBy("createdAt", "desc").get();
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Feedback);
   } catch (error) {
     console.error("Error fetching feedbacks:", error);
     return [];
