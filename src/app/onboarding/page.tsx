@@ -676,23 +676,6 @@ export default function OnboardingPage() {
                   目標体重を達成したい日を選択してください
                 </p>
               </div>
-
-              <div className="space-y-2">
-                <Label>チートデイ頻度</Label>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="default"
-                    className="flex-1"
-                    disabled
-                  >
-                    週1回（固定）
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  現在は週1回のチートデイ設定のみ対応しています
-                </p>
-              </div>
             </CardContent>
           </Card>
         )}
