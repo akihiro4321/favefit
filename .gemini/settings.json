@@ -19,14 +19,17 @@
         "matcher": "write_file|replace",
         "hooks": [
           {
+            "name": "typescript-syntax-check", 
             "type": "command",
             "command": "npx tsc --noEmit 2>&1 || { echo 'TypeScript errors found' >&2; exit 2; }"
           },
           {
+            "name": "eslint-check",
             "type": "command",
             "command": "npx eslint . --ext .ts,.tsx 2>&1 || { echo 'ESLint errors found' >&2; exit 2; }"
           },
           {
+            "name": "prettier-format",
             "type": "command",
             "command": "npx prettier --write ."
           }
