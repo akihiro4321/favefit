@@ -46,7 +46,7 @@ export const getOrCreateUser = async (
       physical: {
         currentWeight: 0,
         targetWeight: 0,
-        deadline: serverTimestamp() as any,
+        deadline: serverTimestamp() as admin.firestore.FieldValue,
       },
       lifestyle: {
         cheatDayFrequency: "weekly",

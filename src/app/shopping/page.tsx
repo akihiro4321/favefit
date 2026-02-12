@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/components/auth-provider";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -36,57 +36,60 @@ export default function ShoppingPage() {
     }
   }, [user, loading, router]);
 
-  const fetchData = async (isPoll = false) => {
-    if (!user) return;
-    try {
-      const planRes = await fetch("/api/plan/get-active", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.uid }),
-      });
-      const planData = await planRes.json();
-      const plan = planData.data?.plan;
-
-      if (plan) {
-        setPlanId(plan.id);
-        const daysCount = Object.keys(plan.days || {}).length;
-        setPlanDuration(daysCount);
-
-        // カテゴリ別表示用のアイテム取得
-        const itemsRes = await fetch("/api/shopping/get-by-category", {
+  const fetchData = useCallback(
+    async (isPoll = false) => {
+      if (!user) return;
+      try {
+        const planRes = await fetch("/api/plan/get-active", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ planId: plan.id }),
+          body: JSON.stringify({ userId: user.uid }),
         });
-        const itemsData = await itemsRes.json();
-        const items = itemsData.data?.items || {};
-        setItemsByCategory(items);
+        const planData = await planRes.json();
+        const plan = planData.data?.plan;
 
-        // 初回取得時にカテゴリを展開
-        if (!isPoll) {
-          setExpandedCategories(new Set(Object.keys(items)));
+        if (plan) {
+          setPlanId(plan.id);
+          const daysCount = Object.keys(plan.days || {}).length;
+          setPlanDuration(daysCount);
+
+          // カテゴリ別表示用のアイテム取得
+          const itemsRes = await fetch("/api/shopping/get-by-category", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ planId: plan.id }),
+          });
+          const itemsData = await itemsRes.json();
+          const items = itemsData.data?.items || {};
+          setItemsByCategory(items);
+
+          // 初回取得時にカテゴリを展開
+          if (!isPoll) {
+            setExpandedCategories(new Set(Object.keys(items)));
+          }
+
+          // リストが空なら作成中とみなす
+          setIsCreating(Object.keys(items).length === 0);
+        } else {
+          setPlanId(null);
+          setIsCreating(false);
         }
-
-        // リストが空なら作成中とみなす
-        setIsCreating(Object.keys(items).length === 0);
-      } else {
-        setPlanId(null);
-        setIsCreating(false);
+      } catch (error) {
+        console.error("Error fetching shopping list:", error);
+      } finally {
+        if (!isPoll) {
+          setFetching(false);
+        }
       }
-    } catch (error) {
-      console.error("Error fetching shopping list:", error);
-    } finally {
-      if (!isPoll) {
-        setFetching(false);
-      }
-    }
-  };
+    },
+    [user]
+  );
 
   useEffect(() => {
     if (user) {
       fetchData();
     }
-  }, [user]);
+  }, [user, fetchData]);
 
   // ポーリング: リスト作成中の場合は5秒ごとに再取得
   useEffect(() => {
@@ -99,7 +102,7 @@ export default function ShoppingPage() {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isCreating, planId, user]);
+  }, [isCreating, planId, user, fetchData]);
 
   const handleToggle = async (
     category: string,

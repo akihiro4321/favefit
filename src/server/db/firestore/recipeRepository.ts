@@ -4,7 +4,7 @@
 
 import * as admin from "firebase-admin";
 import { adminCollections, adminDocRefs } from "./adminCollections";
-import { SavedRecipe, Feedback } from "./collections";
+import { SavedRecipe } from "./collections";
 import { Recipe } from "@/server/ai/functions/recipe-generator";
 
 export type { SavedRecipe };
@@ -51,9 +51,9 @@ export const getSavedRecipes = async (
     const querySnapshot = await q.get();
 
     const recipes = querySnapshot.docs.map((doc) => ({
-      ...(doc.data() as any),
+      ...(doc.data() as SavedRecipe),
       id: doc.id,
-    })) as SavedRecipe[];
+    }));
 
     const lastVisible =
       (querySnapshot.docs[
@@ -86,9 +86,9 @@ export const getRecipe = async (
 
     if (docSnap.exists) {
       return {
-        ...(docSnap.data() as any),
+        ...(docSnap.data() as SavedRecipe),
         id: docSnap.id,
-      } as SavedRecipe;
+      };
     }
     return null;
   } catch (error) {

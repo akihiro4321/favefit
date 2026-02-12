@@ -42,7 +42,7 @@ export interface UserProfile {
     height_cm?: number;
     currentWeight: number;
     targetWeight: number;
-    deadline: Timestamp;
+    deadline: Timestamp | FieldValue;
     goal?: "lose" | "maintain" | "gain";
     allergies?: string[];
     favoriteIngredients?: string[];
@@ -189,7 +189,7 @@ export interface RecipeHistoryItem {
     fat: number;
     carbs: number;
   };
-  proposedAt: Timestamp;
+  proposedAt: Timestamp | FieldValue;
   cookedAt: Timestamp | null;
   isFavorite: boolean;
 }
@@ -198,7 +198,7 @@ export interface FavoriteRecipe {
   id: string;
   title: string;
   tags: string[];
-  addedAt: Timestamp;
+  addedAt: Timestamp | FieldValue;
   cookedCount: number;
 }
 

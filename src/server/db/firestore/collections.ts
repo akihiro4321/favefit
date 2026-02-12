@@ -22,7 +22,7 @@ import {
 
 // 各リポジトリ固有の型定義（後で schema.ts に移動するのが理想的）
 export interface SavedRecipe {
-  id: string;
+  id?: string;
   userId: string;
   createdAt: Timestamp | FieldValue;
   feedbackId?: string;

@@ -14,28 +14,6 @@
     }
   },
   "hooks": {
-    "AfterAgent": [
-      {
-        "matcher": "write_file|replace",
-        "hooks": [
-          {
-            "name": "typescript-syntax-check", 
-            "type": "command",
-            "command": "npx tsc --noEmit 2>&1 || { echo 'TypeScript errors found' >&2; exit 2; }"
-          },
-          {
-            "name": "eslint-check",
-            "type": "command",
-            "command": "npx eslint . --ext .ts,.tsx 2>&1 || { echo 'ESLint errors found' >&2; exit 2; }"
-          },
-          {
-            "name": "prettier-format",
-            "type": "command",
-            "command": "npx prettier --write ."
-          }
-        ]
-      }
-    ],
     "BeforeTool": [
       {
         "matcher": "write_file|replace",
@@ -45,6 +23,35 @@
             "type": "command",
             "command": "$GEMINI_PROJECT_DIR/.gemini/hooks/block-secrets.sh",
             "description": "Prevent committing secrets"
+          }
+        ]
+      }
+    ],
+    "AfterTool": [
+      {
+        "matcher": "write_file|replace",
+        "hooks": [
+          {
+            "name": "prettier-format",
+            "type": "command",
+            "command": "npx prettier --write . > /dev/null 2>&1 || { echo 'Prettier formatting failed' >&2; exit 2; }"
+          }
+        ]
+      }
+    ],
+    "AfterAgent": [
+      {
+        "sequential": true,
+        "hooks": [
+          {
+            "name": "typescript-syntax-check",
+            "type": "command",
+            "command": "npx tsc --noEmit 2>&1 || { echo 'TypeScript errors found' >&2; exit 2; }"
+          },
+          {
+            "name": "eslint-check",
+            "type": "command",
+            "command": "npx eslint . --ext .ts,.tsx 2>&1 || { echo 'ESLint errors found' >&2; exit 2; }"
           }
         ]
       }

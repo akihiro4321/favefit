@@ -12,6 +12,7 @@ import {
   ShoppingListDocument,
   MarketPriceDocument,
 } from "@/lib/schema";
+import { SavedRecipe, Feedback } from "./collections";
 
 /**
  * コレクション名の定数
@@ -75,10 +76,10 @@ export const adminCollections = {
     ),
 
   userFeedbacks: (userId: string) =>
-    getAdminCollection<any>(COLLECTIONS.USERS, userId, "feedbacks"),
+    getAdminCollection<Feedback>(COLLECTIONS.USERS, userId, "feedbacks"),
 
   userRecipes: (userId: string) =>
-    getAdminCollection<any>(COLLECTIONS.USERS, userId, "recipes"),
+    getAdminCollection<SavedRecipe>(COLLECTIONS.USERS, userId, "recipes"),
 };
 
 /**
@@ -109,8 +110,13 @@ export const adminDocRefs = {
     getAdminDocRef<MarketPriceDocument>(COLLECTIONS.MARKET_PRICES, "latest"),
 
   userRecipe: (userId: string, recipeId: string) =>
-    getAdminDocRef<any>(COLLECTIONS.USERS, userId, "recipes", recipeId),
+    getAdminDocRef<SavedRecipe>(COLLECTIONS.USERS, userId, "recipes", recipeId),
 
   userFeedback: (userId: string, feedbackId: string) =>
-    getAdminDocRef<any>(COLLECTIONS.USERS, userId, "feedbacks", feedbackId),
+    getAdminDocRef<Feedback>(
+      COLLECTIONS.USERS,
+      userId,
+      "feedbacks",
+      feedbackId
+    ),
 };

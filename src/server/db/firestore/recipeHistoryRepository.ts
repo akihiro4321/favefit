@@ -25,7 +25,7 @@ export const addToHistory = async (
 
     const historyItem: RecipeHistoryItem = {
       ...recipe,
-      proposedAt: serverTimestamp() as any,
+      proposedAt: serverTimestamp() as admin.firestore.FieldValue,
       cookedAt: null,
       isFavorite: false,
     };
@@ -120,7 +120,7 @@ export const addToFavorites = async (
       id: recipeId,
       title: recipeData.title,
       tags: recipeData.tags,
-      addedAt: serverTimestamp() as any,
+      addedAt: serverTimestamp() as admin.firestore.FieldValue,
       cookedCount: recipeData.cookedAt ? 1 : 0,
     };
 
