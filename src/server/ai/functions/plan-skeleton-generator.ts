@@ -9,7 +9,7 @@ import {
   PLAN_SKELETON_GENERATOR_INSTRUCTIONS,
   getPlanSkeletonPrompt,
 } from "../prompts/functions/plan-skeleton-generator";
-import { GEMINI_3_FLASH_MODEL } from "../config";
+import { GEMINI_2_5_FLASH_MODEL } from "../config";
 
 /**
  * 1週間分の献立スケルトンを生成
@@ -24,6 +24,6 @@ export async function generatePlanSkeleton(
     PLAN_SKELETON_GENERATOR_INSTRUCTIONS,
     prompt,
     WeeklySkeletonSchema,
-    GEMINI_3_FLASH_MODEL
+    GEMINI_2_5_FLASH_MODEL
   );
 }

@@ -10,7 +10,7 @@ import {
   DIET_BASELINE_ESTIMATOR_INSTRUCTIONS,
   getDailyDietBaselinePrompt,
 } from "../prompts/functions/diet-estimator";
-import { GEMINI_3_FLASH_MODEL } from "../config";
+import { GEMINI_2_5_FLASH_MODEL } from "../config";
 import { UserProfile } from "@/lib/schema";
 
 /**
@@ -38,6 +38,6 @@ export async function estimateDailyDietBaseline(
     DIET_BASELINE_ESTIMATOR_INSTRUCTIONS,
     getDailyDietBaselinePrompt(currentDiet),
     DailyDietAnalysisSchema,
-    GEMINI_3_FLASH_MODEL
+    GEMINI_2_5_FLASH_MODEL
   );
 }
