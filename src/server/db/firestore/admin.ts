@@ -1,26 +1,35 @@
-/**
- * Firebase Admin SDK Client
- * サーバーサイドでセキュリティルールをバイパスしてFirestoreを操作するために使用
- */
-
 import * as admin from "firebase-admin";
 
-// 重複初期化を防止
+/**
+ * Firebase Admin SDK の初期化
+ */
 if (!admin.apps.length) {
-  try {
-    // App Hosting / Google Cloud 環境では引数なしで初期化可能
-    // 開発環境でも GOOGLE_APPLICATION_CREDENTIALS があれば動作する
-    admin.initializeApp();
-  } catch (error) {
-    console.warn(
-      "Firebase Admin standard initialization failed, trying with project ID:",
-      error
+  const projectId =
+    process.env.FIREBASE_PROJECT_ID ||
+    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+
+  if (!projectId) {
+    throw new Error(
+      "FIREBASE_PROJECT_ID or NEXT_PUBLIC_FIREBASE_PROJECT_ID is not defined in environment variables."
     );
-    // 予備の初期化（環境変数が不十分な場合）
-    admin.initializeApp({
-      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    });
   }
+
+  // デバッグ用: エミュレータ環境変数の確認
+  if (process.env.NODE_ENV === "development") {
+    console.log("[Firebase Admin] Project ID:", projectId);
+    console.log(
+      "[Firebase Admin] Firestore Emulator:",
+      process.env.FIRESTORE_EMULATOR_HOST
+    );
+    console.log(
+      "[Firebase Admin] Auth Emulator:",
+      process.env.FIREBASE_AUTH_EMULATOR_HOST
+    );
+  }
+
+  admin.initializeApp({
+    projectId,
+  });
 }
 
 export const adminDb = admin.firestore();
