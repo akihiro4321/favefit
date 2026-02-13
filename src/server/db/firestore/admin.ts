@@ -30,13 +30,12 @@ if (!admin.apps.length) {
   admin.initializeApp({
     projectId,
   });
+
+  // 初回初期化時のみ設定を適用
+  admin.firestore().settings({ ignoreUndefinedProperties: true });
 }
 
-const db = admin.firestore();
-// undefined なプロパティを無視するように設定（Firestoreのエラーを回避）
-db.settings({ ignoreUndefinedProperties: true });
-
-export const adminDb = db;
+export const adminDb = admin.firestore();
 export const adminAuth = admin.auth();
 
 // サーバーサイドでのみ使用されることを保証
