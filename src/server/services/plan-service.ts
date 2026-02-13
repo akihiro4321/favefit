@@ -24,7 +24,7 @@ import {
 } from "@/server/db/firestore/planRepository";
 import { createShoppingList } from "@/server/db/firestore/shoppingListRepository";
 import { getFavorites } from "@/server/db/firestore/recipeHistoryRepository";
-import { DayPlan, ShoppingItem, PlanDocument } from "@/lib/schema";
+import { DayPlan, ShoppingItem, PlanDocument, MealSlot } from "@/lib/schema";
 import { calculatePersonalizedMacroGoals } from "@/lib/tools/calculateMacroGoals";
 import { calculateMealTargets } from "@/lib/tools/mealNutritionCalculator";
 
@@ -320,41 +320,55 @@ async function generateShoppingListFromRecipes(
   // 1. 全レシピから食材を抽出
   const rawIngredients = Object.values(days)
     .filter((dayPlan) => !dayPlan.isCheatDay)
-    .flatMap((dayPlan) => Object.values(dayPlan.meals))
+    .flatMap((dayPlan) => {
+      // mealsの各スロットを安全に取得（undefinedを除外）
+      const meals = [
+        dayPlan.meals.breakfast,
+        dayPlan.meals.lunch,
+        dayPlan.meals.dinner,
+        dayPlan.meals.snack,
+      ].filter(Boolean) as MealSlot[];
+
+      return meals;
+    })
     .flatMap((meal) => meal.ingredients ?? []);
 
-  if (rawIngredients.length === 0) return;
+  if (rawIngredients.length === 0) {
+    return;
+  }
 
   // 2. ユーザーの冷蔵庫在庫を取得
   const user = await getOrCreateUser(userId);
   const fridgeItems = user?.profile.lifestyle.fridgeIngredients || [];
 
   // 3. AIによる正規化を実行
-  console.log(
-    `[PlanService] Normalizing shopping list for ${rawIngredients.length} items...`
-  );
-  const normalized = await normalizeShoppingList({
-    ingredients: rawIngredients,
-    fridgeItems,
-  });
+  try {
+    const normalized = await normalizeShoppingList({
+      ingredients: rawIngredients,
+      fridgeItems,
+    });
 
-  // 4. Firestore 形式に変換
-  const shoppingItems: ShoppingItem[] = [];
-  normalized.categories.forEach((category) => {
-    category.items.forEach((item) => {
-      shoppingItems.push({
-        ingredient: item.name,
-        amount: item.amount,
-        category: category.name,
-        checked: false,
-        note: item.note,
+    // 4. Firestore 形式に変換
+    const shoppingItems: ShoppingItem[] = [];
+    normalized.categories.forEach((category) => {
+      category.items.forEach((item) => {
+        shoppingItems.push({
+          ingredient: item.name,
+          amount: item.amount,
+          category: category.name,
+          checked: false,
+          note: item.note ?? "", // undefined を回避するために空文字を設定
+        });
       });
     });
-  });
 
-  // 5. 保存
-  if (shoppingItems.length > 0) {
-    await createShoppingList(planId, shoppingItems);
+    // 5. 保存
+    if (shoppingItems.length > 0) {
+      await createShoppingList(planId, shoppingItems);
+    }
+  } catch (aiError) {
+    console.error(`[PlanService] AI normalization or saving failed:`, aiError);
+    throw aiError;
   }
 }
 

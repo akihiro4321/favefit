@@ -182,6 +182,7 @@ export default function PlanPage() {
       toast.error(
         error instanceof Error ? error.message : "プラン生成に失敗しました"
       );
+    } finally {
       setFetching(false);
     }
   };
@@ -211,6 +212,7 @@ export default function PlanPage() {
       toast.error(
         error instanceof Error ? error.message : "プラン生成に失敗しました"
       );
+    } finally {
       setFetching(false);
     }
   };
@@ -299,6 +301,7 @@ export default function PlanPage() {
       toast.error(
         error instanceof Error ? error.message : "プラン拒否に失敗しました"
       );
+    } finally {
       setFetching(false);
     }
   };
@@ -469,7 +472,7 @@ export default function PlanPage() {
               別の案を生成
             </Button>
             <Button
-              className="flex-[1.5] h-14 rounded-[16px] font-bold text-[1rem] bg-[#2d3436] text-white hover:bg-[#1d2325] gap-2"
+              className="flex-[1.5] h-14 rounded-[16px] font-bold text-[1rem] bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
               onClick={handleApprovePlan}
               disabled={approving || fetching}
             >

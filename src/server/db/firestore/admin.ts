@@ -32,7 +32,11 @@ if (!admin.apps.length) {
   });
 }
 
-export const adminDb = admin.firestore();
+const db = admin.firestore();
+// undefined なプロパティを無視するように設定（Firestoreのエラーを回避）
+db.settings({ ignoreUndefinedProperties: true });
+
+export const adminDb = db;
 export const adminAuth = admin.auth();
 
 // サーバーサイドでのみ使用されることを保証
