@@ -246,9 +246,35 @@ const buildProfileOverrides = (
   const base = profile.profile;
 
   // 作り置き設定の復元
+
   const mealPrepRules = base.lifestyle?.mealPrepRules;
-  const hasMealPrep = !!mealPrepRules && (!!mealPrepRules.breakfast?.isEnabled || !!mealPrepRules.lunch?.isEnabled || !!mealPrepRules.dinner?.isEnabled);
-  const prepServings = mealPrepRules?.breakfast?.servings || mealPrepRules?.lunch?.servings || mealPrepRules?.dinner?.servings || 3;
+
+  const hasMealPrep =
+    !!mealPrepRules &&
+    (!!mealPrepRules.breakfast?.isEnabled ||
+      !!mealPrepRules.lunch?.isEnabled ||
+      !!mealPrepRules.dinner?.isEnabled);
+
+  // Servingsの復元: 有効な設定があればそれを優先、なければ無効な設定から取得、それもなければデフォルト3
+
+  let prepServings =
+    (mealPrepRules?.breakfast?.isEnabled
+      ? mealPrepRules.breakfast.servings
+      : undefined) ||
+    (mealPrepRules?.lunch?.isEnabled
+      ? mealPrepRules.lunch.servings
+      : undefined) ||
+    (mealPrepRules?.dinner?.isEnabled
+      ? mealPrepRules.dinner.servings
+      : undefined);
+
+  if (!prepServings) {
+    prepServings =
+      mealPrepRules?.breakfast?.servings ||
+      mealPrepRules?.lunch?.servings ||
+      mealPrepRules?.dinner?.servings ||
+      3;
+  }
 
   return {
     displayName: base.identity?.displayName || DEFAULT_FORM_DATA.displayName,
@@ -297,10 +323,10 @@ const buildProfileOverrides = (
       isEnabled: hasMealPrep || false,
       servings: prepServings,
       targets: {
-        breakfast: !!mealPrepRules?.breakfast?.isEnabled,
-        lunch: !!mealPrepRules?.lunch?.isEnabled,
-        dinner: !!mealPrepRules?.dinner?.isEnabled,
-      }
+        breakfast: !!mealPrepRules?.breakfast,
+        lunch: !!mealPrepRules?.lunch,
+        dinner: !!mealPrepRules?.dinner,
+      },
     },
     // planDuration はUserProfileに保存されていないため初期値を使用
   };
@@ -444,11 +470,26 @@ export default function OnboardingPage() {
     const deadlineTimestamp = Timestamp.fromDate(deadlineDate);
 
     // 作り置きルールの整形
-    const mealPrepRules = formData.mealPrepConfigForm.isEnabled ? {
-      breakfast: formData.mealPrepConfigForm.targets.breakfast ? { isEnabled: true, servings: formData.mealPrepConfigForm.servings } : undefined,
-      lunch: formData.mealPrepConfigForm.targets.lunch ? { isEnabled: true, servings: formData.mealPrepConfigForm.servings } : undefined,
-      dinner: formData.mealPrepConfigForm.targets.dinner ? { isEnabled: true, servings: formData.mealPrepConfigForm.servings } : undefined,
-    } : {};
+    const mealPrepRules = {
+      breakfast: formData.mealPrepConfigForm.targets.breakfast
+        ? {
+            isEnabled: formData.mealPrepConfigForm.isEnabled,
+            servings: formData.mealPrepConfigForm.servings,
+          }
+        : undefined,
+      lunch: formData.mealPrepConfigForm.targets.lunch
+        ? {
+            isEnabled: formData.mealPrepConfigForm.isEnabled,
+            servings: formData.mealPrepConfigForm.servings,
+          }
+        : undefined,
+      dinner: formData.mealPrepConfigForm.targets.dinner
+        ? {
+            isEnabled: formData.mealPrepConfigForm.isEnabled,
+            servings: formData.mealPrepConfigForm.servings,
+          }
+        : undefined,
+    };
 
     await fetch("/api/user/update-profile", {
       method: "POST",
@@ -525,7 +566,10 @@ export default function OnboardingPage() {
     fetch("/api/plan/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: user!.uid, duration: formData.planDuration }),
+      body: JSON.stringify({
+        userId: user!.uid,
+        duration: formData.planDuration,
+      }),
     }).catch((err) => console.error("Initial plan generation failed:", err));
 
     // プラン画面へ移動
@@ -1533,19 +1577,24 @@ export default function OnboardingPage() {
                       max={7}
                       step={1}
                       value={[formData.planDuration]}
-                      onValueChange={(vals) =>
+                      onValueChange={(vals) => {
+                        const newDuration = vals[0];
                         setFormData({
                           ...formData,
-                          planDuration: vals[0],
+                          planDuration: newDuration,
                           mealPrepConfigForm: {
                             ...formData.mealPrepConfigForm,
+                            isEnabled:
+                              newDuration < 2
+                                ? false
+                                : formData.mealPrepConfigForm.isEnabled,
                             servings: Math.min(
                               formData.mealPrepConfigForm.servings,
-                              vals[0]
+                              newDuration
                             ),
                           },
-                        })
-                      }
+                        });
+                      }}
                     />
                   </div>
                 </div>
@@ -1561,6 +1610,7 @@ export default function OnboardingPage() {
                       <Checkbox
                         id="meal-prep-enabled"
                         checked={formData.mealPrepConfigForm.isEnabled}
+                        disabled={formData.planDuration < 2}
                         onCheckedChange={(checked) =>
                           setFormData({
                             ...formData,
@@ -1571,8 +1621,20 @@ export default function OnboardingPage() {
                           })
                         }
                       />
-                      <Label htmlFor="meal-prep-enabled">
+                      <Label
+                        htmlFor="meal-prep-enabled"
+                        className={
+                          formData.planDuration < 2
+                            ? "text-muted-foreground"
+                            : ""
+                        }
+                      >
                         作り置きを活用する
+                        {formData.planDuration < 2 && (
+                          <span className="text-xs ml-2">
+                            (2日以上のプランで利用可能)
+                          </span>
+                        )}
                       </Label>
                     </div>
 
@@ -1614,46 +1676,46 @@ export default function OnboardingPage() {
                         <div className="space-y-2">
                           <Label className="text-xs">対象の食事</Label>
                           <div className="flex gap-4">
-                            {(
-                              ["breakfast", "lunch", "dinner"] as const
-                            ).map((key) => (
-                              <div
-                                key={key}
-                                className="flex items-center space-x-2"
-                              >
-                                <Checkbox
-                                  id={`prep-target-${key}`}
-                                  checked={
-                                    formData.mealPrepConfigForm.targets[key]
-                                  }
-                                  onCheckedChange={(checked) =>
-                                    setFormData({
-                                      ...formData,
-                                      mealPrepConfigForm: {
-                                        ...formData.mealPrepConfigForm,
-                                        targets: {
-                                          ...formData.mealPrepConfigForm
-                                            .targets,
-                                          [key]: !!checked,
-                                        },
-                                      },
-                                    })
-                                  }
-                                />
-                                <Label
-                                  htmlFor={`prep-target-${key}`}
-                                  className="text-xs capitalize"
+                            {(["breakfast", "lunch", "dinner"] as const).map(
+                              (key) => (
+                                <div
+                                  key={key}
+                                  className="flex items-center space-x-2"
                                 >
-                                  {
+                                  <Checkbox
+                                    id={`prep-target-${key}`}
+                                    checked={
+                                      formData.mealPrepConfigForm.targets[key]
+                                    }
+                                    onCheckedChange={(checked) =>
+                                      setFormData({
+                                        ...formData,
+                                        mealPrepConfigForm: {
+                                          ...formData.mealPrepConfigForm,
+                                          targets: {
+                                            ...formData.mealPrepConfigForm
+                                              .targets,
+                                            [key]: !!checked,
+                                          },
+                                        },
+                                      })
+                                    }
+                                  />
+                                  <Label
+                                    htmlFor={`prep-target-${key}`}
+                                    className="text-xs capitalize"
+                                  >
                                     {
-                                      breakfast: "朝食",
-                                      lunch: "昼食",
-                                      dinner: "夕食",
-                                    }[key]
-                                  }
-                                </Label>
-                              </div>
-                            ))}
+                                      {
+                                        breakfast: "朝食",
+                                        lunch: "昼食",
+                                        dinner: "夕食",
+                                      }[key]
+                                    }
+                                  </Label>
+                                </div>
+                              )
+                            )}
                           </div>
                         </div>
                       </div>
