@@ -3,70 +3,38 @@
  */
 
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
-import { genAI } from "../config";
+import { generateObject, LanguageModel } from "ai";
+import { FAST_MODEL } from "../config";
 
 // ============================================
 // エージェント実行ヘルパー
 // ============================================
 
 /**
- * 複数のスキーマに対応するエージェント実行
+ * 複数のスキーマに対応するエージェント実行 (Vercel AI SDK)
  */
 export async function callModelWithSchema<TSchema extends z.ZodType>(
   instructions: string,
   prompt: string,
   schema: TSchema,
-  model: string
+  // 文字列IDではなくAI SDKのモデルオブジェクトを受け取るように変更
+  // デフォルトは FAST_MODEL
+  model: LanguageModel = FAST_MODEL
 ): Promise<z.infer<TSchema>> {
-  // JSON Schema 生成 (Gemini は $ref をサポートしていないため、参照を無効化してインライン展開する)
-  const jsonSchema = zodToJsonSchema(schema, {
-    target: "openApi3",
-    $refStrategy: "none",
-  });
-
   try {
-    const result = await genAI.models.generateContent({
+    const result = await generateObject({
       model: model,
-      config: {
-        systemInstruction: {
-          parts: [{ text: instructions }],
-          role: "system",
-        },
-        responseMimeType: "application/json",
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        responseSchema: jsonSchema as any,
-      },
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: prompt }],
-        },
-      ],
+      system: instructions,
+      prompt: prompt,
+      schema: schema,
+      // 必要に応じてモードを指定 (auto, json, tool)
+      // Gemini/OpenAIともに 'json' or 'auto' で構造化出力が可能
+      mode: "json",
     });
 
-    // @google/genai SDK response handling
-    let responseText: string | undefined | null;
-
-    // Check if helper method exists (common in Google SDKs)
-    const resultObj = result as unknown as Record<string, unknown>;
-    if (typeof resultObj.text === "function") {
-      responseText = (resultObj.text as () => string)();
-    } else {
-      // Fallback to direct candidate access
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      responseText = (result as any).candidates?.[0]?.content?.parts?.[0]?.text;
-    }
-
-    if (!responseText) {
-      throw new Error("No response from Gemini");
-    }
-
-    const json = JSON.parse(responseText);
-    // Zod でバリデーション
-    return schema.parse(json);
+    return result.object;
   } catch (error) {
-    console.error("Gemini API Error:", error);
+    console.error("AI SDK Error:", error);
     throw error;
   }
 }

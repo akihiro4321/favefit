@@ -4,7 +4,7 @@ import {
   AUDITOR_INSTRUCTIONS,
   getAuditorPrompt,
 } from "../prompts/functions/plan-auditor";
-import { GEMINI_3_FLASH_MODEL } from "../config";
+import { SMART_MODEL } from "../config";
 
 /**
  * Plan Auditor 関数の出力スキーマ
@@ -67,7 +67,7 @@ export async function auditPlanAnchors(
       AUDITOR_INSTRUCTIONS,
       getAuditorPrompt({ inputs, dailyTarget }),
       AuditorOutputSchema,
-      GEMINI_3_FLASH_MODEL
+      SMART_MODEL
     );
   } catch (error) {
     console.error("Plan Auditor Error:", error);

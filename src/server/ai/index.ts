@@ -6,12 +6,7 @@
 // ============================================
 // Config
 // ============================================
-export {
-  genAI,
-  GEMINI_2_5_FLASH_MODEL,
-  GEMINI_3_PRO_MODEL,
-  GEMINI_3_FLASH_MODEL,
-} from "./config";
+export { google, openai, FAST_MODEL, SMART_MODEL } from "./config";
 
 // ============================================
 // Common Types

@@ -1,22 +1,36 @@
 /**
  * FaveFit - AI Configuration
- * Google Gen AI SDK
+ * Vercel AI SDK Integration
  */
 
-import { GoogleGenAI } from "@google/genai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createOpenAI } from "@ai-sdk/openai";
 
 /**
- * Google Generative AI クライアントの初期化
+ * AI SDK Providers
  */
-const apiKey =
-  process.env.GOOGLE_GENERATIVE_AI_API_KEY || "dummy-key-for-build";
-export const genAI = new GoogleGenAI({
-  apiKey: apiKey,
+export const google = createGoogleGenerativeAI({
+  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || "dummy-key-for-build",
+});
+
+export const openai = createOpenAI({
+  apiKey: process.env.OPENAI_API_KEY || "dummy-key-for-build",
 });
 
 /**
- * モデルID定義
+ * Model Roles Configuration
+ * 切り替えを容易にするため、役割ごとの定数を定義
  */
-export const GEMINI_2_5_FLASH_MODEL = "gemini-2.5-flash";
-export const GEMINI_3_PRO_MODEL = "gemini-3-pro-preview";
-export const GEMINI_3_FLASH_MODEL = "gemini-flash-latest";
+
+// 高速・安価なモデル (Gemini 1.5 Flash / GPT-4o mini)
+// 現在は GPT-4o mini を採用
+export const FAST_MODEL = openai("gpt-4o-mini");
+
+// 高性能なモデル (Gemini 1.5 Pro / GPT-4o)
+// 現在は GPT-4o を採用
+export const SMART_MODEL = openai("gpt-4o");
+
+// 互換性のためのエイリアス（移行期間中のみ使用し、徐々に廃止する）
+// 旧: GEMINI_3_FLASH_MODEL など
+export const LEGACY_GEMINI_FLASH_MODEL = FAST_MODEL;
+export const LEGACY_GEMINI_PRO_MODEL = SMART_MODEL;

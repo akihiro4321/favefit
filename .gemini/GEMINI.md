@@ -12,7 +12,7 @@
 - **スタイリング:** Tailwind CSS, Radix UI (`lucide-react`, `class-variance-authority` を使用)
 - **データベース:** Firebase Firestore
 - **認証:** Firebase Auth
-- **AI 統合:** Google Generative AI SDK (`@google/genai`)
+- **AI 統合:** Vercel AI SDK (@ai-sdk/openai, @ai-sdk/google)
 - **テスト:** Vitest, React Testing Library
 
 ## アーキテクチャとディレクトリ構造
@@ -53,6 +53,6 @@ AI機能は以下の3つのレイヤーで構成されています。
 コーディング規約は [@./rules/coding-style.md](./rules/coding-style.md) にまとめてあるので、コードの生成・変更時は必ず参照すること。
 
 ### AI開発の重要ルール
-- **SDK**: `ai` (Vercel AI SDK) ではなく `@google/genai` を直接使用すること。
-- **スキーマ**: `zod-to-json-schema` を使用する際、Geminiの制限により `$refStrategy: "none"` を指定して参照をインライン展開すること。
+- **SDK**: `ai` (Vercel AI SDK) を使用すること。`@google/genai` の直接使用は禁止。
+- **モデル**: `FAST_MODEL` (GPT-4o-mini等) と `SMART_MODEL` (GPT-4o等) の定数を使用し、具体的なモデルIDをハードコードしないこと。
 - **分離**: モデル呼び出しロジック（ai/層）の中に Service層（DB操作等）を混入させないこと。必要なデータは引数として渡すこと。
