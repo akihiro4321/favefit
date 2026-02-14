@@ -9,11 +9,12 @@ import { createOpenAI } from "@ai-sdk/openai";
 /**
  * AI SDK Providers
  */
-export const google = createGoogleGenerativeAI({
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const google = createGoogleGenerativeAI({
   apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || "dummy-key-for-build",
 });
 
-export const openai = createOpenAI({
+const openai = createOpenAI({
   apiKey: process.env.OPENAI_API_KEY || "dummy-key-for-build",
 });
 
@@ -21,16 +22,26 @@ export const openai = createOpenAI({
  * Model Roles Configuration
  * 切り替えを容易にするため、役割ごとの定数を定義
  */
+const GPT_5_MINI = openai("gpt-5-mini");
+const GPT_5 = openai("gpt-5");
 
-// 高速・安価なモデル (Gemini 1.5 Flash / GPT-4o mini)
-// 現在は GPT-4o mini を採用
-export const FAST_MODEL = openai("gpt-4o-mini");
+/**
+ * 機能ごとのモデル割り当て設定
+ * 各機能がどのモデルを使用するかを一元管理
+ */
+export const AI_CONFIG = {
+  agents: {
+    planGenerator: GPT_5,
+  },
+  functions: {
+    planSkeleton: GPT_5, // 整合性重視
+    chunkDetail: GPT_5, // 栄養計算の精度重視
+    planAuditor: GPT_5, // ユーザー意図の解釈重視
 
-// 高性能なモデル (Gemini 1.5 Pro / GPT-4o)
-// 現在は GPT-4o を採用
-export const SMART_MODEL = openai("gpt-4o");
-
-// 互換性のためのエイリアス（移行期間中のみ使用し、徐々に廃止する）
-// 旧: GEMINI_3_FLASH_MODEL など
-export const LEGACY_GEMINI_FLASH_MODEL = FAST_MODEL;
-export const LEGACY_GEMINI_PRO_MODEL = SMART_MODEL;
+    recipeGenerator: GPT_5_MINI, // 数が多いので高速モデル
+    menuSuggester: GPT_5_MINI, // インタラクティブ性重視
+    preferenceAnalyzer: GPT_5_MINI, // パターン認識なら高速モデルで十分
+    dietEstimator: GPT_5_MINI, // 概算でよいため
+    shoppingListNormalizer: GPT_5, // 単純な分類タスク
+  },
+} as const;

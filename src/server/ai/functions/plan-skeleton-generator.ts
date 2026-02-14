@@ -9,7 +9,7 @@ import {
   PLAN_SKELETON_GENERATOR_INSTRUCTIONS,
   getPlanSkeletonPrompt,
 } from "../prompts/functions/plan-skeleton-generator";
-import { SMART_MODEL } from "../config";
+import { AI_CONFIG } from "../config";
 
 /**
  * 1週間分の献立スケルトンを生成
@@ -24,6 +24,6 @@ export async function generatePlanSkeleton(
     PLAN_SKELETON_GENERATOR_INSTRUCTIONS,
     prompt,
     WeeklySkeletonSchema,
-    SMART_MODEL
+    AI_CONFIG.functions.planSkeleton
   );
 }

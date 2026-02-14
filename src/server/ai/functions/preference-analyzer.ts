@@ -75,7 +75,7 @@ export type PreferenceAnalysis = PreferenceLearnerOutput;
 // ============================================
 
 import { PREFERENCE_LEARNER_INSTRUCTIONS } from "../prompts/functions/preference-analyzer";
-import { FAST_MODEL } from "../config";
+import { AI_CONFIG } from "../config";
 
 // ============================================
 // 関数実行
@@ -91,6 +91,6 @@ export async function analyzePreferenceData(
     PREFERENCE_LEARNER_INSTRUCTIONS,
     prompt,
     PreferenceLearnerOutputSchema,
-    FAST_MODEL
+    AI_CONFIG.functions.preferenceAnalyzer
   );
 }

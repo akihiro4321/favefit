@@ -59,8 +59,6 @@ const TOTAL_STEPS = 6;
 const SELECT_CLASS_NAME =
   "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm";
 
-const DEFAULT_DURATION = 7; // 将来的に可変にするためのデフォルト値
-
 /**
  * オンボーディングで収集するフォームデータの型定義
  * 各ステップで入力される情報をまとめて管理

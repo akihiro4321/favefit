@@ -61,8 +61,6 @@
     ]
   },
   "skills": {
-    "disabled": [
-      "gemini-api-dev"
-    ]
+    "disabled": ["gemini-api-dev"]
   }
 }

@@ -3,8 +3,7 @@
  */
 
 import { z } from "zod";
-import { generateObject, LanguageModel } from "ai";
-import { FAST_MODEL } from "../config";
+import { generateText, Output, LanguageModel } from "ai";
 
 // ============================================
 // エージェント実行ヘルパー
@@ -12,27 +11,29 @@ import { FAST_MODEL } from "../config";
 
 /**
  * 複数のスキーマに対応するエージェント実行 (Vercel AI SDK)
+ * generateText + output設定を使用 (generateObjectは非推奨)
  */
 export async function callModelWithSchema<TSchema extends z.ZodType>(
   instructions: string,
   prompt: string,
   schema: TSchema,
   // 文字列IDではなくAI SDKのモデルオブジェクトを受け取るように変更
-  // デフォルトは FAST_MODEL
-  model: LanguageModel = FAST_MODEL
+  model: LanguageModel
 ): Promise<z.infer<TSchema>> {
   try {
-    const result = await generateObject({
+    const result = await generateText({
       model: model,
       system: instructions,
       prompt: prompt,
-      schema: schema,
-      // 必要に応じてモードを指定 (auto, json, tool)
-      // Gemini/OpenAIともに 'json' or 'auto' で構造化出力が可能
-      mode: "json",
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      output: Output.object({ schema: schema as any }),
     });
 
-    return result.object;
+    if (result.output === undefined || result.output === null) {
+      throw new Error("Model failed to generate structured output.");
+    }
+
+    return result.output as z.infer<TSchema>;
   } catch (error) {
     console.error("AI SDK Error:", error);
     throw error;

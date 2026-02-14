@@ -9,7 +9,7 @@ import {
   getShoppingListNormalizerPrompt,
   ShoppingListNormalizerInput,
 } from "../prompts/functions/shopping-list-normalizer";
-import { FAST_MODEL } from "../config";
+import { AI_CONFIG } from "../config";
 
 /**
  * 出力スキーマ
@@ -47,6 +47,6 @@ export async function normalizeShoppingList(
     SHOPPING_LIST_NORMALIZER_INSTRUCTIONS,
     prompt,
     NormalizedShoppingListSchema,
-    FAST_MODEL
+    AI_CONFIG.functions.shoppingListNormalizer
   );
 }

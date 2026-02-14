@@ -9,7 +9,7 @@ import {
   getChunkDetailPrompt,
   ChunkDetailPromptInput,
 } from "../prompts/functions/chunk-detail-generator";
-import { SMART_MODEL } from "../config";
+import { AI_CONFIG } from "../config";
 
 /**
  * チャンク（複数日）の詳細な献立を一括生成
@@ -23,6 +23,6 @@ export async function generateChunkDetails(
     CHUNK_DETAIL_GENERATOR_INSTRUCTIONS,
     prompt,
     ChunkDetailedPlanSchema,
-    SMART_MODEL
+    AI_CONFIG.functions.chunkDetail
   );
 }

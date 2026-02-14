@@ -4,7 +4,7 @@ import {
   AUDITOR_INSTRUCTIONS,
   getAuditorPrompt,
 } from "../prompts/functions/plan-auditor";
-import { SMART_MODEL } from "../config";
+import { AI_CONFIG } from "../config";
 
 /**
  * Plan Auditor 関数の出力スキーマ
@@ -67,7 +67,7 @@ export async function auditPlanAnchors(
       AUDITOR_INSTRUCTIONS,
       getAuditorPrompt({ inputs, dailyTarget }),
       AuditorOutputSchema,
-      SMART_MODEL
+      AI_CONFIG.functions.planAuditor
     );
   } catch (error) {
     console.error("Plan Auditor Error:", error);

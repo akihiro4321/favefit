@@ -10,7 +10,7 @@ import {
   DIET_BASELINE_ESTIMATOR_INSTRUCTIONS,
   getDailyDietBaselinePrompt,
 } from "../prompts/functions/diet-estimator";
-import { FAST_MODEL } from "../config";
+import { AI_CONFIG } from "../config";
 import { UserProfile } from "@/lib/schema";
 
 /**
@@ -38,6 +38,6 @@ export async function estimateDailyDietBaseline(
     DIET_BASELINE_ESTIMATOR_INSTRUCTIONS,
     getDailyDietBaselinePrompt(currentDiet),
     DailyDietAnalysisSchema,
-    FAST_MODEL
+    AI_CONFIG.functions.dietEstimator
   );
 }

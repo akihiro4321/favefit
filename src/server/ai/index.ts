@@ -6,7 +6,7 @@
 // ============================================
 // Config
 // ============================================
-export { google, openai, FAST_MODEL, SMART_MODEL } from "./config";
+export { AI_CONFIG } from "./config";
 
 // ============================================
 // Common Types

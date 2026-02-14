@@ -71,7 +71,7 @@ export type MenuAdjusterOutput = z.infer<typeof MenuAdjusterOutputSchema>;
 // ============================================
 
 import { MENU_ADJUSTER_INSTRUCTIONS } from "../prompts/functions/menu-suggester";
-import { FAST_MODEL } from "../config";
+import { AI_CONFIG } from "../config";
 
 // ============================================
 // 関数実行
@@ -87,6 +87,6 @@ export async function generateMenuSuggestions(
     MENU_ADJUSTER_INSTRUCTIONS,
     prompt,
     MenuAdjusterOutputSchema,
-    FAST_MODEL
+    AI_CONFIG.functions.menuSuggester
   );
 }
