@@ -37,6 +37,10 @@ export function getPlanSkeletonPrompt(
       ? `- 冷蔵庫にある在庫食材 (最優先で使用・分量を考慮): \n${input.fridgeIngredients.map((i) => `  - ${i.name}: ${i.amount}`).join("\n")}`
       : "";
 
+  const mealPrepInfo = input.mealPrepRules
+    ? `- 作り置き設定: ${JSON.stringify(input.mealPrepRules)}\n  ※ "isEnabled": true の食事タイプは、指定された "servings" (食数分) を一度に調理し、翌日以降も同じものを食べる計画にしてください。`
+    : "";
+
   return `
 【ユーザー情報】
 - 目標カロリー: ${input.targetCalories} kcal/日
@@ -48,6 +52,7 @@ ${fridgeInfo}
 【制約】
 - 期間: ${duration}日間 (開始日: ${input.startDate})
 - 固定・こだわり設定: ${JSON.stringify(input.mealSettings)}
+${mealPrepInfo}
 
 上記の情報を元に、${duration}日間 の献立スケルトンと食材プールを作成してください。
 `;

@@ -206,6 +206,7 @@ async function generatePlanBackground(
             servings: userDoc.profile.lifestyle.mealPrepConfig.servings,
           }
         : undefined,
+      mealPrepRules: userDoc.profile.lifestyle.mealPrepRules,
       fridgeIngredients: userDoc.profile.lifestyle.fridgeIngredients,
       lifestyle: {
         availableTime: userDoc.profile.lifestyle.availableTime,
