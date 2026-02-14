@@ -9,7 +9,7 @@ import {
   getShoppingListNormalizerPrompt,
   ShoppingListNormalizerInput,
 } from "../prompts/functions/shopping-list-normalizer";
-import { GEMINI_2_5_FLASH_MODEL } from "../config";
+import { GEMINI_3_FLASH_MODEL } from "../config";
 
 /**
  * 出力スキーマ
@@ -47,6 +47,6 @@ export async function normalizeShoppingList(
     SHOPPING_LIST_NORMALIZER_INSTRUCTIONS,
     prompt,
     NormalizedShoppingListSchema,
-    GEMINI_2_5_FLASH_MODEL
+    GEMINI_3_FLASH_MODEL
   );
 }

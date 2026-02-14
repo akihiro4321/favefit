@@ -563,14 +563,18 @@ export default function OnboardingPage() {
     });
 
     // プラン生成をバックグラウンドで開始
-    fetch("/api/plan/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        userId: user!.uid,
-        duration: formData.planDuration,
-      }),
-    }).catch((err) => console.error("Initial plan generation failed:", err));
+    try {
+      await fetch("/api/plan/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user!.uid,
+          duration: formData.planDuration,
+        }),
+      });
+    } catch (err) {
+      console.error("Initial plan generation failed:", err);
+    }
 
     // プラン画面へ移動
     router.push("/plan");

@@ -19,4 +19,4 @@ export const genAI = new GoogleGenAI({
  */
 export const GEMINI_2_5_FLASH_MODEL = "gemini-2.5-flash";
 export const GEMINI_3_PRO_MODEL = "gemini-3-pro-preview";
-export const GEMINI_3_FLASH_MODEL = "gemini-3-flash-preview";
+export const GEMINI_3_FLASH_MODEL = "gemini-flash-latest";

@@ -75,7 +75,7 @@ export type PreferenceAnalysis = PreferenceLearnerOutput;
 // ============================================
 
 import { PREFERENCE_LEARNER_INSTRUCTIONS } from "../prompts/functions/preference-analyzer";
-import { GEMINI_2_5_FLASH_MODEL } from "../config";
+import { GEMINI_3_FLASH_MODEL } from "../config";
 
 // ============================================
 // 関数実行
@@ -91,6 +91,6 @@ export async function analyzePreferenceData(
     PREFERENCE_LEARNER_INSTRUCTIONS,
     prompt,
     PreferenceLearnerOutputSchema,
-    GEMINI_2_5_FLASH_MODEL
+    GEMINI_3_FLASH_MODEL
   );
 }
