@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /**
  * FaveFit - AI Configuration
  * Vercel AI SDK Integration
@@ -9,7 +10,6 @@ import { createOpenAI } from "@ai-sdk/openai";
 /**
  * AI SDK Providers
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const google = createGoogleGenerativeAI({
   apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || "dummy-key-for-build",
 });
@@ -31,17 +31,17 @@ const GPT_5 = openai("gpt-5");
  */
 export const AI_CONFIG = {
   agents: {
-    planGenerator: GPT_5,
+    planGenerator: GPT_5_MINI,
   },
   functions: {
-    planSkeleton: GPT_5, // 整合性重視
-    chunkDetail: GPT_5, // 栄養計算の精度重視
-    planAuditor: GPT_5, // ユーザー意図の解釈重視
+    planSkeleton: GPT_5_MINI, // 整合性重視
+    chunkDetail: GPT_5_MINI, // 栄養計算の精度重視
+    planAuditor: GPT_5_MINI, // ユーザー意図の解釈重視
 
     recipeGenerator: GPT_5_MINI, // 数が多いので高速モデル
     menuSuggester: GPT_5_MINI, // インタラクティブ性重視
     preferenceAnalyzer: GPT_5_MINI, // パターン認識なら高速モデルで十分
     dietEstimator: GPT_5_MINI, // 概算でよいため
-    shoppingListNormalizer: GPT_5, // 単純な分類タスク
+    shoppingListNormalizer: GPT_5_MINI, // 単純な分類タスク
   },
 } as const;
