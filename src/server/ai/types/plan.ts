@@ -28,7 +28,7 @@ export const DailySkeletonSchema = z.object({
     breakfast: MealSkeletonSchema,
     lunch: MealSkeletonSchema,
     dinner: MealSkeletonSchema,
-    snack: MealSkeletonSchema.optional().describe(
+    snack: MealSkeletonSchema.nullable().describe(
       "目標カロリー調整用の間食（必要時のみ）"
     ),
   }),
@@ -57,7 +57,7 @@ export const DailyDetailedPlanSchema = z.object({
     breakfast: DetailedMealSchema,
     lunch: DetailedMealSchema,
     dinner: DetailedMealSchema,
-    snack: DetailedMealSchema.optional(),
+    snack: DetailedMealSchema.nullable(),
   }),
 });
 

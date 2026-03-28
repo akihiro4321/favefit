@@ -76,6 +76,13 @@ export interface UserProfile {
       dayOfWeek: number; // 0-6 (Sunday to Saturday)
       servings: number; // 何食分作るか
     };
+    // 食事ごとの作り置き設定
+    mealPrepRules?: {
+      [key in "breakfast" | "lunch" | "dinner"]?: {
+        isEnabled: boolean;
+        servings: number;
+      };
+    };
     // 現状の食生活（適応型プランニング用）
     currentDiet?: {
       breakfast?: string;

@@ -2,29 +2,33 @@
 
 ## 1. SDKとヘルパー
 
-- SDK: `@google/genai` を直接使用。
-- ヘルパー: `callModelWithSchema` を使い、Zodスキーマによる構造化出力を行う。
+- SDK: `ai` (Vercel AI SDK) を使用。
+- ヘルパー: `src/server/ai/utils/agent-helpers.ts` の `callModelWithSchema` を使用して実装する。内部で `generateObject` を呼び出しており、Zodスキーマを直接渡すことができます。
 
-## 2. JSON Schema 互換性（重要）
+## 2. 構造化出力 (Structured Output)
 
-`zod-to-json-schema` を使用する際、Gemini の制限により **`$refStrategy: "none"`** を必ず指定してください。
-これを忘れると Gemini が `$ref` を解釈できず、出力が壊れます。
+Vercel AI SDK は Zod スキーマを直接サポートしているため、手動で JSON Schema に変換する必要はありません。
+`callModelWithSchema` に Zod スキーマをそのまま渡してください。
 
 ```typescript
-import { zodToJsonSchema } from "zod-to-json-schema"
+import { MySchema } from "../types";
+import { callModelWithSchema } from "../utils/agent-helpers";
+import { FAST_MODEL } from "../config";
 
-const jsonSchema = zodToJsonSchema(MyZodSchema, {
-  $refStrategy: "none", // 必須
-})
+const result = await callModelWithSchema(
+  instructions,
+  prompt,
+  MySchema,
+  FAST_MODEL
+);
 ```
 
 ## 3. モデル選択
 
-モデル定数は `src/server/ai/config.ts` を参照。
+モデル定数は `src/server/ai/config.ts` を参照し、具体的なモデルIDではなく役割を表す定数を使用してください。
 
-- `GEMINI_3_FLASH_MODEL`: メイン（高速・低コスト）。
-- `GEMINI_3_PRO_MODEL`: 複雑な推論用。
-- `GEMINI_2_5_FLASH_MODEL`: 単純なタスク用。
+- `FAST_MODEL` (GPT-4o-mini 等): 高速・低コスト。ほとんどのタスクはこれを使用。
+- `SMART_MODEL` (GPT-4o 等): 複雑な推論、整合性チェック、クリエイティブな生成用。
 
 ## 4. プロンプトの実装パターン
 

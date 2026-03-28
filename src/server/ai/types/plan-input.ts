@@ -67,6 +67,17 @@ export const PlanGeneratorInputSchema = z.object({
     .optional()
     .describe("作り置き（バルク調理）の設定"),
 
+  mealPrepRules: z
+    .record(
+      z.enum(["breakfast", "lunch", "dinner"]),
+      z.object({
+        isEnabled: z.boolean(),
+        servings: z.number(),
+      })
+    )
+    .optional()
+    .describe("食事ごとの作り置き設定"),
+
   fridgeIngredients: z
     .array(
       z.object({

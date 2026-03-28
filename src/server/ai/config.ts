@@ -1,22 +1,47 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /**
  * FaveFit - AI Configuration
- * Google Gen AI SDK
+ * Vercel AI SDK Integration
  */
 
-import { GoogleGenAI } from "@google/genai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createOpenAI } from "@ai-sdk/openai";
 
 /**
- * Google Generative AI クライアントの初期化
+ * AI SDK Providers
  */
-const apiKey =
-  process.env.GOOGLE_GENERATIVE_AI_API_KEY || "dummy-key-for-build";
-export const genAI = new GoogleGenAI({
-  apiKey: apiKey,
+const google = createGoogleGenerativeAI({
+  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || "dummy-key-for-build",
+});
+
+const openai = createOpenAI({
+  apiKey: process.env.OPENAI_API_KEY || "dummy-key-for-build",
 });
 
 /**
- * モデルID定義
+ * Model Roles Configuration
+ * 切り替えを容易にするため、役割ごとの定数を定義
  */
-export const GEMINI_2_5_FLASH_MODEL = "gemini-2.5-flash";
-export const GEMINI_3_PRO_MODEL = "gemini-3-pro-preview";
-export const GEMINI_3_FLASH_MODEL = "gemini-3-flash-preview";
+const GPT_5_MINI = openai("gpt-5-mini");
+const GPT_5 = openai("gpt-5");
+
+/**
+ * 機能ごとのモデル割り当て設定
+ * 各機能がどのモデルを使用するかを一元管理
+ */
+export const AI_CONFIG = {
+  agents: {
+    planGenerator: GPT_5_MINI,
+  },
+  functions: {
+    planSkeleton: GPT_5_MINI, // 整合性重視
+    chunkDetail: GPT_5_MINI, // 栄養計算の精度重視
+    planAuditor: GPT_5_MINI, // ユーザー意図の解釈重視
+
+    recipeGenerator: GPT_5_MINI, // 数が多いので高速モデル
+    menuSuggester: GPT_5_MINI, // インタラクティブ性重視
+    preferenceAnalyzer: GPT_5_MINI, // パターン認識なら高速モデルで十分
+    dietEstimator: GPT_5_MINI, // 概算でよいため
+    shoppingListNormalizer: GPT_5_MINI, // 単純な分類タスク
+  },
+} as const;
